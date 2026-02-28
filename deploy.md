@@ -76,43 +76,55 @@ curl "https://api.telegram.org/bot<BOT_TOKEN>/sendMessage?chat_id=<CHAT_ID>&text
 
 ---
 
-## 3. 개발 도구 설치 확인
+## 3. 개발 도구 설치 (Homebrew 기준)
+
+> 패키지 매니저로 **Homebrew**를 사용합니다. Homebrew가 없으면 먼저 설치하세요.
+> ```bash
+> /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+> ```
 
 ### 3-1. Python 3.12+
 ```bash
+# 설치
+brew install python@3.12
+
+# 버전 확인
 python3 --version
 # Python 3.12.x 이상이어야 함
 ```
-미설치 시: [python.org](https://www.python.org/downloads/) 또는 `pyenv` 사용
 
-```bash
-# pyenv로 설치하는 경우
-pyenv install 3.12.0
-pyenv global 3.12.0
-```
+> pyenv를 사용한다면:
+> ```bash
+> brew install pyenv
+> pyenv install 3.12.0
+> pyenv global 3.12.0
+> ```
 
 ### 3-2. Node.js 22+
 ```bash
+# 설치
+brew install node@22
+
+# PATH 등록 (설치 후 안내 메시지 참고)
+echo 'export PATH="/opt/homebrew/opt/node@22/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+
+# 버전 확인
 node --version
 # v22.x.x 이상이어야 함
-```
-미설치 시: [nodejs.org](https://nodejs.org/) 또는 `nvm` 사용
-
-```bash
-# nvm으로 설치하는 경우
-nvm install 22
-nvm use 22
 ```
 
 ### 3-3. Docker Desktop
 ```bash
+# Homebrew Cask로 설치
+brew install --cask docker
+
+# 버전 확인 (Docker Desktop 실행 후)
 docker --version
 docker compose version
-# Docker version 24.x 이상, Docker Compose version v2.x 이상이어야 함
 ```
-미설치 시: [Docker Desktop](https://www.docker.com/products/docker-desktop/) 다운로드 및 설치
 
-> Docker Desktop 설치 후 반드시 **실행(Start)**한 상태에서 개발해야 합니다.
+> Docker Desktop 설치 후 반드시 **앱을 실행(Start)**해야 `docker` 명령을 사용할 수 있습니다.
 
 ---
 
