@@ -12,7 +12,7 @@ function delay(ms: number) {
 
 export function usePortfolioHoldings() {
   return useQuery<HoldingItem[]>({
-    queryKey: ["portfolio", "holdings"],
+    queryKey: ["portfolio", "holdings", "detail"],
     queryFn: async () => {
       await delay(500);
       return mockHoldings;

@@ -121,7 +121,7 @@ export function PortfolioHoldingsTable() {
                         />
                       ) : (
                         <span className="text-sm font-mono text-blue-600">
-                          {item.stopLossRate ? `${item.stopLossRate}%` : "-"}
+                          {item.stopLossRate !== null ? `${item.stopLossRate}%` : "-"}
                         </span>
                       )}
                     </TableCell>
@@ -140,7 +140,7 @@ export function PortfolioHoldingsTable() {
                         />
                       ) : (
                         <span className="text-sm font-mono text-red-600">
-                          {item.takeProfitRate ? `+${item.takeProfitRate}%` : "-"}
+                          {item.takeProfitRate !== null ? `+${item.takeProfitRate}%` : "-"}
                         </span>
                       )}
                     </TableCell>
@@ -168,7 +168,7 @@ export function PortfolioHoldingsTable() {
                         </Select>
                       ) : item.sellStrategy ? (
                         <Badge variant="secondary" className="text-xs">
-                          {item.sellStrategy}
+                          {sellStrategyOptions.find((o) => o.value === item.sellStrategy)?.label ?? item.sellStrategy}
                         </Badge>
                       ) : (
                         <span className="text-xs text-muted-foreground">미설정</span>
