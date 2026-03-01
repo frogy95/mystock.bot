@@ -5,7 +5,7 @@ v1 하위의 모든 라우터를 통합한다.
 from fastapi import APIRouter
 
 from app.api.v1 import (
-    auth, health, holdings, orders, safety, settings,
+    auth, backtest, health, holdings, orders, safety, settings,
     stocks, strategies, system_settings, watchlist, websocket,
 )
 
@@ -41,6 +41,9 @@ router.include_router(system_settings.router, prefix="/system-settings", tags=["
 
 # 주문 라우터 포함
 router.include_router(orders.router, prefix="/orders", tags=["주문"])
+
+# 백테스팅 라우터 포함
+router.include_router(backtest.router)
 
 # WebSocket 라우터 포함 (/ws/quotes)
 router.include_router(websocket.router)
