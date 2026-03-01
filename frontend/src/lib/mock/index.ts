@@ -6,3 +6,5 @@ export * from "./strategy";
 export * from "./backtest";
 export * from "./orders";
 export * from "./settings";
+export * from "./custom-strategy-types";
+export * from "./indicator-definitions";
