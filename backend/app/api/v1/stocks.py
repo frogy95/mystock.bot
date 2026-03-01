@@ -1,16 +1,42 @@
 """
 주식 관련 API 엔드포인트
-현재가, 차트, 잔고 조회를 제공한다.
+종목 검색, 현재가, 차트, 잔고 조회를 제공한다.
 """
 from __future__ import annotations
+
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.auth import get_current_user
+from app.schemas.search import StockSearchResult
 from app.schemas.stock import BalanceResponse, StockChartResponse, StockQuoteResponse
 from app.services.kis_client import kis_client
+from app.services.stock_master import search_stocks
 
 router = APIRouter()
+
+
+@router.get("/search", response_model=List[StockSearchResult], summary="종목 검색")
+async def search(
+    q: str = Query(..., min_length=1, description="검색어 (종목코드 또는 종목명)"),
+    current_user: str = Depends(get_current_user),
+):
+    """종목코드 또는 종목명으로 KRX 종목을 검색한다. (Redis 캐시 기반)"""
+    results = await search_stocks(q)
+    return results
+
+
+@router.get("/balance", response_model=BalanceResponse, summary="계좌 잔고 조회")
+async def get_balance(current_user: str = Depends(get_current_user)):
+    """계좌 잔고(현금 + 보유종목)를 조회한다. (인증 필요)"""
+    if not kis_client.is_available():
+        raise HTTPException(status_code=503, detail="KIS API가 설정되지 않았습니다.")
+
+    result = await kis_client.get_balance()
+    if result is None:
+        raise HTTPException(status_code=503, detail="잔고 조회에 실패했습니다.")
+    return result
 
 
 @router.get("/{symbol}/quote", response_model=StockQuoteResponse, summary="현재가 조회")
@@ -40,15 +66,3 @@ async def get_stock_chart(
     if data is None:
         raise HTTPException(status_code=404, detail=f"종목 {symbol}의 차트 데이터를 찾을 수 없습니다.")
     return {"symbol": symbol, "period": period, "data": data}
-
-
-@router.get("/balance", response_model=BalanceResponse, summary="계좌 잔고 조회")
-async def get_balance(current_user: str = Depends(get_current_user)):
-    """계좌 잔고(현금 + 보유종목)를 조회한다. (인증 필요)"""
-    if not kis_client.is_available():
-        raise HTTPException(status_code=503, detail="KIS API가 설정되지 않았습니다.")
-
-    result = await kis_client.get_balance()
-    if result is None:
-        raise HTTPException(status_code=503, detail="잔고 조회에 실패했습니다.")
-    return result

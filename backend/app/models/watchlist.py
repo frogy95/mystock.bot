@@ -2,8 +2,12 @@
 관심종목 ORM 모델 모듈
 관심종목 그룹과 종목 항목 정보를 정의한다.
 """
+from __future__ import annotations
+
+from typing import List
+
 from sqlalchemy import String, Integer, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 
@@ -21,6 +25,14 @@ class WatchlistGroup(Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     # 정렬 순서 (기본값: 0)
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # 그룹에 속한 종목 목록 (cascade 삭제)
+    items: Mapped[List[WatchlistItem]] = relationship(
+        "WatchlistItem",
+        back_populates="group",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
 
 class WatchlistItem(Base):
@@ -42,3 +54,6 @@ class WatchlistItem(Base):
     strategy_id: Mapped[int | None] = mapped_column(
         ForeignKey("strategies.id"), nullable=True
     )
+
+    # 그룹 역참조
+    group: Mapped[WatchlistGroup] = relationship("WatchlistGroup", back_populates="items")

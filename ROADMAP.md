@@ -3,7 +3,7 @@
 ## 개요
 - **목표:** 한국투자증권 Open API를 활용한 KOSPI/KOSDAQ 퀀트 전략 기반 자동매매 웹 애플리케이션
 - **전체 예상 기간:** 10주 (2026-03-02 ~ 2026-05-10)
-- **현재 진행 단계:** Phase 2 완료 (Sprint 4.1 완료) / Phase 3 준비 중
+- **현재 진행 단계:** Phase 3 진행 중 (Sprint 5 완료)
 - **팀 규모:** 1-2인 소규모 개발팀
 - **MVP 대상 사용자:** 개인 사용자 1인 (개발자 본인)
 
@@ -19,10 +19,10 @@
 
 | 항목 | 상태 |
 |------|------|
-| 전체 진행률 | 55% (Sprint 0~4, 4.1 완료) |
-| 현재 Phase | Phase 2 완료 / Phase 3 준비 중 |
-| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01), Sprint 2 (2026-03-01), Sprint 3 (2026-03-01), Sprint 4 (2026-03-01), Sprint 4.1 (2026-03-01) |
-| 다음 마일스톤 | Phase 3 Sprint 5 - 관심종목/보유종목 API 연동 |
+| 전체 진행률 | 65% (Sprint 0~5 완료) |
+| 현재 Phase | Phase 3 진행 중 (Sprint 5 완료) |
+| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01), Sprint 2 (2026-03-01), Sprint 3 (2026-03-01), Sprint 4 (2026-03-01), Sprint 4.1 (2026-03-01), Sprint 5 (2026-03-01) |
+| 다음 마일스톤 | Phase 3 Sprint 6 - 전략 엔진 및 자동매매 |
 | 예상 MVP 완료일 | 2026-05-10 |
 
 ---
@@ -346,28 +346,25 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 
 ### 작업 목록
 
-#### Sprint 5 (Week 5): 관심종목/보유종목 관리 API
-- [ ] **종목 검색 API** [Must Have] [복잡도: 중간]
-  - 한국투자증권 API를 통한 종목 검색 (종목코드/종목명)
-  - 검색 결과 캐싱 (Redis, TTL 1일)
+#### Sprint 5 (Week 5): 관심종목/보유종목 관리 API ✅ 완료 (2026-03-01)
+- [x] **종목 검색 API** [Must Have] [복잡도: 중간]
+  - pykrx 기반 종목 마스터 Redis 캐시 (TTL 24시간)
   - `GET /api/v1/stocks/search?q={query}` 엔드포인트
-- [ ] **관심종목 CRUD API** [Must Have] [복잡도: 중간]
+- [x] **관심종목 CRUD API** [Must Have] [복잡도: 중간]
   - 관심종목 그룹 생성/조회/수정/삭제
   - 관심종목 추가/삭제
   - 종목별 전략 할당
-  - 목표 매수가/매수 조건 설정
   - `POST/GET/PUT/DELETE /api/v1/watchlist/...` 엔드포인트
-- [ ] **보유종목 동기화 API** [Must Have] [복잡도: 중간]
-  - 한국투자증권 잔고 조회 API 연동
-  - 보유종목 데이터 DB 동기화
-  - 실시간 수익률 계산
+- [x] **보유종목 동기화 API** [Must Have] [복잡도: 중간]
+  - 한국투자증권 잔고 조회 API 연동 (avg_price 포함)
+  - 보유종목 데이터 DB upsert 동기화
+  - 포트폴리오 요약 계산 (총평가/손익/예수금)
   - 종목별 손절/익절 라인 설정 API
-  - `GET /api/v1/portfolio/...` 엔드포인트
-- [ ] **프론트엔드-백엔드 연동 (관심종목/보유종목)** [Must Have] [복잡도: 중간]
-  - Mock 데이터를 실제 API 호출로 교체
-  - TanStack Query 쿼리키 및 queryFn 업데이트
-  - 에러 핸들링 UI (토스트 알림)
-  - 로딩 스켈레톤 UI
+  - `GET/POST /api/v1/holdings/...` 엔드포인트
+- [x] **프론트엔드-백엔드 연동 (관심종목/보유종목)** [Must Have] [복잡도: 중간]
+  - Mock 데이터를 실제 API 호출로 교체 (use-watchlist, use-portfolio, use-dashboard)
+  - TanStack Query mutation hooks 신규 구현 (use-watchlist-mutations, use-holdings-mutations)
+  - 에러 핸들링 및 로딩 상태 처리
 
 #### Sprint 6 (Week 6): 전략 엔진 및 자동매매
 - [ ] **기술적 분석 지표 엔진** [Must Have] [복잡도: 높음]

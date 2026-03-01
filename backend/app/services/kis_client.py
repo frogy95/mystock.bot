@@ -247,6 +247,7 @@ class KISClient:
                         "symbol": item["pdno"],
                         "name": item["prdt_name"],
                         "quantity": int(item["hldg_qty"]),
+                        "avg_price": float(item.get("pchs_avg_pric", 0)),  # 매입평균가
                         "current_price": float(item["prpr"]),
                         "profit_loss_rate": float(item["evlu_pfls_rt"]),
                     }
