@@ -565,3 +565,113 @@ docker compose up --build frontend
 - [ ] 데스크톱 1920px 레이아웃 수동 확인 (사용자 직접 수행)
 
 > Playwright MCP 자동 검증 완료 (2026-03-01) — 8/8 항목 통과
+
+---
+
+## 10. Sprint 5 완료 검증 (사용자 수행 필요)
+
+Sprint 5에서는 관심종목/보유종목 백엔드 API와 프론트엔드-백엔드 실제 연동이 추가되었습니다.
+
+### 10-1. 신규 패키지 설치 (Docker 재빌드)
+
+Sprint 5에서 `redis[hiredis]>=5.0.0`, `pykrx>=1.0.0` 패키지가 추가되었습니다.
+
+```bash
+# 프로젝트 루트에서 실행 (신규 패키지 포함 재빌드)
+docker compose up --build -d
+```
+
+### 10-2. Alembic 마이그레이션 실행 (holdings 테이블 생성)
+
+```bash
+# holdings 테이블 추가 마이그레이션 실행
+docker compose exec backend alembic upgrade head
+
+# 테이블 생성 확인 (holdings 테이블이 보여야 함)
+docker compose exec postgres psql -U mystock_user -d mystock -c "\dt"
+```
+
+### 10-3. 백엔드 API 엔드포인트 동작 검증
+
+```bash
+# 1. 로그인 → 토큰 발급
+TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "설정한_비밀번호"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# 2. 종목 검색 (삼성전자)
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8000/api/v1/stocks/search?q=삼성전자"
+# 응답 예시: [{"symbol": "005930", "name": "삼성전자", "market": "KOSPI"}]
+
+# 3. 관심종목 그룹 조회
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/v1/watchlist/groups
+# 응답: [] (초기 상태)
+
+# 4. 관심종목 그룹 생성
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "반도체"}' \
+  http://localhost:8000/api/v1/watchlist/groups
+# 응답: {"id": 1, "name": "반도체", ...}
+
+# 5. 관심종목 추가 (그룹 id=1에 삼성전자 추가)
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"stock_code": "005930", "stock_name": "삼성전자"}' \
+  http://localhost:8000/api/v1/watchlist/groups/1/items
+
+# 6. 보유종목 조회
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/v1/holdings
+# 응답: [] (KIS 동기화 전)
+
+# 7. 포트폴리오 요약
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/v1/holdings/summary
+# 응답: {"total_evaluation": 0.0, "total_purchase": 0.0, ...}
+```
+
+### 10-4. KIS 연동 시 보유종목 동기화 (선택 - KIS API 키가 있는 경우)
+
+```bash
+# KIS API 키가 .env에 설정된 경우 동기화 실행
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/v1/holdings/sync
+# 응답: {"synced_count": N, "holdings": [...]}
+```
+
+### 10-5. 프론트엔드 연동 확인
+
+브라우저에서 `http://localhost:3001` 접속 후:
+
+```
+1. /watchlist 페이지 → 종목 검색창에 "삼성" 입력 → 실제 API 검색 결과 표시 확인
+2. /watchlist 페이지 → 그룹 목록이 API 데이터로 표시 확인
+3. /dashboard 페이지 → 포트폴리오 요약이 API 데이터로 표시 확인
+4. 브라우저 개발자도구 Network 탭 → /api/v1/stocks/search, /api/v1/watchlist/groups, /api/v1/holdings/summary 호출 200 확인
+```
+
+### 10-6. Swagger UI 확인
+
+`http://localhost:8000/docs` 접속:
+
+- GET /api/v1/stocks/search 엔드포인트 추가 확인
+- GET/POST/PUT/DELETE /api/v1/watchlist/... 엔드포인트 확인
+- GET/POST/PUT /api/v1/holdings/... 엔드포인트 확인
+
+### Sprint 5 완료 체크리스트
+
+- [ ] `docker compose up --build` 성공 (신규 패키지 포함)
+- [ ] `alembic upgrade head` 성공 (holdings 테이블 생성)
+- [ ] `GET /api/v1/stocks/search?q=삼성전자` → 검색 결과 반환
+- [ ] `GET /api/v1/watchlist/groups` → 200 응답
+- [ ] `POST /api/v1/watchlist/groups` → 그룹 생성 201
+- [ ] `GET /api/v1/holdings/summary` → 포트폴리오 요약 반환
+- [ ] Swagger UI에 watchlist/holdings 엔드포인트 표시
+- [ ] `/watchlist` 프론트엔드 → 실제 API 검색/그룹 조회 연동 확인
+- [ ] `/dashboard` 프론트엔드 → 포트폴리오 요약 API 연동 확인
+- [ ] (선택) `POST /api/v1/holdings/sync` → KIS 잔고 동기화 성공
+
+> Sprint 5 백엔드 자동 검증: docker 환경 없이는 자동 실행 불가, 수동 검증 필요
