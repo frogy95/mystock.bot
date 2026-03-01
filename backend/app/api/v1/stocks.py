@@ -4,8 +4,9 @@
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.core.auth import get_current_user
 from app.schemas.stock import BalanceResponse, StockChartResponse, StockQuoteResponse
 from app.services.kis_client import kis_client
 
@@ -13,8 +14,8 @@ router = APIRouter()
 
 
 @router.get("/{symbol}/quote", response_model=StockQuoteResponse, summary="현재가 조회")
-async def get_stock_quote(symbol: str):
-    """주식 심볼의 현재가를 조회한다."""
+async def get_stock_quote(symbol: str, current_user: str = Depends(get_current_user)):
+    """주식 심볼의 현재가를 조회한다. (인증 필요)"""
     if not kis_client.is_available():
         raise HTTPException(status_code=503, detail="KIS API가 설정되지 않았습니다.")
 
@@ -29,8 +30,9 @@ async def get_stock_chart(
     symbol: str,
     period: str = Query(default="day", description="조회 주기 (day/week/month)"),
     count: int = Query(default=30, ge=1, le=200, description="조회 건수"),
+    current_user: str = Depends(get_current_user),
 ):
-    """주식 심볼의 OHLCV 차트 데이터를 조회한다."""
+    """주식 심볼의 OHLCV 차트 데이터를 조회한다. (인증 필요)"""
     if not kis_client.is_available():
         raise HTTPException(status_code=503, detail="KIS API가 설정되지 않았습니다.")
 
@@ -41,8 +43,8 @@ async def get_stock_chart(
 
 
 @router.get("/balance", response_model=BalanceResponse, summary="계좌 잔고 조회")
-async def get_balance():
-    """계좌 잔고(현금 + 보유종목)를 조회한다."""
+async def get_balance(current_user: str = Depends(get_current_user)):
+    """계좌 잔고(현금 + 보유종목)를 조회한다. (인증 필요)"""
     if not kis_client.is_available():
         raise HTTPException(status_code=503, detail="KIS API가 설정되지 않았습니다.")
 
