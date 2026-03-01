@@ -2,3 +2,7 @@ export * from "./types";
 export * from "./dashboard";
 export * from "./watchlist";
 export * from "./portfolio";
+export * from "./strategy";
+export * from "./backtest";
+export * from "./orders";
+export * from "./settings";
