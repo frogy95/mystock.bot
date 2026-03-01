@@ -187,6 +187,167 @@ frontend/
 
 ---
 
+---
+
+# Sprint 4.1 완료 보고서
+
+**기간:** 2026-03-01 (Sprint 4 완료 후 즉시 진행)
+**Phase:** Phase 2 - 프론트엔드 UI 개발 (마무리)
+**브랜치:** `sprint4` (Sprint 4와 동일 브랜치)
+**PR:** https://github.com/frogy95/mystock.bot/pull/8
+**상태:** 완료 (2026-03-01)
+
+---
+
+## 스프린트 개요
+
+Sprint 4.1은 Sprint 4에서 Could Have로 분류되어 미완성이었던 커스텀 전략 빌더 UI를 구현했다. 이로써 Phase 2 프론트엔드 UI 개발이 완전히 완료되었다.
+
+### 핵심 목표
+
+- 커스텀 전략 타입 시스템 설계
+- 지표 메타데이터 정의 (8종 지표)
+- Zustand persist 스토어 구현
+- AND/OR 조건 조합 빌더 UI
+- 지표별 동적 파라미터 렌더링
+- 전략 미리보기 텍스트 자동 변환
+
+---
+
+## 구현된 기능 목록
+
+### 타입 정의 (`/frontend/src/lib/mock/custom-strategy-types.ts`)
+
+- `IndicatorId`: SMA / EMA / RSI / MACD / BB / ATR / VOLUME_RATIO / PRICE 8종
+- `ComparisonOperator`: `>` / `>=` / `<` / `<=` / CROSS_ABOVE / CROSS_BELOW
+- `LogicOperator`: AND / OR
+- `Operand`: 지표 피연산자 또는 고정값 피연산자 유니온 타입
+- `ConditionRow`: 조건 행 (좌측 피연산자, 비교 연산자, 우측 피연산자)
+- `ConditionGroup`: 조건 그룹 (조건 행 목록 + 논리 연산자 목록)
+- `CustomStrategy`: 커스텀 전략 전체 구조
+
+### 지표 메타데이터 (`/frontend/src/lib/mock/indicator-definitions.ts`)
+
+- 8종 지표별 레이블, 파라미터 스키마, 미리보기 텍스트 생성 함수
+- 지표별 파라미터: SMA/EMA(period), RSI(period), MACD(fast/slow/signal), BB(period/stdDev), ATR(period), VOLUME_RATIO(period), PRICE(고정)
+
+### Zustand persist 스토어 (`/frontend/src/stores/custom-strategy-store.ts`)
+
+- `strategies`: 커스텀 전략 목록
+- `selectedStrategyId`: 선택된 전략 ID
+- `addStrategy(name)`: 새 전략 생성 및 자동 선택
+- `removeStrategy(id)`: 전략 삭제
+- `duplicateStrategy(id)`: 전략 복제 (딥 카피, 조건 ID 재생성)
+- `toggleActive(id)`: 활성화 토글
+- `addCondition(strategyId, section)`: 매수/매도 조건 행 추가
+- `removeCondition(strategyId, section, conditionId)`: 조건 행 삭제 (logicOperators 인덱스 정합성 유지)
+- `updateCondition(...)`: 조건 행 수정
+- `toggleLogicOperator(strategyId, section, index)`: AND ↔ OR 토글
+- localStorage persist (키: `custom-strategies`)
+
+### 조건 행 편집기 (`/frontend/src/components/strategy/condition-row-editor.tsx`)
+
+- 좌측 피연산자 지표 선택 드롭다운 (8종)
+- 지표 선택 시 파라미터 입력 필드 동적 렌더링
+- 비교 연산자 선택 드롭다운 (6종)
+- 우측 피연산자 (지표 또는 고정값 전환 가능)
+- 조건 행 삭제 버튼
+
+### 조건 섹션 (`/frontend/src/components/strategy/condition-section.tsx`)
+
+- 매수/매도 섹션 분리 표시
+- 조건 행 사이 AND/OR 토글 버튼
+- 조건 추가 버튼
+
+### 전략 편집기 (`/frontend/src/components/strategy/custom-strategy-editor.tsx`)
+
+- 전략 이름/설명 인라인 편집
+- 매수 조건 섹션 + 매도 조건 섹션
+
+### 전략 미리보기 (`/frontend/src/components/strategy/strategy-preview.tsx`)
+
+- 조건 구조를 자연어 텍스트로 자동 변환
+- 매수/매도 조건 섹션 분리 표시
+- 조건이 없는 경우 안내 메시지 표시
+
+### 전략 목록 (`/frontend/src/components/strategy/custom-strategy-list.tsx`)
+
+- 커스텀 전략 카드 목록
+- 생성/삭제/복제/활성화 토글 기능
+- 빈 상태(empty state) 안내 표시
+
+### 커스텀 전략 빌더 진입점
+
+- `custom-strategy-builder.tsx`: 전략 목록 + 편집기 레이아웃 통합
+- `strategy/page.tsx`: 프리셋 탭 / 커스텀 탭 전환 구조 추가
+
+---
+
+## 파일 구조 (신규 추가)
+
+```
+frontend/src/
+├── lib/mock/
+│   ├── custom-strategy-types.ts    # 커스텀 전략 타입 정의
+│   ├── indicator-definitions.ts    # 지표 메타데이터 (8종)
+│   └── index.ts                    # 타입 재내보내기 추가
+├── stores/
+│   └── custom-strategy-store.ts    # Zustand persist 스토어
+└── components/strategy/
+    ├── condition-row-editor.tsx     # 조건 행 편집기
+    ├── condition-section.tsx        # 조건 섹션 (AND/OR 토글)
+    ├── custom-strategy-builder.tsx  # 빌더 레이아웃 통합
+    ├── custom-strategy-editor.tsx   # 전략 편집기
+    ├── custom-strategy-list.tsx     # 전략 목록
+    └── strategy-preview.tsx         # 전략 미리보기
+```
+
+**수정된 파일:**
+- `frontend/src/app/strategy/page.tsx` - 프리셋/커스텀 탭 구조 추가
+- `frontend/src/lib/mock/index.ts` - 신규 타입 재내보내기
+
+---
+
+## 완료 기준 달성 여부
+
+| 완료 기준 | 달성 여부 |
+|-----------|-----------|
+| 지표 선택 드롭다운 (8종 지표) | 완료 |
+| AND/OR 조건 조합 빌더 | 완료 |
+| 파라미터 입력 필드 (동적 렌더링) | 완료 |
+| 전략 미리보기 (텍스트 요약) | 완료 |
+| 전략 저장/불러오기 (localStorage persist) | 완료 |
+| TypeScript 빌드 에러 0개 (`tsc --noEmit`) | 완료 |
+| 빌드 성공 (`npm run build`) | 완료 |
+| Playwright UI 검증 | 완료 |
+
+---
+
+## 커밋 이력
+
+| 커밋 해시 | 내용 |
+|-----------|------|
+| `dcd401e` | feat: Sprint 4.1 커스텀 전략 빌더 UI 구현 |
+
+---
+
+## 검증 결과
+
+- [Sprint 4.1 Playwright 검증 보고서](sprint4.1/playwright-report.md)
+- [Sprint 4.1 코드 리뷰 보고서](sprint4.1/code-review-report.md)
+
+| 검증 항목 | 결과 |
+|-----------|------|
+| 커스텀 전략 탭 전환 | 통과 |
+| 전략 생성 및 편집기 표시 | 통과 |
+| 조건 행 추가/삭제 | 통과 |
+| AND/OR 토글 동작 | 통과 |
+| 전략 미리보기 업데이트 | 통과 |
+| TypeScript 컴파일 에러 | 0건 |
+| 빌드 성공 | 통과 |
+
+---
+
 ## 다음 단계 (Sprint 5)
 
 **Phase 3: 백엔드 핵심 기능 개발 - 관심종목/보유종목 API 연동**
