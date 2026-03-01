@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   mockTradeSignals,
@@ -15,6 +16,7 @@ import type {
 } from "@/lib/mock/types";
 import { apiClient } from "@/lib/api/client";
 import type { HoldingAPI } from "./use-portfolio";
+import { useRealtimeQuotes } from "./use-realtime";
 
 /** 백엔드 포트폴리오 요약 응답 타입 */
 interface PortfolioSummaryAPI {
@@ -40,13 +42,41 @@ export function usePortfolioSummary() {
   });
 }
 
-/** 보유종목 목록 조회 (실제 API) */
+/** 보유종목 목록 조회 (실제 API) + 실시간 시세 반영 */
 export function useHoldings() {
-  return useQuery<HoldingAPI[]>({
+  const query = useQuery<HoldingAPI[]>({
     queryKey: ["portfolio", "holdings"],
     queryFn: () => apiClient.get<HoldingAPI[]>("/api/v1/holdings"),
     staleTime: 60_000,
   });
+
+  // 보유종목 심볼 목록 추출 (실시간 시세 구독용)
+  const symbols = useMemo(
+    () => (query.data ?? []).map((h) => h.stock_code),
+    [query.data]
+  );
+
+  // WebSocket 실시간 시세 구독
+  const { quotes, connected: wsConnected } = useRealtimeQuotes(symbols);
+
+  // 실시간 시세를 보유종목 데이터에 반영
+  const holdingsWithRealtime = useMemo(() => {
+    if (!query.data) return query.data;
+    return query.data.map((holding) => {
+      const realtime = quotes[holding.stock_code];
+      if (!realtime) return holding;
+      return {
+        ...holding,
+        current_price: realtime.price,
+        profit_loss_rate:
+          holding.avg_price > 0
+            ? ((realtime.price - holding.avg_price) / holding.avg_price) * 100
+            : holding.profit_loss_rate,
+      };
+    });
+  }, [query.data, quotes]);
+
+  return { ...query, data: holdingsWithRealtime, wsConnected };
 }
 
 /** 매매 신호 (Sprint 6에서 실제 API 연동 예정) */
