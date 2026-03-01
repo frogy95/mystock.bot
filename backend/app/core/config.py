@@ -29,6 +29,20 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me-in-production"
     DEBUG: bool = False
 
+    # 한국투자증권 (KIS) API 설정
+    KIS_APP_KEY: str = ""
+    KIS_APP_SECRET: str = ""
+    KIS_ACCOUNT_NUMBER: str = ""
+    KIS_ENVIRONMENT: str = "vts"  # vts: 모의투자, prod: 실거래
+
+    # 단일 유저 인증 설정
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str = "change-me-in-production"
+
+    # 텔레그램 봇 설정
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_CHAT_ID: str = ""
+
     @property
     def database_url(self) -> str:
         """비동기 PostgreSQL 연결 URL을 반환한다. (비밀번호 특수문자 URL 인코딩 적용)"""
