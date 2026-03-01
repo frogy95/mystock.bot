@@ -148,7 +148,7 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
   - seed 데이터 스크립트 (`scripts/seed.py`, 기본 전략 프리셋 3종)
 
 #### Sprint 2 (Week 2): API 연동 기반
-- [ ] **한국투자증권 API 클라이언트 모듈** [Must Have] [복잡도: 높음]
+- [x] **한국투자증권 API 클라이언트 모듈** [Must Have] [복잡도: 높음]
   - python-kis 라이브러리 설치 및 초기 설정
   - 인증 모듈 (`services/kis_client.py`)
     - OAuth 2.0 토큰 발급/갱신 로직
@@ -159,11 +159,11 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
   - 잔고 조회 API 래핑
   - API Rate Limit 처리 (모의: 초당 5건)
   - API 호출 실패 시 재시도 로직 (최대 3회, 지수 백오프)
-- [ ] **기본 인증 시스템 (단일 유저)** [Must Have] [복잡도: 낮음]
+- [x] **기본 인증 시스템 (단일 유저)** [Must Have] [복잡도: 낮음]
   - 환경변수 기반 단일 유저 인증
   - API 엔드포인트 보호 미들웨어
   - 설정 페이지용 API 키 등록/조회 엔드포인트
-- [ ] **Next.js 프론트엔드 기본 설정** [Must Have] [복잡도: 중간]
+- [x] **Next.js 프론트엔드 기본 설정** [Must Have] [복잡도: 중간]
   - Next.js 16+ App Router 프로젝트 구조 설정
   - TailwindCSS + shadcn/ui 초기화
   - 공통 레이아웃 컴포넌트 (사이드바, 헤더, 푸터)

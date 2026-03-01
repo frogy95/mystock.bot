@@ -116,6 +116,9 @@ Sprint 0~1에서 완성된 프로젝트 뼈대(FastAPI + Next.js 16 + PostgreSQL
 8. `feat: 6개 페이지 라우팅 구조 및 API 클라이언트 구현`
 9. `feat: zustand auth 스토어 초기 구조 구현`
 10. `feat: Sprint 2 통합 검증 및 문서 업데이트`
+11. `fix: pykis API 시그니처 수정 및 KIS_HTS_ID 환경변수 추가`
+12. `fix: KIS API 잔고 조회를 httpx 직접 호출로 교체`
+13. `fix: 코드리뷰 이슈 3개 수정`
 
 ---
 
