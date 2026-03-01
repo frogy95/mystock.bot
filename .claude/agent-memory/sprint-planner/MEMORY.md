@@ -30,11 +30,19 @@
   - 6개 API 엔드포인트 (health, login, quote, chart, balance, kis-status)
   - shadcn/ui 컴포넌트 5개 설치 (button, card, input, label, separator)
   - 브랜치: sprint2
-- **Sprint 3 (Phase 2):** 계획 수립 완료 (2026-03-01)
+- **Sprint 3 (Phase 2):** 완료 (2026-03-01, Playwright MCP 검증 완료)
   - 범위: 대시보드 UI, 관심종목 UI, 포트폴리오 UI (Mock 데이터 기반)
-  - 기간: 2026-03-16 ~ 2026-03-21
-  - 11개 Task (Task 0~10), 30 SP
-  - Plan 파일: keen-petting-hartmanis-agent-a21ba87918059f7e9.md
+  - 브랜치: sprint3
+  - shadcn/ui 컴포넌트 15개 추가 (총 20개)
+  - Mock 데이터 패턴 확립: types.ts, dashboard.ts, watchlist.ts, portfolio.ts
+  - 공통 컴포넌트: PriceChangeBadge, StatCard, LoadingSkeleton
+  - 커스텀 훅 패턴: use-dashboard.ts, use-watchlist.ts, use-portfolio.ts
+  - zustand 스토어: watchlist-store.ts, sidebar-store.ts
+- **Sprint 4 (Phase 2):** 계획 수립 완료 (2026-03-01)
+  - 범위: 전략 설정 UI, 백테스팅 UI, 주문 내역 UI, 설정 UI (Mock 데이터 기반)
+  - 기간: 2026-03-23 ~ 2026-03-28
+  - 12개 Task (Task 0~11), 42 SP
+  - Plan 파일: inherited-booping-hamming-agent-a95f3ef59ac297e0f.md
 
 ## 핵심 파일 경로
 - ROADMAP: /ROADMAP.md
@@ -80,3 +88,13 @@ users, watchlist_groups, watchlist_items, strategies, strategy_params, orders, o
 - 한국 주식 UI 관례: 상승=빨간색, 하락=파란색
 - 사이드바 6개 메뉴 고정: dashboard, watchlist, strategy, backtest, orders, settings
 - 포트폴리오 상세 화면은 대시보드 하단 섹션으로 통합 (별도 라우트 없음)
+
+## Sprint 4 핵심 주의사항
+- 기존 스캐폴딩 페이지 4개 (strategy, backtest, orders, settings) 교체 필요
+- shadcn/ui 추가 설치 필요: alert-dialog, sonner, toggle, radio-group, textarea, accordion
+- 전략 파라미터 UI: Slider + 숫자 Input + Select 3가지 타입 대응
+- 백테스팅 수익 곡선: Recharts LineChart + 벤치마크 비교 Line
+- 긴급 전체 매도: AlertDialog 확인 모달 필수 (UX 안전장치)
+- 설정 화면: max-w-3xl 제한하여 과도한 폼 너비 방지
+- 주문 내역: 상태별 Badge 색상 - FILLED(초록), PENDING(노랑), CANCELLED(회색)
+- Mock delay: 300~700ms 범위 (Sprint 3 패턴 유지)

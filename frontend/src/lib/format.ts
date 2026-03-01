@@ -54,3 +54,19 @@ export function formatTime(isoString: string): string {
   const minutes = String(date.getMinutes()).padStart(2, "0");
   return `${hours}:${minutes}`;
 }
+
+/** 날짜 문자열을 한국 날짜 형식으로 포맷 (예: "2026-03-01" → "2026.03.01") */
+export function formatDate(dateString: string): string {
+  return dateString.replace(/-/g, ".");
+}
+
+/** ISO 날짜 시간을 연도 포함 한국 날짜+시간 형식으로 포맷 (예: "2026-03-01T09:32:00Z" → "2026.03.01 09:32") */
+export function formatDateTimeFull(isoString: string): string {
+  const date = new Date(isoString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}.${month}.${day} ${hours}:${minutes}`;
+}

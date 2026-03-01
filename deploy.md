@@ -409,4 +409,84 @@ docker compose up --build frontend
 - [x] 모바일 반응형 레이아웃 작동
 - [x] 콘솔 에러 없음
 
-> ✅ **Sprint 3 검증 완료** (2026-03-01, Playwright MCP 자동 검증)
+> Sprint 3 검증 완료 (2026-03-01, Playwright MCP 자동 검증)
+
+---
+
+## 8. Sprint 4 완료 검증 (사용자 수행 필요)
+
+Sprint 4에서는 Mock 데이터 기반 전략/백테스팅/주문/설정 화면 UI가 추가되었습니다.
+
+> **자동 검증 완료 항목 (Playwright MCP, 2026-03-01)**
+> 전략 설정 / 백테스팅 / 주문 내역 / 설정 / 긴급 매도 AlertDialog / 반응형 375px — 11/11 통과
+> 상세 내용: [docs/sprint/sprint4/playwright-report.md](docs/sprint/sprint4/playwright-report.md)
+
+### 8-1. 새 패키지 설치
+
+```bash
+cd frontend
+npm install
+```
+
+신규 shadcn/ui 패키지가 추가되었습니다: alert-dialog, sonner, toggle, radio-group, textarea, accordion
+
+### 8-2. 개발 서버 기동
+
+```bash
+# 방법 1: Docker 없이 직접 실행
+cd frontend
+npm run dev
+# → http://localhost:3000
+
+# 방법 2: Docker Compose 사용
+docker compose up --build frontend
+# → http://localhost:3001
+```
+
+### 8-3. 화면 검증
+
+브라우저에서 각 URL 접속:
+
+**전략 설정** (`/strategy`):
+- [x] 프리셋 전략 3종 카드 렌더링 (골든크로스+RSI / 볼린저 밴드 반전 / 가치+모멘텀)
+- [x] 전략 카드 클릭 시 상세 패널 표시 (파라미터 슬라이더, 종목 매핑 테이블)
+- [x] 활성화/비활성화 토글 스위치 동작
+
+**백테스팅** (`/backtest`):
+- [x] 설정 폼 렌더링 (전략 선택, 종목코드, 시작/종료일)
+- [x] 전략 미선택 시 실행 버튼 비활성화
+- [x] 백테스팅 실행 후 결과 대시보드 표시 (총수익률, MDD, 샤프비율, 승률 카드)
+- [x] 수익 곡선 차트 + 벤치마크 비교 라인 렌더링
+
+**주문 내역** (`/orders`):
+- [x] 주문 테이블 렌더링 (전체/미체결/체결완료/취소 탭)
+- [x] 미체결 주문에 취소 버튼 표시
+- [x] 주문 행 클릭 시 상세 다이얼로그 표시 (판단 근거, 신뢰도 Progress bar)
+
+**설정** (`/settings`):
+- [x] KIS API 키 폼 렌더링 (App Key/Secret 마스킹, 투자 모드 라디오)
+- [x] 텔레그램 설정 폼 렌더링
+- [x] 안전장치 설정 폼 렌더링 (슬라이더, 숫자 입력)
+- [x] 자동매매 마스터 ON/OFF 스위치
+- [x] 긴급 전체 매도 버튼 클릭 시 AlertDialog 표시
+- [x] AlertDialog 취소 버튼 클릭 시 모달 닫힘
+
+**반응형 레이아웃**:
+- [x] 375px(모바일): 사이드바 숨김, 햄버거 메뉴(≡) 표시
+- [ ] 1920px(데스크톱): 사이드바 표시, 전체 레이아웃 정상 확인 (수동 확인 필요)
+
+**콘솔 에러**:
+- [x] Error 레벨 메시지 0건 확인
+
+### Sprint 4 완료 체크리스트
+
+- [x] `npm install` 완료
+- [x] 전략 설정 화면 4개 섹션 렌더링 (카드 목록, 상세 패널, 파라미터 폼, 종목 매핑)
+- [x] 백테스팅 실행 및 결과 차트 렌더링
+- [x] 주문 내역 탭/필터/상세 다이얼로그 동작
+- [x] 설정 화면 전체 폼 및 긴급 매도 AlertDialog 동작
+- [x] 모바일 375px 반응형 레이아웃 동작
+- [x] 콘솔 에러 없음
+- [ ] 데스크톱 1920px 레이아웃 수동 확인 (사용자 직접 수행)
+
+> Playwright MCP 자동 검증 완료 (2026-03-01) — 11/11 항목 통과

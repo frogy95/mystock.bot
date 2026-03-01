@@ -120,3 +120,120 @@ export interface WatchlistItem {
   marketCap: number; // 시가총액 (억원)
   assignedStrategy: string | null;
 }
+
+/** 전략 파라미터 */
+export interface StrategyParam {
+  key: string;
+  label: string;
+  type: "slider" | "number" | "select";
+  value: number | string;
+  min?: number;
+  max?: number;
+  step?: number;
+  options?: { label: string; value: string }[];
+  description?: string;
+}
+
+/** 전략 상세 (관리 화면용) */
+export interface StrategyDetail {
+  id: string;
+  name: string;
+  category: "trend" | "reversal" | "value" | "momentum";
+  description: string;
+  params: StrategyParam[];
+  assignedStocks: string[]; // symbol 배열
+  isActive: boolean;
+  totalReturn: number;
+  winRate: number;
+  tradeCount: number;
+}
+
+/** 백테스팅 결과 */
+export interface BacktestResult {
+  strategyId: string;
+  strategyName: string;
+  symbol: string;
+  stockName: string;
+  startDate: string;
+  endDate: string;
+  totalReturn: number;      // 총 수익률 (%)
+  annualReturn: number;     // 연환산 수익률 (%)
+  maxDrawdown: number;      // 최대 낙폭 (%)
+  winRate: number;          // 승률 (%)
+  tradeCount: number;       // 총 매매 횟수
+  sharpeRatio: number;      // 샤프 지수
+  benchmarkReturn: number;  // 벤치마크(KOSPI) 수익률 (%)
+  equityCurve: { date: string; value: number; benchmark: number }[];
+}
+
+/** 백테스팅 개별 거래 */
+export interface BacktestTrade {
+  id: string;
+  date: string;
+  type: "BUY" | "SELL";
+  price: number;
+  quantity: number;
+  amount: number;
+  profitLoss: number | null; // SELL 시 손익
+  profitRate: number | null; // SELL 시 수익률
+  reason: string;
+}
+
+/** 주문 상세 (주문 내역 화면용) */
+export interface OrderDetail {
+  id: string;
+  symbol: string;
+  name: string;
+  orderType: "BUY" | "SELL";
+  quantity: number;
+  price: number;
+  totalAmount: number;
+  status: "FILLED" | "PENDING" | "CANCELLED";
+  strategyId: string;
+  strategyName: string;
+  reason: string;        // 판단 근거
+  confidence: number;    // 신뢰도 (0-100)
+  createdAt: string;     // ISO
+  executedAt: string | null; // 체결 시각
+}
+
+/** KIS API 설정 */
+export interface KisApiConfig {
+  appKey: string;
+  appSecret: string;
+  mode: "paper" | "real"; // 모의투자 / 실전투자
+}
+
+/** 텔레그램 설정 */
+export interface TelegramConfig {
+  botToken: string;
+  chatId: string;
+  enabled: boolean;
+  notifyOnSignal: boolean;
+  notifyOnOrder: boolean;
+  notifyOnError: boolean;
+}
+
+/** 매매 시간 설정 */
+export interface TradingTimeConfig {
+  startTime: string; // "HH:MM"
+  endTime: string;   // "HH:MM"
+  excludeLastMinutes: number; // 장 마감 전 n분 거래 제외
+}
+
+/** 안전장치 설정 */
+export interface SafetyConfig {
+  dailyLossLimit: number;   // 일일 손실 한도 (%)
+  maxOrdersPerDay: number;  // 일일 최대 주문 횟수
+  maxPositionRatio: number; // 종목당 최대 비중 (%)
+  stopLossRate: number;     // 기본 손절률 (%)
+}
+
+/** 시스템 설정 전체 */
+export interface SystemSettings {
+  kisApi: KisApiConfig;
+  telegram: TelegramConfig;
+  tradingTime: TradingTimeConfig;
+  safety: SafetyConfig;
+  autoTradeEnabled: boolean;
+}
