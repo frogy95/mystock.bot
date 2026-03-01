@@ -342,6 +342,53 @@ class KISClient:
             logger.error("주문 실행 실패 [%s %s]: %s", order_type, symbol, exc)
             raise
 
+    async def get_market_index(self, index_code: str) -> dict[str, Any] | None:
+        """업종 현재가(시장 지수)를 조회한다. index_code: '0001'=KOSPI, '1001'=KOSDAQ"""
+        if not self.is_available():
+            return None
+
+        from app.core.config import settings
+        limiter = get_rate_limiter(settings.KIS_ENVIRONMENT == "vts")
+        await limiter.acquire()
+
+        async def _fetch() -> dict[str, Any]:
+            token = await self._get_access_token()
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{_KIS_REAL_BASE}/uapi/domestic-stock/v1/quotations/inquire-index-price",
+                    headers={
+                        "tr_id": "FHPUP02100000",
+                        "appkey": settings.KIS_APP_KEY,
+                        "appsecret": settings.KIS_APP_SECRET,
+                        "Authorization": f"Bearer {token}",
+                    },
+                    params={
+                        "FID_COND_MRKT_DIV_CODE": "U",
+                        "FID_INPUT_ISCD": index_code,
+                    },
+                    timeout=10,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+            if data.get("rt_cd") != "0":
+                raise ValueError(f"KIS API 오류: {data.get('msg1')}")
+            d = data["output"]
+            name_map = {"0001": "KOSPI", "1001": "KOSDAQ"}
+            return {
+                "index_code": index_code,
+                "name": name_map.get(index_code, index_code),
+                "current_value": float(d.get("bstp_nmix_prpr", 0)),
+                "change_value": float(d.get("bstp_nmix_prdy_vrss", 0)),
+                "change_rate": float(d.get("bstp_nmix_prdy_ctrt", 0)),
+            }
+
+        try:
+            return await retry_with_backoff(_fetch)
+        except Exception as exc:
+            logger.error("시장 지수 조회 실패 [%s]: %s", index_code, exc)
+            return None
+
     async def get_order_status(self, order_no: str) -> dict[str, Any] | None:
         """주문 체결 상태를 조회한다."""
         if not self.is_available():

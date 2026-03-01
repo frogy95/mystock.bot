@@ -44,6 +44,59 @@ async def _get_user_id(username: str, db: AsyncSession) -> int:
     return user.id
 
 
+class DailySummaryResponse(BaseModel):
+    """일일 매매 요약 응답 스키마"""
+
+    date: str
+    total_buy_count: int
+    total_sell_count: int
+    total_buy_amount: float
+    total_sell_amount: float
+    orders: List[OrderResponse]
+
+
+@router.get("/daily-summary", response_model=DailySummaryResponse, summary="일일 매매 요약 조회")
+async def get_daily_summary(
+    date: Optional[str] = None,
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """특정 날짜의 매매 요약(매수/매도 건수 및 금액)을 반환한다. date 미입력 시 오늘 날짜."""
+    from datetime import date as date_type
+
+    target_date = date_type.fromisoformat(date) if date else date_type.today()
+    user_id = await _get_user_id(current_user, db)
+
+    start = datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0)
+    end = datetime(target_date.year, target_date.month, target_date.day, 23, 59, 59)
+
+    result = await db.execute(
+        select(Order)
+        .where(
+            Order.user_id == user_id,
+            Order.created_at >= start,
+            Order.created_at <= end,
+        )
+        .order_by(Order.created_at.desc())
+    )
+    orders = result.scalars().all()
+
+    buy_orders = [o for o in orders if o.order_type == "buy"]
+    sell_orders = [o for o in orders if o.order_type == "sell"]
+
+    total_buy_amount = sum((o.price or 0) * (o.quantity or 0) for o in buy_orders)
+    total_sell_amount = sum((o.price or 0) * (o.quantity or 0) for o in sell_orders)
+
+    return DailySummaryResponse(
+        date=target_date.isoformat(),
+        total_buy_count=len(buy_orders),
+        total_sell_count=len(sell_orders),
+        total_buy_amount=total_buy_amount,
+        total_sell_amount=total_sell_amount,
+        orders=orders,
+    )
+
+
 @router.get("", response_model=List[OrderResponse], summary="주문 목록 조회")
 async def list_orders(
     current_user: str = Depends(get_current_user),

@@ -25,6 +25,29 @@ def _get_bot():
     return _bot
 
 
+async def _is_notification_enabled(setting_key: str) -> bool:
+    """system_settings 테이블에서 알림 ON/OFF 설정을 조회한다. 미설정 시 True 반환."""
+    try:
+        from app.core.database import AsyncSessionLocal
+        from app.models.settings import SystemSetting
+        from sqlalchemy import select
+
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(SystemSetting).where(
+                    SystemSetting.setting_key == setting_key,
+                    SystemSetting.user_id == None,
+                )
+            )
+            setting = result.scalar_one_or_none()
+            if setting is None:
+                return True
+            return setting.setting_value.lower() not in ("false", "0", "off")
+    except Exception as e:
+        logger.debug(f"알림 설정 조회 실패 ({setting_key}): {e}")
+        return True
+
+
 async def send_message(text: str, chat_id: Optional[str] = None) -> bool:
     """텔레그램 메시지를 전송한다."""
     bot = _get_bot()
@@ -56,6 +79,8 @@ async def notify_order_executed(
     reason: str = "",
 ) -> None:
     """주문 체결 알림을 전송한다."""
+    if not await _is_notification_enabled("notify_order_executed"):
+        return
     emoji = "📈" if order_type == "buy" else "📉"
     action = "매수" if order_type == "buy" else "매도"
     text = (
@@ -77,6 +102,8 @@ async def notify_risk_triggered(
     reason: str,
 ) -> None:
     """손절/익절 알림을 전송한다."""
+    if not await _is_notification_enabled("notify_risk_triggered"):
+        return
     pnl_pct = (current_price - avg_price) / avg_price * 100
     emoji = "🛑" if "손절" in reason else "✅"
     text = (
@@ -93,6 +120,8 @@ async def notify_risk_triggered(
 
 async def notify_system_error(error_msg: str, user_id: Optional[int] = None) -> None:
     """시스템 오류 알림을 전송한다."""
+    if not await _is_notification_enabled("notify_system_error"):
+        return
     user_info = f"(사용자 {user_id})" if user_id else ""
     text = f"⚠️ *시스템 오류* {user_info}\n```\n{error_msg[:500]}\n```"
     await send_message(text)
@@ -100,8 +129,55 @@ async def notify_system_error(error_msg: str, user_id: Optional[int] = None) -> 
 
 async def notify_auto_trade_disabled(user_id: int, reason: str) -> None:
     """자동매매 중단 알림을 전송한다."""
+    if not await _is_notification_enabled("notify_auto_trade_disabled"):
+        return
     text = (
         f"🚫 *자동매매 중단* (사용자 {user_id})\n"
         f"사유: {reason}"
+    )
+    await send_message(text)
+
+
+async def notify_strategy_signal(
+    stock_code: str,
+    signal_type: str,
+    strategy_name: str,
+    confidence: float,
+    reason: str,
+    target_price: Optional[float] = None,
+) -> None:
+    """전략 신호 발생 사전 알림을 전송한다."""
+    if not await _is_notification_enabled("notify_strategy_signal"):
+        return
+    emoji = "🟢" if signal_type == "BUY" else "🔴"
+    action = "매수" if signal_type == "BUY" else "매도"
+    text = (
+        f"{emoji} *{action} 신호 발생*\n"
+        f"종목: `{stock_code}`\n"
+        f"전략: {strategy_name}\n"
+        f"신뢰도: {confidence * 100:.0f}%\n"
+        f"근거: {reason}"
+    )
+    if target_price:
+        text += f"\n목표가: {target_price:,.0f}원"
+    await send_message(text)
+
+
+async def notify_daily_portfolio_summary(
+    total_evaluation: float,
+    total_profit_loss: float,
+    total_profit_loss_rate: float,
+    buy_count: int,
+    sell_count: int,
+) -> None:
+    """일일 포트폴리오 요약 알림을 전송한다."""
+    if not await _is_notification_enabled("notify_daily_summary"):
+        return
+    pnl_emoji = "📈" if total_profit_loss >= 0 else "📉"
+    text = (
+        f"{pnl_emoji} *일일 포트폴리오 요약*\n"
+        f"총 평가금액: {total_evaluation:,.0f}원\n"
+        f"평가손익: {total_profit_loss:+,.0f}원 ({total_profit_loss_rate:+.2f}%)\n"
+        f"오늘 매수: {buy_count}건 / 매도: {sell_count}건"
     )
     await send_message(text)

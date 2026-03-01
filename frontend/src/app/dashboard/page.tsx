@@ -9,8 +9,11 @@ import { StrategyPerformanceCards } from "@/components/dashboard/strategy-perfor
 import { PortfolioHoldingsTable } from "@/components/portfolio/portfolio-holdings-table";
 import { PortfolioPieChart } from "@/components/portfolio/portfolio-pie-chart";
 import { Separator } from "@/components/ui/separator";
+import { useRealtimeNotifications } from "@/hooks/use-realtime";
 
 export default function DashboardPage() {
+  useRealtimeNotifications();
+
   return (
     <div className="space-y-6">
       <div>

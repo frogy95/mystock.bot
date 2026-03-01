@@ -83,6 +83,17 @@ async def _run_strategy_evaluation() -> None:
                     signal = engine.evaluate_from_ohlcv(chart_data, params)
 
                     if signal.signal_type in ("BUY", "SELL") and signal.confidence >= 0.5:
+                        # 전략 신호 사전 알림 (fire-and-forget)
+                        import asyncio as _asyncio
+                        from app.services.telegram_notifier import notify_strategy_signal
+                        _asyncio.create_task(notify_strategy_signal(
+                            stock_code=item.stock_code,
+                            signal_type=signal.signal_type,
+                            strategy_name=strategy.name,
+                            confidence=signal.confidence,
+                            reason=signal.reason,
+                            target_price=signal.target_price,
+                        ))
                         await execute_signal(
                             user_id=group.user_id,
                             stock_code=item.stock_code,
@@ -147,6 +158,53 @@ async def _run_risk_monitoring() -> None:
         logger.error(f"손절/익절 모니터링 스케줄 오류: {e}")
 
 
+async def _run_daily_summary() -> None:
+    """
+    장 마감 후 포트폴리오 일일 요약 알림을 전송한다. (평일 16:00 KST)
+    """
+    from app.core.database import AsyncSessionLocal
+    from app.models.order import Order
+    from app.services.holding_service import calculate_summary
+    from app.services.telegram_notifier import notify_daily_portfolio_summary
+    from sqlalchemy import select
+    from datetime import date
+
+    try:
+        async with AsyncSessionLocal() as db:
+            # 사용자 ID 1 기준 (단일 사용자 시스템)
+            user_id = 1
+
+            # 포트폴리오 요약 계산
+            summary = await calculate_summary(user_id, db)
+
+            # 오늘 주문 건수 집계
+            today = date.today()
+            from datetime import datetime
+            start = datetime(today.year, today.month, today.day, 0, 0, 0)
+            end = datetime(today.year, today.month, today.day, 23, 59, 59)
+            result = await db.execute(
+                select(Order).where(
+                    Order.user_id == user_id,
+                    Order.created_at >= start,
+                    Order.created_at <= end,
+                )
+            )
+            orders = result.scalars().all()
+            buy_count = sum(1 for o in orders if o.order_type == "buy")
+            sell_count = sum(1 for o in orders if o.order_type == "sell")
+
+            await notify_daily_portfolio_summary(
+                total_evaluation=summary["total_evaluation"],
+                total_profit_loss=summary["total_profit_loss"],
+                total_profit_loss_rate=summary["total_profit_loss_rate"],
+                buy_count=buy_count,
+                sell_count=sell_count,
+            )
+
+    except Exception as e:
+        logger.error(f"일일 요약 알림 오류: {e}")
+
+
 def get_scheduler() -> AsyncIOScheduler:
     """스케줄러 싱글턴을 반환한다."""
     global _scheduler
@@ -176,6 +234,19 @@ def get_scheduler() -> AsyncIOScheduler:
                 timezone="Asia/Seoul",
             ),
             id="risk_monitoring",
+            replace_existing=True,
+        )
+
+        # 평일 16:00 KST 일일 포트폴리오 요약 알림
+        _scheduler.add_job(
+            _run_daily_summary,
+            CronTrigger(
+                day_of_week="mon-fri",
+                hour=16,
+                minute=0,
+                timezone="Asia/Seoul",
+            ),
+            id="daily_summary",
             replace_existing=True,
         )
 
