@@ -212,7 +212,7 @@ curl http://localhost:8000/api/v1/health
 # http://localhost:8000/docs
 
 # Next.js 프론트엔드 (브라우저에서)
-# http://localhost:3000
+# http://localhost:3001
 ```
 
 ### 5-5. DB 마이그레이션 실행
@@ -248,7 +248,7 @@ docker compose logs --tail=20 frontend
 - [ ] `docker compose up --build` 성공
 - [ ] 4개 서비스 모두 Up 상태
 - [ ] `curl http://localhost:8000/api/v1/health` → 200 OK
-- [ ] `http://localhost:3000` → "AutoTrader KR" 표시
+- [ ] `http://localhost:3001` → "AutoTrader KR" 표시
 - [ ] `alembic upgrade head` 성공
 - [ ] 10개 테이블 확인
 - [ ] seed 데이터 삽입 완료

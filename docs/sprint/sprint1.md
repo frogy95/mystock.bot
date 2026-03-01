@@ -77,7 +77,7 @@ docker compose ps
 
 # 4. 헬스체크
 curl http://localhost:8000/api/v1/health  # 200 OK 확인
-curl http://localhost:3000                # Next.js 렌더링 확인
+curl http://localhost:3001                # Next.js 렌더링 확인
 
 # 5. DB 마이그레이션 실행
 docker compose exec backend alembic upgrade head
@@ -100,7 +100,7 @@ docker compose logs --tail=20 frontend
 - [x] `docker compose up`으로 4개 서비스 기동 가능한 코드 완성
 - [x] `/api/v1/health` 200 OK 응답 구현
 - [x] Swagger UI (`/docs`) 렌더링 가능
-- [x] Next.js `localhost:3000` 렌더링 코드 완성
+- [x] Next.js `localhost:3001` 렌더링 코드 완성
 - [x] DB 10개 테이블 ORM 모델 및 마이그레이션 파일 작성
 - [x] seed.py 스크립트 작성
 - [ ] `docker compose up` 실제 검증 (사용자 수행 필요)
