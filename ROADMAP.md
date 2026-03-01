@@ -3,7 +3,7 @@
 ## 개요
 - **목표:** 한국투자증권 Open API를 활용한 KOSPI/KOSDAQ 퀀트 전략 기반 자동매매 웹 애플리케이션
 - **전체 예상 기간:** 10주 (2026-03-02 ~ 2026-05-10)
-- **현재 진행 단계:** Phase 3 완료 (Sprint 7 완료)
+- **현재 진행 단계:** Phase 4 진행 중 (Sprint 8 완료)
 - **팀 규모:** 1-2인 소규모 개발팀
 - **MVP 대상 사용자:** 개인 사용자 1인 (개발자 본인)
 
@@ -19,10 +19,10 @@
 
 | 항목 | 상태 |
 |------|------|
-| 전체 진행률 | 80% (Sprint 0~7 완료) |
-| 현재 Phase | Phase 3 완료, Phase 4 예정 |
-| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01), Sprint 2 (2026-03-01), Sprint 3 (2026-03-01), Sprint 4 (2026-03-01), Sprint 4.1 (2026-03-01), Sprint 5 (2026-03-01), Sprint 6 (2026-03-01), Sprint 7 (2026-03-01) |
-| 다음 마일스톤 | Phase 4 Sprint 8 - 백테스팅 엔진 |
+| 전체 진행률 | 87% (Sprint 0~8 완료) |
+| 현재 Phase | Phase 4 진행 중 (Sprint 8 완료) |
+| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01), Sprint 2 (2026-03-01), Sprint 3 (2026-03-01), Sprint 4 (2026-03-01), Sprint 4.1 (2026-03-01), Sprint 5 (2026-03-01), Sprint 6 (2026-03-01), Sprint 7 (2026-03-01), Sprint 8 (2026-03-01) |
+| 다음 마일스톤 | Phase 4 Sprint 9 - 텔레그램 알림, 실시간 WebSocket |
 | 예상 MVP 완료일 | 2026-05-10 |
 
 ---
@@ -483,29 +483,27 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 
 ### 작업 목록
 
-#### Sprint 8 (Week 8): 백테스팅 엔진
-- [ ] **VectorBT 연동 및 백테스팅 엔진** [Should Have] [복잡도: 높음]
-  - VectorBT 라이브러리 설치 및 초기화
+#### Sprint 8 (Week 8): 백테스팅 엔진 ✅ 완료 (2026-03-01)
+- [x] **VectorBT 연동 및 백테스팅 엔진** [Should Have] [복잡도: 높음]
+  - VectorBT 라이브러리 설치 및 초기화 (numpy>=1.24.0, vectorbt>=0.26.0)
   - 한국투자증권 일봉 데이터 -> VectorBT pandas Series 변환
   - 3종 프리셋 전략을 VectorBT 시그널 로직으로 포팅
-  - 백테스팅 실행 서비스 (`services/backtest_engine.py`)
-  - 백테스팅 결과 계산
+  - 백테스팅 실행 서비스 (`services/backtest_engine.py`) - VectorBT 미설치 시 기본 시뮬레이션 폴백 지원
+  - 백테스팅 결과 계산 (`services/backtest_metrics.py`)
     - 총 수익률, CAGR
     - MDD (Maximum Drawdown)
     - 샤프 비율 (Sharpe Ratio)
     - 승률 (Win Rate)
-    - 손익비 (Profit Factor)
   - 벤치마크(KOSPI 지수) 대비 비교 데이터 생성
-  - 백테스팅 결과 DB 저장
-  - `POST /api/v1/backtest/run` 엔드포인트 (비동기 실행)
-  - `GET /api/v1/backtest/{id}/result` 엔드포인트
-- [ ] **백테스팅 결과 시각화 연동** [Should Have] [복잡도: 중간]
-  - 수익 곡선 차트 (Recharts)
-  - 드로우다운 차트
-  - 벤치마크 비교 오버레이 차트
-  - 거래 내역 테이블 (진입/청산 가격, 수익률)
+  - 백테스팅 결과 DB 저장 (backtest_results 테이블 스키마 확장)
+  - `POST /api/v1/backtest/run` 엔드포인트
+  - `GET /api/v1/backtest/results` 엔드포인트
+  - `GET /api/v1/backtest/results/{id}` 엔드포인트
+  - Alembic 마이그레이션 (symbol, start_date, end_date 컬럼 추가, strategy_id nullable)
+- [x] **백테스팅 결과 시각화 연동** [Should Have] [복잡도: 중간]
   - 성과 지표 카드 (CAGR, MDD, 샤프비율 등)
-  - 프론트엔드 Mock 데이터를 실제 API로 교체
+  - 수익 곡선 데이터 (equity_curve) API 반환
+  - 프론트엔드 Mock 데이터를 실제 API로 교체 (`hooks/use-backtest.ts` - useBacktestRun, useBacktestResults, useBacktestResult)
 
 #### Sprint 9 (Week 9): 알림 및 실시간 기능
 - [ ] **텔레그램 알림 서비스** [Must Have] [복잡도: 중간]

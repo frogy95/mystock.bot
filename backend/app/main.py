@@ -12,6 +12,7 @@ from app.api.v1 import router as v1_router
 from app.services.redis_client import close_redis
 from app.services.stock_master import load_stock_master
 from app.services.scheduler import start_scheduler, stop_scheduler
+from app.services.websocket_manager import ws_manager
 
 import logging
 
@@ -32,8 +33,14 @@ async def lifespan(app: FastAPI):
         await start_scheduler()
     except Exception as e:
         logger.warning(f"스케줄러 시작 실패: {e}")
+    # WebSocket 시세 폴링 시작
+    try:
+        await ws_manager.start_polling()
+    except Exception as e:
+        logger.warning(f"WebSocket 폴링 시작 실패: {e}")
     yield
-    # 종료 시 스케줄러 + Redis 정리
+    # 종료 시 WebSocket 폴링 + 스케줄러 + Redis 정리
+    await ws_manager.stop_polling()
     await stop_scheduler()
     await close_redis()
     logger.info("mystock.bot API 서버 종료")

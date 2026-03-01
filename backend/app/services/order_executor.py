@@ -2,7 +2,9 @@
 주문 실행 서비스 모듈
 전략 신호를 받아 KIS API로 주문을 실행하고 DB에 저장한다.
 중복 주문 방지 및 주문 로그 기록을 담당한다.
+주문 체결 시 텔레그램 알림을 fire-and-forget 방식으로 전송한다.
 """
+import asyncio
 import logging
 from typing import Optional
 
@@ -12,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.order import Order, OrderLog
 from app.services.kis_client import kis_client
 from app.services.strategy_engine import Signal
+from app.services.telegram_notifier import notify_order_executed
 
 logger = logging.getLogger("mystock.bot")
 
@@ -105,6 +108,16 @@ async def execute_signal(
             db.add(log)
             await db.commit()
             logger.info(f"시뮬레이션 주문 생성: {stock_code} {order_type}")
+            # 텔레그램 알림 (fire-and-forget 방식)
+            asyncio.create_task(
+                notify_order_executed(
+                    stock_code=stock_code,
+                    order_type=order_type,
+                    quantity=quantity,
+                    price=float(price),
+                    reason=f"[시뮬레이션] {signal.reason}",
+                )
+            )
             return order
 
         # KIS 주문 실행
@@ -126,6 +139,16 @@ async def execute_signal(
                     "signal_reason": signal.reason,
                     "confidence": signal.confidence,
                 },
+            )
+            # 텔레그램 알림 (fire-and-forget 방식)
+            asyncio.create_task(
+                notify_order_executed(
+                    stock_code=stock_code,
+                    order_type=order_type,
+                    quantity=quantity,
+                    price=float(price),
+                    reason=signal.reason,
+                )
             )
         else:
             order.status = "failed"
