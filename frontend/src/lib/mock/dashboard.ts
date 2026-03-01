@@ -67,7 +67,7 @@ export const mockHoldings: HoldingItem[] = [
     profitRate: 3.47,
     stopLossRate: -5,
     takeProfitRate: 15,
-    sellStrategy: "골든크로스 + RSI",
+    sellStrategy: "golden-cross-rsi",
   },
   {
     symbol: "000660",
@@ -80,7 +80,7 @@ export const mockHoldings: HoldingItem[] = [
     profitRate: 4.21,
     stopLossRate: -7,
     takeProfitRate: 20,
-    sellStrategy: "볼린저 밴드 반전",
+    sellStrategy: "bollinger-reversal",
   },
   {
     symbol: "035720",
@@ -93,7 +93,7 @@ export const mockHoldings: HoldingItem[] = [
     profitRate: -7.12,
     stopLossRate: -10,
     takeProfitRate: 15,
-    sellStrategy: "가치 + 모멘텀",
+    sellStrategy: "value-momentum",
   },
   {
     symbol: "051910",
@@ -106,7 +106,7 @@ export const mockHoldings: HoldingItem[] = [
     profitRate: 3.95,
     stopLossRate: -5,
     takeProfitRate: 12,
-    sellStrategy: "골든크로스 + RSI",
+    sellStrategy: "golden-cross-rsi",
   },
   {
     symbol: "006400",
