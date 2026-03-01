@@ -1,8 +1,6 @@
-// 메인 홈 페이지 컴포넌트
+import { redirect } from "next/navigation";
+
+// 루트 경로 접근 시 대시보드로 리다이렉트
 export default function Home() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center">
-      <h1 className="text-4xl font-bold">AutoTrader KR</h1>
-    </main>
-  );
+  redirect("/dashboard");
 }
