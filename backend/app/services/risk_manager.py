@@ -5,15 +5,18 @@
 - 트레일링 스탑
 - ATR 기반 동적 손절
 - 분할 익절 (목표가의 50% 도달 시)
+손절/익절 발동 시 텔레그램 알림을 fire-and-forget 방식으로 전송한다.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from typing import Optional
 
 from app.models.holding import Holding
 from app.services.strategy_engine import Signal
+from app.services.telegram_notifier import notify_risk_triggered
 
 logger = logging.getLogger("mystock.bot")
 
@@ -51,11 +54,18 @@ async def evaluate_holding_risk(holding: Holding) -> RiskSignal:
     if holding.stop_loss_rate is not None:
         stop_loss = float(holding.stop_loss_rate)
         if change_rate <= -stop_loss:
-            return RiskSignal(
-                action="STOP_LOSS",
-                reason=f"고정비율 손절 ({change_rate:.2f}% ≤ -{stop_loss}%)",
-                quantity=qty,
+            reason = f"고정비율 손절 ({change_rate:.2f}% ≤ -{stop_loss}%)"
+            # 텔레그램 알림 (fire-and-forget 방식)
+            asyncio.create_task(
+                notify_risk_triggered(
+                    stock_code=holding.stock_code,
+                    action="STOP_LOSS",
+                    current_price=current,
+                    avg_price=avg,
+                    reason=reason,
+                )
             )
+            return RiskSignal(action="STOP_LOSS", reason=reason, quantity=qty)
 
     # 2. 익절 (전량)
     if holding.take_profit_rate is not None:
@@ -63,18 +73,32 @@ async def evaluate_holding_risk(holding: Holding) -> RiskSignal:
         # 분할 익절: 목표가 50% 도달 시 반량 매도
         if change_rate >= take_profit * 0.5 and qty >= 2:
             partial_qty = qty // 2
-            return RiskSignal(
-                action="PARTIAL_TAKE_PROFIT",
-                reason=f"분할 익절 ({change_rate:.2f}% ≥ 목표 {take_profit}%의 50%)",
-                quantity=partial_qty,
+            reason = f"분할 익절 ({change_rate:.2f}% ≥ 목표 {take_profit}%의 50%)"
+            # 텔레그램 알림 (fire-and-forget 방식)
+            asyncio.create_task(
+                notify_risk_triggered(
+                    stock_code=holding.stock_code,
+                    action="PARTIAL_TAKE_PROFIT",
+                    current_price=current,
+                    avg_price=avg,
+                    reason=reason,
+                )
             )
+            return RiskSignal(action="PARTIAL_TAKE_PROFIT", reason=reason, quantity=partial_qty)
         # 전량 익절
         if change_rate >= take_profit:
-            return RiskSignal(
-                action="TAKE_PROFIT",
-                reason=f"전량 익절 ({change_rate:.2f}% ≥ {take_profit}%)",
-                quantity=qty,
+            reason = f"전량 익절 ({change_rate:.2f}% ≥ {take_profit}%)"
+            # 텔레그램 알림 (fire-and-forget 방식)
+            asyncio.create_task(
+                notify_risk_triggered(
+                    stock_code=holding.stock_code,
+                    action="TAKE_PROFIT",
+                    current_price=current,
+                    avg_price=avg,
+                    reason=reason,
+                )
             )
+            return RiskSignal(action="TAKE_PROFIT", reason=reason, quantity=qty)
 
     return RiskSignal(action="HOLD", reason="조건 미충족", quantity=0)
 

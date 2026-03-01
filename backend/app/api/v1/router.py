@@ -6,7 +6,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     auth, health, holdings, orders, safety, settings,
-    stocks, strategies, system_settings, watchlist,
+    stocks, strategies, system_settings, watchlist, websocket,
 )
 
 # v1 통합 라우터
@@ -41,3 +41,6 @@ router.include_router(system_settings.router, prefix="/system-settings", tags=["
 
 # 주문 라우터 포함
 router.include_router(orders.router, prefix="/orders", tags=["주문"])
+
+# WebSocket 라우터 포함 (/ws/quotes)
+router.include_router(websocket.router)
