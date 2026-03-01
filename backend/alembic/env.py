@@ -5,10 +5,9 @@ Alembic 마이그레이션 환경 설정 모듈
 import os
 import sys
 from logging.config import fileConfig
-from urllib.parse import quote_plus
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import create_engine, pool
+from sqlalchemy.engine import URL
 
 from alembic import context
 
@@ -29,17 +28,18 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# 비밀번호의 특수문자를 URL 인코딩하여 안전한 연결 URL 구성
-# (비밀번호에 @, $, ! 등이 포함될 경우 URL 파싱 오류 방지)
-_password = quote_plus(settings.POSTGRES_PASSWORD)
-_db_url = (
-    f"postgresql://{settings.POSTGRES_USER}:{_password}"
-    f"@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
-)
-config.set_main_option("sqlalchemy.url", _db_url)
-
 # autogenerate 지원을 위한 모델 메타데이터 설정
 target_metadata = Base.metadata
+
+# SQLAlchemy URL 객체로 구성 (특수문자 처리를 라이브러리에 위임)
+_db_url = URL.create(
+    drivername="postgresql",
+    username=settings.POSTGRES_USER,
+    password=settings.POSTGRES_PASSWORD,
+    host=settings.POSTGRES_HOST,
+    port=settings.POSTGRES_PORT,
+    database=settings.POSTGRES_DB,
+)
 
 
 def run_migrations_offline() -> None:
@@ -48,9 +48,8 @@ def run_migrations_offline() -> None:
     URL만으로 컨텍스트를 설정하며, Engine 생성 없이 SQL을 출력한다.
     실제 DB 연결 없이 SQL 스크립트를 생성할 수 있다.
     """
-    url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url,
+        url=_db_url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -65,11 +64,8 @@ def run_migrations_online() -> None:
 
     Engine을 생성하고 연결을 통해 실제 DB에 마이그레이션을 적용한다.
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    # ConfigParser 우회: create_engine 직접 사용 (% 등 특수문자 보간 오류 방지)
+    connectable = create_engine(_db_url, poolclass=pool.NullPool)
 
     with connectable.connect() as connection:
         context.configure(
