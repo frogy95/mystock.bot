@@ -262,6 +262,156 @@ class KISClient:
             logger.error("잔고 조회 실패: %s", exc)
             raise
 
+    async def place_order(
+        self,
+        symbol: str,
+        order_type: str,
+        quantity: int,
+        price: int = 0,
+    ) -> dict[str, Any] | None:
+        """
+        KIS API로 매수/매도 주문을 실행한다.
+        order_type: "buy" | "sell"
+        price: 0 이면 시장가 주문
+        모의투자: VTTC0802U(매수)/VTTC0801U(매도), 실전: TTTC0802U/TTTC0801U
+        """
+        if not self.is_available():
+            return None
+
+        from app.core.config import settings
+        is_virtual = settings.KIS_ENVIRONMENT == "vts"
+        base_url = _KIS_VTS_BASE if is_virtual else _KIS_REAL_BASE
+
+        if order_type == "buy":
+            tr_id = "VTTC0802U" if is_virtual else "TTTC0802U"
+        else:
+            tr_id = "VTTC0801U" if is_virtual else "TTTC0801U"
+
+        account_no = settings.KIS_ACCOUNT_NUMBER
+        cano = account_no[:8] if len(account_no) >= 8 else account_no
+        acnt_prdt_cd = account_no[8:] if len(account_no) > 8 else "01"
+
+        # 지정가: "00", 시장가: "01"
+        ord_dvsn = "01" if price == 0 else "00"
+        ord_price = "0" if price == 0 else str(price)
+
+        limiter = get_rate_limiter(is_virtual)
+        await limiter.acquire()
+
+        async def _fetch() -> dict[str, Any]:
+            token = await self._get_access_token()
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    f"{base_url}/uapi/domestic-stock/v1/trading/order-cash",
+                    headers={
+                        "tr_id": tr_id,
+                        "appkey": settings.KIS_APP_KEY,
+                        "appsecret": settings.KIS_APP_SECRET,
+                        "Authorization": f"Bearer {token}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "CANO": cano,
+                        "ACNT_PRDT_CD": acnt_prdt_cd,
+                        "PDNO": symbol,
+                        "ORD_DVSN": ord_dvsn,
+                        "ORD_QTY": str(quantity),
+                        "ORD_UNPR": ord_price,
+                    },
+                    timeout=10,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+            if data.get("rt_cd") != "0":
+                raise ValueError(f"KIS 주문 오류: {data.get('msg1')}")
+
+            output = data.get("output", {})
+            return {
+                "order_no": output.get("ODNO", ""),
+                "order_time": output.get("ORD_TMD", ""),
+                "symbol": symbol,
+                "order_type": order_type,
+                "quantity": quantity,
+                "price": price,
+            }
+
+        try:
+            return await retry_with_backoff(_fetch)
+        except Exception as exc:
+            logger.error("주문 실행 실패 [%s %s]: %s", order_type, symbol, exc)
+            raise
+
+    async def get_order_status(self, order_no: str) -> dict[str, Any] | None:
+        """주문 체결 상태를 조회한다."""
+        if not self.is_available():
+            return None
+
+        from app.core.config import settings
+        is_virtual = settings.KIS_ENVIRONMENT == "vts"
+        base_url = _KIS_VTS_BASE if is_virtual else _KIS_REAL_BASE
+        tr_id = "VTTC8001R" if is_virtual else "TTTC8001R"
+
+        account_no = settings.KIS_ACCOUNT_NUMBER
+        cano = account_no[:8] if len(account_no) >= 8 else account_no
+        acnt_prdt_cd = account_no[8:] if len(account_no) > 8 else "01"
+
+        limiter = get_rate_limiter(is_virtual)
+        await limiter.acquire()
+
+        async def _fetch() -> dict[str, Any]:
+            token = await self._get_access_token()
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{base_url}/uapi/domestic-stock/v1/trading/inquire-daily-ccld",
+                    headers={
+                        "tr_id": tr_id,
+                        "appkey": settings.KIS_APP_KEY,
+                        "appsecret": settings.KIS_APP_SECRET,
+                        "Authorization": f"Bearer {token}",
+                    },
+                    params={
+                        "CANO": cano,
+                        "ACNT_PRDT_CD": acnt_prdt_cd,
+                        "INQR_STRT_DT": "19000101",
+                        "INQR_END_DT": "99991231",
+                        "SLL_BUY_DVSN_CD": "00",
+                        "INQR_DVSN": "01",
+                        "PDNO": "",
+                        "CCLD_DVSN": "00",
+                        "ORD_GNO_BRNO": "",
+                        "ODNO": order_no,
+                        "INQR_DVSN_3": "00",
+                        "INQR_DVSN_1": "",
+                        "CTX_AREA_FK100": "",
+                        "CTX_AREA_NK100": "",
+                    },
+                    timeout=10,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+            if data.get("rt_cd") != "0":
+                raise ValueError(f"KIS API 오류: {data.get('msg1')}")
+
+            items = data.get("output1", [])
+            if not items:
+                return {"order_no": order_no, "status": "unknown"}
+
+            item = items[0]
+            return {
+                "order_no": order_no,
+                "status": "filled" if item.get("rmn_qty", "0") == "0" else "pending",
+                "filled_qty": int(item.get("tot_ccld_qty", 0)),
+                "filled_price": float(item.get("avg_prvs", 0)),
+            }
+
+        try:
+            return await retry_with_backoff(_fetch)
+        except Exception as exc:
+            logger.error("주문 조회 실패 [%s]: %s", order_no, exc)
+            raise
+
 
 # 싱글턴 인스턴스
 kis_client = KISClient()
