@@ -2,13 +2,15 @@
 FastAPI 애플리케이션 엔트리포인트
 앱 생성, 미들웨어 설정, 라우터 등록을 담당한다.
 """
-import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import app.core.logging as _logging_setup  # 로깅 설정 초기화
 from app.api.v1 import router as v1_router
+
+import logging
 
 logger = logging.getLogger("mystock.bot")
 
@@ -34,7 +36,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
