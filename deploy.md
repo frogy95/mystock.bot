@@ -675,3 +675,104 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 - [ ] (선택) `POST /api/v1/holdings/sync` → KIS 잔고 동기화 성공
 
 > Sprint 5 백엔드 자동 검증: docker 환경 없이는 자동 실행 불가, 수동 검증 필요
+
+---
+
+## 11. Sprint 6 완료 검증 (사용자 수행 필요)
+
+Sprint 6에서는 기술적 지표 엔진, 3종 프리셋 전략, 자동 주문 실행 엔진, APScheduler 기반 스케줄러, 전략 API가 추가되었습니다.
+
+### 11-1. 신규 패키지 설치 (Docker 재빌드)
+
+Sprint 6에서 `pandas>=2.0.0`, `pandas-ta>=0.3.14b`, `apscheduler>=3.10.0` 패키지가 추가되었습니다.
+
+```bash
+# 프로젝트 루트에서 실행 (신규 패키지 포함 재빌드)
+docker compose up --build -d
+```
+
+### 11-2. 백엔드 서버 시작 로그 확인
+
+```bash
+# 스케줄러 시작 로그 확인
+docker compose logs backend | grep -E "(APScheduler|스케줄러|Strategy)"
+# 기대 출력: "APScheduler 시작 (전략 평가: 장중 매 5분)"
+```
+
+### 11-3. 전략 API 엔드포인트 동작 검증
+
+```bash
+# 1. 로그인 → 토큰 발급
+TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "설정한_비밀번호"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# 2. 전략 목록 조회 (seed 데이터 3개 전략)
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/v1/strategies
+# 응답 예시: [{"id": 1, "name": "GoldenCrossRSI", "is_active": false, ...}, ...]
+
+# 3. 전략 상세 조회 (id=1)
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/v1/strategies/1
+# 응답: 전략 상세 + 파라미터 목록
+
+# 4. 전략 활성화
+curl -X PUT -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"is_active": true}' \
+  http://localhost:8000/api/v1/strategies/1
+# 응답: {"is_active": true, ...}
+
+# 5. 전략 파라미터 업데이트
+curl -X PUT -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"params": [{"param_key": "rsi_threshold", "param_value": "35", "param_type": "float"}]}' \
+  http://localhost:8000/api/v1/strategies/1/params
+# 응답: {"params": [{"param_key": "rsi_threshold", "param_value": "35", ...}], ...}
+```
+
+### 11-4. KIS 연동 시 신호 평가 (선택 - KIS API 키가 있는 경우)
+
+```bash
+# 전략 신호 평가 (전략 id=1, 삼성전자 005930)
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/v1/strategies/1/evaluate/005930
+# 응답 예시: {"symbol": "005930", "signal_type": "HOLD", "confidence": 0.0, "reason": "조건 미충족", ...}
+```
+
+### 11-5. Swagger UI 확인
+
+`http://localhost:8000/docs` 접속:
+
+- `GET /api/v1/strategies` 엔드포인트 추가 확인
+- `GET /api/v1/strategies/{id}` 엔드포인트 확인
+- `PUT /api/v1/strategies/{id}/activate` 엔드포인트 확인
+- `PUT /api/v1/strategies/{id}/params` 엔드포인트 확인
+- `POST /api/v1/strategies/{id}/evaluate/{symbol}` 엔드포인트 확인
+
+### 11-6. 프론트엔드 전략 화면 API 연동 확인
+
+브라우저에서 `http://localhost:3001/strategy` 접속 후:
+
+```
+1. 전략 카드 3개가 실제 DB 데이터로 렌더링됨 확인
+2. 전략 활성화 토글 클릭 → Network 탭에서 PUT /api/v1/strategies/{id}/activate 200 확인
+3. 파라미터 조절 후 저장 → PUT /api/v1/strategies/{id}/params 200 확인
+4. 브라우저 개발자도구 콘솔 에러 없음 확인
+```
+
+### Sprint 6 완료 체크리스트
+
+- [ ] `docker compose up --build` 성공 (신규 패키지 포함)
+- [ ] 백엔드 로그에 "APScheduler 시작" 메시지 확인
+- [ ] `GET /api/v1/strategies` → 전략 3개 목록 반환
+- [ ] `GET /api/v1/strategies/1` → 전략 상세 + 파라미터 반환
+- [ ] `PUT /api/v1/strategies/1/activate` → 활성화 상태 변경 성공
+- [ ] `PUT /api/v1/strategies/1/params` → 파라미터 업데이트 성공
+- [ ] Swagger UI에 `strategies` 엔드포인트 5개 표시
+- [ ] `/strategy` 프론트엔드 → 실제 DB 데이터 렌더링 확인
+- [ ] `/strategy` 프론트엔드 → 토글 클릭 시 API 호출 확인
+- [ ] (선택) `POST /api/v1/strategies/1/evaluate/005930` → 신호 평가 성공
+
+> Sprint 6 백엔드 자동 검증: docker 환경 없이는 자동 실행 불가, 수동 검증 필요

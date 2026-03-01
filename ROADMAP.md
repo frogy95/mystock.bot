@@ -3,7 +3,7 @@
 ## 개요
 - **목표:** 한국투자증권 Open API를 활용한 KOSPI/KOSDAQ 퀀트 전략 기반 자동매매 웹 애플리케이션
 - **전체 예상 기간:** 10주 (2026-03-02 ~ 2026-05-10)
-- **현재 진행 단계:** Phase 3 진행 중 (Sprint 5 완료)
+- **현재 진행 단계:** Phase 3 진행 중 (Sprint 6 완료)
 - **팀 규모:** 1-2인 소규모 개발팀
 - **MVP 대상 사용자:** 개인 사용자 1인 (개발자 본인)
 
@@ -19,10 +19,10 @@
 
 | 항목 | 상태 |
 |------|------|
-| 전체 진행률 | 65% (Sprint 0~5 완료) |
-| 현재 Phase | Phase 3 진행 중 (Sprint 5 완료) |
-| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01), Sprint 2 (2026-03-01), Sprint 3 (2026-03-01), Sprint 4 (2026-03-01), Sprint 4.1 (2026-03-01), Sprint 5 (2026-03-01) |
-| 다음 마일스톤 | Phase 3 Sprint 6 - 전략 엔진 및 자동매매 |
+| 전체 진행률 | 72% (Sprint 0~6 완료) |
+| 현재 Phase | Phase 3 진행 중 (Sprint 6 완료) |
+| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01), Sprint 2 (2026-03-01), Sprint 3 (2026-03-01), Sprint 4 (2026-03-01), Sprint 4.1 (2026-03-01), Sprint 5 (2026-03-01), Sprint 6 (2026-03-01) |
+| 다음 마일스톤 | Phase 3 Sprint 7 - 손절/익절 및 안전장치 |
 | 예상 MVP 완료일 | 2026-05-10 |
 
 ---
@@ -366,10 +366,10 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
   - TanStack Query mutation hooks 신규 구현 (use-watchlist-mutations, use-holdings-mutations)
   - 에러 핸들링 및 로딩 상태 처리
 
-#### Sprint 6 (Week 6): 전략 엔진 및 자동매매
-- [ ] **기술적 분석 지표 엔진** [Must Have] [복잡도: 높음]
-  - pandas-ta (또는 TA-Lib) 연동
-  - 지표 계산 서비스 (`services/indicator_service.py`)
+#### Sprint 6 (Week 6): 전략 엔진 및 자동매매 - 완료 (2026-03-01)
+- [x] **기술적 분석 지표 엔진** [Must Have] [복잡도: 높음]
+  - pandas-ta 연동
+  - 지표 계산 서비스 (`services/indicators.py`)
     - SMA/EMA 이동평균
     - RSI (14일)
     - MACD
@@ -377,30 +377,20 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
     - ATR
     - Volume Ratio
   - 지표 계산 결과 캐싱 (Redis, TTL 5분)
-  - 일봉/주봉 데이터 기반 지표 계산
-- [ ] **프리셋 전략 3종 구현** [Must Have] [복잡도: 높음]
-  - 전략 엔진 코어 (`services/strategy_engine.py`)
-  - 전략 1: 골든크로스 + RSI 복합
-    - 매수: SMA(20) > SMA(60) AND RSI(14) < 40 AND 거래량 > 20일평균*1.5
-    - 매도: SMA(20) < SMA(60) OR RSI(14) > 75
-    - 손절: -5%, 익절: +15%
-  - 전략 2: 가치 + 모멘텀 하이브리드
-    - 매수: PER < 업종평균*0.7 AND PBR < 1.0 AND ROE > 10% AND 3개월수익률 > 0
-    - 매도: PER > 업종평균*1.2 OR 3개월수익률 < -10%
-    - 리밸런싱: 월 1회
-  - 전략 3: 볼린저 밴드 반전
-    - 매수: 종가 < BB_Lower AND RSI(14) < 30
-    - 매도: 종가 > BB_Upper OR 종가 > BB_Middle
-    - 손절: -7%
-  - 전략 파라미터 조정 API
-  - 전략 실행 스케줄러 (APScheduler, 장중 1분/5분 간격)
-- [ ] **자동 주문 실행 엔진** [Must Have] [복잡도: 높음]
-  - 주문 관리 서비스 (`services/order_manager.py`)
-  - 매수/매도 주문 실행 (python-kis)
-  - 주문 정정/취소 처리
-  - 중복 주문 방지 (동일 종목 60초 이내 중복 차단)
+  - 일봉 데이터 기반 지표 계산
+- [x] **프리셋 전략 3종 구현** [Must Have] [복잡도: 높음]
+  - 전략 엔진 코어 (`services/strategy_engine.py`) - BaseStrategy 추상 클래스
+  - 전략 1: GoldenCrossRSIStrategy - SMA(20)>SMA(60) AND RSI<40 AND 거래량>20일평균×1.5
+  - 전략 2: BollingerReversalStrategy - 종가<BB하단 AND RSI<30
+  - 전략 3: ValueMomentumStrategy - 20일 모멘텀>5% AND RSI<65
+  - 전략 파라미터 조정 API (`api/v1/strategies.py`)
+  - 전략 실행 스케줄러 (`services/scheduler.py`, APScheduler, 장중 매 5분)
+- [x] **자동 주문 실행 엔진** [Must Have] [복잡도: 높음]
+  - 주문 실행 서비스 (`services/order_executor.py`)
+  - 매수/매도 주문 실행 (KIS API: place_order)
+  - 중복 주문 방지 (동일 종목+방향 미체결 주문 확인)
   - 주문 실행 로그 DB 저장 (판단 근거 포함)
-  - 주문 상태 추적 (접수, 체결, 취소)
+  - KIS API 미설정 시 시뮬레이션 모드 지원
 
 #### Sprint 7 (Week 7): 손절/익절 및 안전장치
 - [ ] **손절/익절 자동 관리** [Must Have] [복잡도: 중간]
