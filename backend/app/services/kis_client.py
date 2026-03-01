@@ -123,14 +123,17 @@ class KISClient:
             raise
 
     async def get_chart(self, symbol: str, period: str = "day", count: int = 30) -> list[dict[str, Any]] | None:
-        """주식 일봉 차트 데이터(OHLCV)를 조회한다 (KIS REST API 직접 호출).
+        """주식 차트 데이터(OHLCV)를 조회한다 (KIS REST API 직접 호출).
         시세 데이터는 실전 서버에서만 제공된다.
+        period: "day" → "D", "week" → "W", "month" → "M"
         """
         if not self.is_available():
             return None
 
         from app.core.config import settings
         import datetime
+        _PERIOD_MAP = {"day": "D", "week": "W", "month": "M"}
+        period_code = _PERIOD_MAP.get(period, "D")
         limiter = get_rate_limiter(settings.KIS_ENVIRONMENT == "vts")
         await limiter.acquire()
 
@@ -151,7 +154,7 @@ class KISClient:
                         "FID_INPUT_ISCD": symbol,
                         "FID_INPUT_DATE_1": "19000101",
                         "FID_INPUT_DATE_2": today,
-                        "FID_PERIOD_DIV_CODE": "D",
+                        "FID_PERIOD_DIV_CODE": period_code,
                         "FID_ORG_ADJ_PRC": "0",
                     },
                     timeout=10,

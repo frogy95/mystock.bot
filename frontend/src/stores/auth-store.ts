@@ -20,13 +20,10 @@ export const useAuthStore = create<AuthState>()(
       username: null,
 
       login: (token: string, username: string) => {
-        // localStorage에도 저장 (API 클라이언트에서 직접 접근)
-        localStorage.setItem("access_token", token);
         set({ token, username });
       },
 
       logout: () => {
-        localStorage.removeItem("access_token");
         set({ token: null, username: null });
       },
 
