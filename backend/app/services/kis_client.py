@@ -6,7 +6,9 @@ KIS API 키 미설정 시 경고만 출력하고 동작한다 (lazy 초기화).
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
+
+from app.services.rate_limiter import get_rate_limiter, retry_with_backoff
 
 logger = logging.getLogger(__name__)
 
@@ -61,15 +63,22 @@ class KISClient:
 
     def is_available(self) -> bool:
         """KIS API 클라이언트 사용 가능 여부를 반환한다."""
+        from app.core.config import settings
+        is_virtual = settings.KIS_ENVIRONMENT == "vts"
+        self._limiter = get_rate_limiter(is_virtual)
         return self._get_kis() is not None
 
-    def get_quote(self, symbol: str) -> dict[str, Any] | None:
-        """주식 현재가를 조회한다."""
+    async def get_quote(self, symbol: str) -> dict[str, Any] | None:
+        """주식 현재가를 조회한다 (rate limit + retry 적용)."""
         kis = self._get_kis()
         if kis is None:
             return None
 
-        try:
+        from app.core.config import settings
+        limiter = get_rate_limiter(settings.KIS_ENVIRONMENT == "vts")
+        await limiter.acquire()
+
+        def _fetch() -> dict[str, Any]:
             stock = kis.stock(symbol)
             quote = stock.quote()
             return {
@@ -82,17 +91,24 @@ class KISClient:
                 "low": float(quote.low),
                 "open": float(quote.open),
             }
+
+        try:
+            return await retry_with_backoff(_fetch)
         except Exception as exc:
             logger.error("현재가 조회 실패 [%s]: %s", symbol, exc)
             raise
 
-    def get_chart(self, symbol: str, period: str = "day", count: int = 30) -> list[dict[str, Any]] | None:
-        """주식 차트 데이터(OHLCV)를 조회한다."""
+    async def get_chart(self, symbol: str, period: str = "day", count: int = 30) -> list[dict[str, Any]] | None:
+        """주식 차트 데이터(OHLCV)를 조회한다 (rate limit + retry 적용)."""
         kis = self._get_kis()
         if kis is None:
             return None
 
-        try:
+        from app.core.config import settings
+        limiter = get_rate_limiter(settings.KIS_ENVIRONMENT == "vts")
+        await limiter.acquire()
+
+        def _fetch() -> list[dict[str, Any]]:
             stock = kis.stock(symbol)
             chart = stock.chart(period=period, count=count)
             return [
@@ -106,17 +122,24 @@ class KISClient:
                 }
                 for item in chart
             ]
+
+        try:
+            return await retry_with_backoff(_fetch)
         except Exception as exc:
             logger.error("차트 조회 실패 [%s]: %s", symbol, exc)
             raise
 
-    def get_balance(self) -> dict[str, Any] | None:
-        """계좌 잔고를 조회한다."""
+    async def get_balance(self) -> dict[str, Any] | None:
+        """계좌 잔고를 조회한다 (rate limit + retry 적용)."""
         kis = self._get_kis()
         if kis is None:
             return None
 
-        try:
+        from app.core.config import settings
+        limiter = get_rate_limiter(settings.KIS_ENVIRONMENT == "vts")
+        await limiter.acquire()
+
+        def _fetch() -> dict[str, Any]:
             account = kis.account()
             balance = account.balance()
             return {
@@ -132,6 +155,9 @@ class KISClient:
                     for stock in balance.stocks
                 ],
             }
+
+        try:
+            return await retry_with_backoff(_fetch)
         except Exception as exc:
             logger.error("잔고 조회 실패: %s", exc)
             raise
