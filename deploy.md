@@ -172,3 +172,83 @@ vi .env  # 또는 원하는 에디터 사용
 - [ ] `.env` 파일 생성 및 모든 값 입력 완료
 
 모든 항목이 완료되면 Sprint 1 개발을 시작할 수 있습니다.
+
+---
+
+## 5. Sprint 1 완료 검증 (사용자 수행 필요)
+
+Sprint 1 코드 구현이 완료되었습니다. 아래 절차로 검증하세요.
+
+### 5-1. POSTGRES_PASSWORD 설정
+
+`.env` 파일에서 placeholder를 실제 비밀번호로 변경합니다:
+```bash
+# .env 파일에서 아래 값을 실제 비밀번호로 변경
+# POSTGRES_PASSWORD=your_db_password_here
+# → 예시: POSTGRES_PASSWORD=mystock_dev_password
+```
+
+### 5-2. Docker 빌드 및 서비스 기동
+
+```bash
+# 프로젝트 루트에서 실행
+docker compose up --build -d
+```
+
+### 5-3. 서비스 상태 확인
+
+```bash
+# 모든 서비스가 Up 상태여야 함
+docker compose ps
+```
+
+### 5-4. 헬스체크
+
+```bash
+# FastAPI 헬스체크 (200 OK 확인)
+curl http://localhost:8000/api/v1/health
+
+# Swagger UI 접속 (브라우저에서)
+# http://localhost:8000/docs
+
+# Next.js 프론트엔드 (브라우저에서)
+# http://localhost:3000
+```
+
+### 5-5. DB 마이그레이션 실행
+
+```bash
+# 마이그레이션 실행 (10개 테이블 생성)
+docker compose exec backend alembic upgrade head
+
+# 테이블 목록 확인 (10개 테이블이어야 함)
+docker compose exec postgres psql -U mystock_user -d mystock -c "\dt"
+```
+
+### 5-6. 시드 데이터 삽입
+
+```bash
+# admin 유저, 전략 3개, 시스템 설정 삽입
+docker compose exec backend python scripts/seed.py
+
+# 데이터 확인
+docker compose exec postgres psql -U mystock_user -d mystock -c "SELECT username FROM users;"
+docker compose exec postgres psql -U mystock_user -d mystock -c "SELECT name FROM strategies;"
+```
+
+### 5-7. 로그 확인
+
+```bash
+docker compose logs --tail=20 backend
+docker compose logs --tail=20 frontend
+```
+
+### Sprint 1 완료 체크리스트
+
+- [ ] `docker compose up --build` 성공
+- [ ] 4개 서비스 모두 Up 상태
+- [ ] `curl http://localhost:8000/api/v1/health` → 200 OK
+- [ ] `http://localhost:3000` → "AutoTrader KR" 표시
+- [ ] `alembic upgrade head` 성공
+- [ ] 10개 테이블 확인
+- [ ] seed 데이터 삽입 완료
