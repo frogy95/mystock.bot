@@ -31,8 +31,8 @@ class KISClient:
 
         from app.core.config import settings
 
-        # KIS API 키가 설정되어 있는지 확인
-        if not all([settings.KIS_APP_KEY, settings.KIS_APP_SECRET, settings.KIS_ACCOUNT_NUMBER]):
+        # KIS API 키가 설정되어 있는지 확인 (HTS ID 포함)
+        if not all([settings.KIS_APP_KEY, settings.KIS_APP_SECRET, settings.KIS_ACCOUNT_NUMBER, settings.KIS_HTS_ID]):
             logger.warning(
                 "KIS API 키가 설정되지 않았습니다. "
                 "KIS_APP_KEY, KIS_APP_SECRET, KIS_ACCOUNT_NUMBER 환경변수를 설정하세요."
@@ -44,13 +44,22 @@ class KISClient:
 
             is_virtual = settings.KIS_ENVIRONMENT == "vts"
 
-            self._kis = PyKis(
-                id=None,  # HTS ID 없이 동작
-                account=settings.KIS_ACCOUNT_NUMBER,
-                appkey=settings.KIS_APP_KEY,
-                secretkey=settings.KIS_APP_SECRET,
-                virtual=is_virtual,
-            )
+            if is_virtual:
+                # 모의투자: virtual_* 파라미터 사용
+                self._kis = PyKis(
+                    virtual_id=settings.KIS_HTS_ID,
+                    virtual_appkey=settings.KIS_APP_KEY,
+                    virtual_secretkey=settings.KIS_APP_SECRET,
+                    account=settings.KIS_ACCOUNT_NUMBER,
+                )
+            else:
+                # 실전투자: 일반 파라미터 사용
+                self._kis = PyKis(
+                    id=settings.KIS_HTS_ID,
+                    appkey=settings.KIS_APP_KEY,
+                    secretkey=settings.KIS_APP_SECRET,
+                    account=settings.KIS_ACCOUNT_NUMBER,
+                )
             logger.info(
                 "KIS API 클라이언트 초기화 완료 (환경: %s)",
                 "모의투자" if is_virtual else "실전투자",

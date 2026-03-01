@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     KIS_APP_KEY: str = ""
     KIS_APP_SECRET: str = ""
     KIS_ACCOUNT_NUMBER: str = ""
+    KIS_HTS_ID: str = ""  # eFriend Plus (HTS) 로그인 ID
     KIS_ENVIRONMENT: str = "vts"  # vts: 모의투자, prod: 실거래
 
     # 단일 유저 인증 설정
