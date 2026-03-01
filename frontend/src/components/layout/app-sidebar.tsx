@@ -11,6 +11,7 @@ import {
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSidebarStore } from "@/stores/sidebar-store";
 
 const navItems = [
   { href: "/dashboard", label: "대시보드", icon: LayoutDashboard },
@@ -21,8 +22,9 @@ const navItems = [
   { href: "/settings", label: "설정", icon: Settings },
 ];
 
-export function AppSidebar() {
+function SidebarContent() {
   const pathname = usePathname();
+  const close = useSidebarStore((state) => state.close);
 
   return (
     <aside className="w-56 shrink-0 border-r bg-background flex flex-col h-full">
@@ -37,6 +39,7 @@ export function AppSidebar() {
           <Link
             key={href}
             href={href}
+            onClick={close}
             className={cn(
               "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
               pathname === href
@@ -50,5 +53,33 @@ export function AppSidebar() {
         ))}
       </nav>
     </aside>
+  );
+}
+
+export function AppSidebar() {
+  const { isOpen, close } = useSidebarStore();
+
+  return (
+    <>
+      {/* 데스크톱: 항상 표시 */}
+      <div className="hidden md:flex">
+        <SidebarContent />
+      </div>
+
+      {/* 모바일: 오버레이 + 슬라이드 인 */}
+      {isOpen && (
+        <>
+          {/* 오버레이 배경 */}
+          <div
+            className="fixed inset-0 z-40 bg-black/50 md:hidden"
+            onClick={close}
+          />
+          {/* 사이드바 패널 */}
+          <div className="fixed inset-y-0 left-0 z-50 md:hidden flex">
+            <SidebarContent />
+          </div>
+        </>
+      )}
+    </>
   );
 }
