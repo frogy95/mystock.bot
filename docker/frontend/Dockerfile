@@ -13,4 +13,4 @@ RUN npm ci
 COPY frontend/ .
 
 # Next.js 개발 서버 실행 (모든 인터페이스에서 수신)
-CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
+CMD ["node_modules/.bin/next", "dev", "-H", "0.0.0.0"]
