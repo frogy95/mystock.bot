@@ -158,7 +158,7 @@ export function WatchlistGroupTabs() {
                         <SelectContent>
                           <SelectItem value="none">미설정</SelectItem>
                           {sellStrategyOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.label}>
+                            <SelectItem key={opt.value} value={opt.value}>
                               {opt.label}
                             </SelectItem>
                           ))}
