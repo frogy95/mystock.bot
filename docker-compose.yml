@@ -1,0 +1,78 @@
+# mystock.bot Docker Compose 설정
+# 4개 서비스: postgres, redis, backend, frontend
+
+services:
+  # PostgreSQL 데이터베이스
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis 캐시 서버
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI 백엔드 서버
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Docker 네트워크 내부 호스트명으로 오버라이드
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    volumes:
+      # 핫 리로드를 위한 소스 코드 마운트
+      - ./backend:/app
+
+  # Next.js 프론트엔드 서버
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    ports:
+      - "3001:3000"
+    env_file:
+      - .env
+    depends_on:
+      backend:
+        condition: service_started
+    volumes:
+      # 핫 리로드를 위한 src 디렉토리만 마운트 (node_modules 충돌 방지)
+      - ./frontend/src:/app/src
+
+# 영구 볼륨 정의
+volumes:
+  postgres_data:

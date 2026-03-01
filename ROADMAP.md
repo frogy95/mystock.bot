@@ -19,10 +19,10 @@
 
 | 항목 | 상태 |
 |------|------|
-| 전체 진행률 | 10% (Sprint 0 완전 완료) |
-| 현재 Phase | Phase 0 완료 → Phase 1 진행 중 |
-| 완료된 스프린트 | Sprint 0 (2026-02-28 ~ 2026-03-01) |
-| 다음 마일스톤 | Phase 1 완료 - 프로젝트 기반 구축 |
+| 전체 진행률 | 20% (Sprint 0 + Sprint 1 완료) |
+| 현재 Phase | Phase 1 완료 → Phase 2 준비 중 |
+| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01) |
+| 다음 마일스톤 | Phase 1 완료 - Sprint 2 (KIS API 연동) |
 | 예상 MVP 완료일 | 2026-05-10 |
 
 ---
@@ -118,40 +118,34 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 
 ### 작업 목록
 
-#### Sprint 1 (Week 1): 프로젝트 구조 및 인프라
-- [ ] **Monorepo 프로젝트 구조 생성** [Must Have] [복잡도: 낮음]
-  - `/frontend` - Next.js 16+ 프로젝트 초기화 (App Router)
-  - `/backend` - FastAPI 프로젝트 초기화
-  - `/docker` - Docker 관련 설정 파일
+#### Sprint 1 (Week 1): 프로젝트 구조 및 인프라 ✅ 완료 (2026-03-01)
+- [x] **Monorepo 프로젝트 구조 생성** [Must Have] [복잡도: 낮음]
+  - `/frontend` - Next.js 16 프로젝트 초기화 (App Router, TypeScript, Tailwind v4)
+  - `/backend` - FastAPI 프로젝트 초기화 (pydantic-settings, SQLAlchemy 2.x)
+  - `/docker` - Docker 관련 설정 파일 (backend/frontend Dockerfile)
   - `docker-compose.yml` 생성 (frontend, backend, postgres, redis)
-- [ ] **Docker Compose 환경 구성** [Must Have] [복잡도: 중간]
-  - PostgreSQL 16 컨테이너 설정
-  - Redis 7 컨테이너 설정
+- [x] **Docker Compose 환경 구성** [Must Have] [복잡도: 중간]
+  - PostgreSQL 16 컨테이너 설정 (healthcheck 포함)
+  - Redis 7 컨테이너 설정 (healthcheck 포함)
   - FastAPI 백엔드 컨테이너 (핫 리로드 지원)
   - Next.js 프론트엔드 컨테이너 (핫 리로드 지원)
-  - 네트워크 및 볼륨 설정
-  - 환경변수 파일 연동 (`.env`)
-- [ ] **FastAPI 백엔드 기본 설정** [Must Have] [복잡도: 중간]
+  - 네트워크 및 볼륨 설정 (postgres_data 영구 볼륨)
+  - 환경변수 파일 연동 (`.env`) + Docker 네트워크 호스트 오버라이드
+- [x] **FastAPI 백엔드 기본 설정** [Must Have] [복잡도: 중간]
   - FastAPI 앱 초기화 (`app/main.py`)
   - CORS 미들웨어 설정
   - 환경변수 설정 모듈 (`app/core/config.py`)
-  - 로깅 설정
+  - 로깅 설정 (`app/core/logging.py`)
   - 헬스체크 엔드포인트 (`/api/v1/health`)
-- [ ] **DB 스키마 설계 및 마이그레이션 설정** [Must Have] [복잡도: 중간]
-  - SQLAlchemy 2.x ORM 모델 정의
-    - `users` 테이블 (MVP: 단일 유저)
-    - `watchlist_groups` 테이블
-    - `watchlist_items` 테이블
-    - `strategies` 테이블
-    - `strategy_params` 테이블
-    - `orders` 테이블
-    - `order_logs` 테이블
-    - `portfolio_snapshots` 테이블
-    - `backtest_results` 테이블
-    - `system_settings` 테이블
-  - Alembic 마이그레이션 초기화
-  - 초기 마이그레이션 스크립트 생성 및 실행
-  - seed 데이터 스크립트 (기본 전략 프리셋 3종)
+- [x] **DB 스키마 설계 및 마이그레이션 설정** [Must Have] [복잡도: 중간]
+  - SQLAlchemy 2.x ORM 모델 정의 (10개 테이블)
+    - `users`, `watchlist_groups`, `watchlist_items`
+    - `strategies`, `strategy_params`
+    - `orders`, `order_logs`
+    - `portfolio_snapshots`, `backtest_results`, `system_settings`
+  - Alembic 마이그레이션 초기화 및 env.py 설정
+  - 초기 마이그레이션 스크립트 생성 (`alembic/versions/`)
+  - seed 데이터 스크립트 (`scripts/seed.py`, 기본 전략 프리셋 3종)
 
 #### Sprint 2 (Week 2): API 연동 기반
 - [ ] **한국투자증권 API 클라이언트 모듈** [Must Have] [복잡도: 높음]
@@ -183,7 +177,7 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 - FastAPI `/api/v1/health` 엔드포인트가 200 응답 반환
 - DB 마이그레이션이 성공적으로 실행되고 모든 테이블이 생성됨
 - python-kis를 통한 모의투자 환경 현재가 조회가 성공함
-- Next.js 프론트엔드가 localhost:3000에서 기본 레이아웃과 함께 렌더링됨
+- Next.js 프론트엔드가 localhost:3001에서 기본 레이아웃과 함께 렌더링됨
 - API 토큰 자동 갱신이 로그로 확인됨
 
 ### Playwright MCP 검증 시나리오
@@ -191,7 +185,7 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 
 **프론트엔드 기본 렌더링 검증:**
 ```
-1. browser_navigate -> http://localhost:3000 접속
+1. browser_navigate -> http://localhost:3001 접속
 2. browser_snapshot -> 기본 레이아웃(사이드바, 헤더) 렌더링 확인
 3. browser_click -> 사이드바 메뉴 항목(Dashboard, Watchlist 등) 클릭
 4. browser_snapshot -> 해당 페이지 라우팅 확인
@@ -294,14 +288,14 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 
 **대시보드 검증:**
 ```
-1. browser_navigate -> http://localhost:3000/dashboard 접속
+1. browser_navigate -> http://localhost:3001/dashboard 접속
 2. browser_snapshot -> 포트폴리오 요약 카드, 보유종목 테이블, 차트 렌더링 확인
 3. browser_console_messages(level: "error") -> 에러 없음 확인
 ```
 
 **관심종목 화면 검증:**
 ```
-1. browser_navigate -> http://localhost:3000/watchlist 접속
+1. browser_navigate -> http://localhost:3001/watchlist 접속
 2. browser_snapshot -> 종목 검색 입력, 관심종목 그룹 탭 확인
 3. browser_type -> 검색 입력란에 "삼성전자" 입력
 4. browser_snapshot -> 검색 결과 드롭다운 표시 확인
@@ -311,7 +305,7 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 
 **전략 설정 화면 검증:**
 ```
-1. browser_navigate -> http://localhost:3000/strategy 접속
+1. browser_navigate -> http://localhost:3001/strategy 접속
 2. browser_snapshot -> 프리셋 전략 3종 카드 렌더링 확인
 3. browser_click -> 전략 카드 클릭 (예: 골든크로스 + RSI)
 4. browser_snapshot -> 파라미터 조절 폼 표시 확인
@@ -321,7 +315,7 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 
 **설정 화면 검증:**
 ```
-1. browser_navigate -> http://localhost:3000/settings 접속
+1. browser_navigate -> http://localhost:3001/settings 접속
 2. browser_snapshot -> API 키 폼, 안전장치 설정 렌더링 확인
 3. browser_click -> 긴급 전체 매도 버튼
 4. browser_snapshot -> 확인 모달 표시 확인
@@ -452,7 +446,7 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 
 **관심종목 API 연동 검증:**
 ```
-1. browser_navigate -> http://localhost:3000/watchlist 접속
+1. browser_navigate -> http://localhost:3001/watchlist 접속
 2. browser_snapshot -> 관심종목 페이지 렌더링 확인
 3. browser_type -> 종목 검색란에 "005930" 입력 (삼성전자)
 4. browser_wait_for -> 검색 결과 표시 대기
@@ -464,7 +458,7 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 
 **전략 설정 API 연동 검증:**
 ```
-1. browser_navigate -> http://localhost:3000/strategy 접속
+1. browser_navigate -> http://localhost:3001/strategy 접속
 2. browser_snapshot -> 전략 카드 렌더링 확인 (실제 DB 데이터)
 3. browser_click -> 전략 활성화 토글 클릭
 4. browser_network_requests -> /api/v1/strategy 호출 200 확인
@@ -473,7 +467,7 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 
 **주문 내역 검증:**
 ```
-1. browser_navigate -> http://localhost:3000/orders 접속
+1. browser_navigate -> http://localhost:3001/orders 접속
 2. browser_snapshot -> 주문 내역 테이블 렌더링 확인
 3. browser_click -> 필터 탭(미체결/체결완료) 클릭
 4. browser_snapshot -> 필터된 결과 확인
@@ -482,7 +476,7 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 
 **설정 화면 API 연동 검증:**
 ```
-1. browser_navigate -> http://localhost:3000/settings 접속
+1. browser_navigate -> http://localhost:3001/settings 접속
 2. browser_fill_form -> API 키, 안전장치 설정 입력
 3. browser_click -> 저장 버튼
 4. browser_wait_for -> "저장되었습니다" 토스트 메시지 대기
@@ -565,7 +559,7 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 
 **백테스팅 화면 검증:**
 ```
-1. browser_navigate -> http://localhost:3000/backtest 접속
+1. browser_navigate -> http://localhost:3001/backtest 접속
 2. browser_snapshot -> 백테스팅 설정 폼 렌더링 확인
 3. browser_select_option -> 전략 선택 (골든크로스 + RSI)
 4. browser_type -> 종목 입력 (삼성전자)
@@ -579,7 +573,7 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 
 **대시보드 실시간 데이터 검증:**
 ```
-1. browser_navigate -> http://localhost:3000/dashboard 접속
+1. browser_navigate -> http://localhost:3001/dashboard 접속
 2. browser_snapshot -> 실시간 데이터 카드 렌더링 확인
 3. browser_network_requests -> API 호출 확인 (portfolio, orders, strategy 등)
 4. browser_console_messages(level: "error") -> 에러 없음 확인
@@ -647,25 +641,25 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 
 **전체 흐름 E2E 검증:**
 ```
-1. browser_navigate -> http://localhost:3000/settings 접속
+1. browser_navigate -> http://localhost:3001/settings 접속
 2. browser_fill_form -> API 키, 텔레그램 설정, 안전장치 설정 입력
 3. browser_click -> 저장 버튼
 4. browser_wait_for -> 저장 완료 확인
 
-5. browser_navigate -> http://localhost:3000/watchlist 접속
+5. browser_navigate -> http://localhost:3001/watchlist 접속
 6. browser_type -> 종목 검색 ("005930")
 7. browser_click -> 관심종목 추가
 8. browser_snapshot -> 추가 확인
 
-9. browser_navigate -> http://localhost:3000/strategy 접속
+9. browser_navigate -> http://localhost:3001/strategy 접속
 10. browser_click -> 골든크로스+RSI 전략 활성화 토글
 11. browser_snapshot -> 활성화 확인
 
-12. browser_navigate -> http://localhost:3000/dashboard 접속
+12. browser_navigate -> http://localhost:3001/dashboard 접속
 13. browser_snapshot -> 포트폴리오 데이터, 매매 신호 확인
 14. browser_network_requests -> 모든 API 호출 200 확인
 
-15. browser_navigate -> http://localhost:3000/orders 접속
+15. browser_navigate -> http://localhost:3001/orders 접속
 16. browser_snapshot -> 주문 내역 확인
 
 17. browser_console_messages(level: "error") -> 전 페이지 에러 없음 확인
@@ -673,7 +667,7 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 
 **안전장치 검증:**
 ```
-1. browser_navigate -> http://localhost:3000/settings 접속
+1. browser_navigate -> http://localhost:3001/settings 접속
 2. browser_snapshot -> 안전장치 설정 확인
 3. browser_click -> 자동매매 마스터 OFF 스위치
 4. browser_snapshot -> OFF 상태 확인
