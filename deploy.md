@@ -252,3 +252,93 @@ docker compose logs --tail=20 frontend
 - [ ] `alembic upgrade head` 성공
 - [ ] 10개 테이블 확인
 - [ ] seed 데이터 삽입 완료
+
+---
+
+## 6. Sprint 2 완료 검증 (사용자 수행 필요)
+
+Sprint 2에서는 KIS API 클라이언트, 단일 유저 인증, 프론트엔드 레이아웃이 추가되었습니다.
+
+### 6-1. ADMIN_PASSWORD 설정
+
+`.env` 파일에서 관리자 비밀번호를 변경합니다:
+
+```bash
+# .env 파일 편집
+# ADMIN_USERNAME=admin          ← 원하는 유저명으로 변경 가능
+# ADMIN_PASSWORD=your_admin_password_here  ← 반드시 안전한 비밀번호로 변경
+```
+
+### 6-2. Docker 빌드 및 서비스 기동
+
+```bash
+# 프로젝트 루트에서 실행 (새 패키지 포함하여 재빌드)
+docker compose up --build -d
+```
+
+### 6-3. 백엔드 엔드포인트 검증
+
+```bash
+# 1. 헬스체크
+curl http://localhost:8000/api/v1/health
+
+# 2. 로그인 → 토큰 발급
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "설정한_비밀번호"}'
+# 응답: {"access_token": "...", "token_type": "bearer"}
+
+# 3. 토큰을 TOKEN 변수에 저장
+TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "설정한_비밀번호"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# 4. 인증 없이 보호 엔드포인트 접근 → 401 확인
+curl -i http://localhost:8000/api/v1/settings/kis-status
+
+# 5. 토큰으로 보호 엔드포인트 접근 → 200 확인
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/v1/settings/kis-status
+
+# 6. Swagger UI에서 7개 엔드포인트 확인
+# http://localhost:8000/docs
+```
+
+### 6-4. 프론트엔드 검증
+
+브라우저에서 `http://localhost:3001` 접속:
+
+- [ ] 사이드바(6개 메뉴)와 헤더가 표시됨
+- [ ] 루트(`/`) 접근 시 `/dashboard`로 자동 리다이렉트
+- [ ] 사이드바 클릭으로 6개 페이지 이동 가능
+- [ ] 브라우저 콘솔에 에러 없음
+
+### 6-5. KIS API 연동 (선택 - API 키가 있는 경우)
+
+KIS API 키가 있다면 `.env`에 입력 후 기동:
+
+```bash
+# .env 설정
+KIS_APP_KEY=실제_앱키
+KIS_APP_SECRET=실제_앱시크릿
+KIS_ACCOUNT_NUMBER=계좌번호  # 예: 50123456-01
+KIS_ENVIRONMENT=vts  # 모의투자
+
+# 재기동
+docker compose up -d backend
+
+# 현재가 조회 테스트 (삼성전자: 005930)
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/v1/stocks/005930/quote
+```
+
+### Sprint 2 완료 체크리스트
+
+- [ ] `docker compose up --build` 성공
+- [ ] `curl /api/v1/health` → 200 응답
+- [ ] `POST /api/v1/auth/login` → Bearer 토큰 발급
+- [ ] 인증 없이 보호 엔드포인트 → 401 차단
+- [ ] 토큰으로 `GET /api/v1/settings/kis-status` → 200 응답
+- [ ] Swagger UI에 7개 엔드포인트 표시
+- [ ] `http://localhost:3001` → 사이드바(6개 메뉴) + 헤더 렌더링
+- [ ] 사이드바 클릭으로 6개 페이지 이동 가능
+- [ ] 콘솔 에러 없음
