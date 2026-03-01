@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { createChart, type IChartApi, ColorType } from "lightweight-charts";
+import { createChart, type IChartApi, ColorType, AreaSeries } from "lightweight-charts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PriceChangeBadge } from "@/components/common/price-change-badge";
@@ -51,7 +51,7 @@ function MiniChart({
       handleScale: false,
     });
 
-    const areaSeries = chart.addAreaSeries({
+    const areaSeries = chart.addSeries(AreaSeries, {
       lineColor: changeRate >= 0 ? "#ef4444" : "#3b82f6",
       topColor: changeRate >= 0 ? "rgba(239, 68, 68, 0.2)" : "rgba(59, 130, 246, 0.2)",
       bottomColor: changeRate >= 0 ? "rgba(239, 68, 68, 0.02)" : "rgba(59, 130, 246, 0.02)",
