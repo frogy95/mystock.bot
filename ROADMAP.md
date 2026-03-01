@@ -19,10 +19,10 @@
 
 | 항목 | 상태 |
 |------|------|
-| 전체 진행률 | 20% (Sprint 0 + Sprint 1 완료) |
-| 현재 Phase | Phase 1 완료 → Phase 2 준비 중 |
-| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01) |
-| 다음 마일스톤 | Phase 1 완료 - Sprint 2 (KIS API 연동) |
+| 전체 진행률 | 30% (Sprint 0 + Sprint 1 + Sprint 2 완료) |
+| 현재 Phase | Phase 1 완료 |
+| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01), Sprint 2 (2026-03-01) |
+| 다음 마일스톤 | Phase 2 - 주식 시세 대시보드 UI |
 | 예상 MVP 완료일 | 2026-05-10 |
 
 ---
