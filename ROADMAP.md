@@ -19,10 +19,10 @@
 
 | 항목 | 상태 |
 |------|------|
-| 전체 진행률 | 10% (Sprint 0 완전 완료) |
-| 현재 Phase | Phase 0 완료 → Phase 1 진행 중 |
-| 완료된 스프린트 | Sprint 0 (2026-02-28 ~ 2026-03-01) |
-| 다음 마일스톤 | Phase 1 완료 - 프로젝트 기반 구축 |
+| 전체 진행률 | 20% (Sprint 0 + Sprint 1 완료) |
+| 현재 Phase | Phase 1 완료 → Phase 2 준비 중 |
+| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01) |
+| 다음 마일스톤 | Phase 1 완료 - Sprint 2 (KIS API 연동) |
 | 예상 MVP 완료일 | 2026-05-10 |
 
 ---
@@ -118,40 +118,34 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 
 ### 작업 목록
 
-#### Sprint 1 (Week 1): 프로젝트 구조 및 인프라
-- [ ] **Monorepo 프로젝트 구조 생성** [Must Have] [복잡도: 낮음]
-  - `/frontend` - Next.js 16+ 프로젝트 초기화 (App Router)
-  - `/backend` - FastAPI 프로젝트 초기화
-  - `/docker` - Docker 관련 설정 파일
+#### Sprint 1 (Week 1): 프로젝트 구조 및 인프라 ✅ 완료 (2026-03-01)
+- [x] **Monorepo 프로젝트 구조 생성** [Must Have] [복잡도: 낮음]
+  - `/frontend` - Next.js 16 프로젝트 초기화 (App Router, TypeScript, Tailwind v4)
+  - `/backend` - FastAPI 프로젝트 초기화 (pydantic-settings, SQLAlchemy 2.x)
+  - `/docker` - Docker 관련 설정 파일 (backend/frontend Dockerfile)
   - `docker-compose.yml` 생성 (frontend, backend, postgres, redis)
-- [ ] **Docker Compose 환경 구성** [Must Have] [복잡도: 중간]
-  - PostgreSQL 16 컨테이너 설정
-  - Redis 7 컨테이너 설정
+- [x] **Docker Compose 환경 구성** [Must Have] [복잡도: 중간]
+  - PostgreSQL 16 컨테이너 설정 (healthcheck 포함)
+  - Redis 7 컨테이너 설정 (healthcheck 포함)
   - FastAPI 백엔드 컨테이너 (핫 리로드 지원)
   - Next.js 프론트엔드 컨테이너 (핫 리로드 지원)
-  - 네트워크 및 볼륨 설정
-  - 환경변수 파일 연동 (`.env`)
-- [ ] **FastAPI 백엔드 기본 설정** [Must Have] [복잡도: 중간]
+  - 네트워크 및 볼륨 설정 (postgres_data 영구 볼륨)
+  - 환경변수 파일 연동 (`.env`) + Docker 네트워크 호스트 오버라이드
+- [x] **FastAPI 백엔드 기본 설정** [Must Have] [복잡도: 중간]
   - FastAPI 앱 초기화 (`app/main.py`)
   - CORS 미들웨어 설정
   - 환경변수 설정 모듈 (`app/core/config.py`)
-  - 로깅 설정
+  - 로깅 설정 (`app/core/logging.py`)
   - 헬스체크 엔드포인트 (`/api/v1/health`)
-- [ ] **DB 스키마 설계 및 마이그레이션 설정** [Must Have] [복잡도: 중간]
-  - SQLAlchemy 2.x ORM 모델 정의
-    - `users` 테이블 (MVP: 단일 유저)
-    - `watchlist_groups` 테이블
-    - `watchlist_items` 테이블
-    - `strategies` 테이블
-    - `strategy_params` 테이블
-    - `orders` 테이블
-    - `order_logs` 테이블
-    - `portfolio_snapshots` 테이블
-    - `backtest_results` 테이블
-    - `system_settings` 테이블
-  - Alembic 마이그레이션 초기화
-  - 초기 마이그레이션 스크립트 생성 및 실행
-  - seed 데이터 스크립트 (기본 전략 프리셋 3종)
+- [x] **DB 스키마 설계 및 마이그레이션 설정** [Must Have] [복잡도: 중간]
+  - SQLAlchemy 2.x ORM 모델 정의 (10개 테이블)
+    - `users`, `watchlist_groups`, `watchlist_items`
+    - `strategies`, `strategy_params`
+    - `orders`, `order_logs`
+    - `portfolio_snapshots`, `backtest_results`, `system_settings`
+  - Alembic 마이그레이션 초기화 및 env.py 설정
+  - 초기 마이그레이션 스크립트 생성 (`alembic/versions/`)
+  - seed 데이터 스크립트 (`scripts/seed.py`, 기본 전략 프리셋 3종)
 
 #### Sprint 2 (Week 2): API 연동 기반
 - [ ] **한국투자증권 API 클라이언트 모듈** [Must Have] [복잡도: 높음]
