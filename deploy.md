@@ -776,3 +776,130 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 - [ ] (선택) `POST /api/v1/strategies/1/evaluate/005930` → 신호 평가 성공
 
 > Sprint 6 백엔드 자동 검증: docker 환경 없이는 자동 실행 불가, 수동 검증 필요
+
+---
+
+## 12. Sprint 7 완료 검증 (사용자 수행 필요)
+
+Sprint 7에서는 손절/익절 엔진, 매매 안전장치, 시스템 안전장치, 관련 API, 프론트엔드 실제 연동이 추가되었습니다.
+
+> **자동 검증 완료 항목 (Playwright MCP, 2026-03-01)**
+> 설정 화면 / 안전장치 폼 / 긴급 전체 매도 AlertDialog / AlertDialog 취소 / 주문내역 테이블 / 미체결 취소 버튼 / 모바일 375px / 콘솔 에러 0건 — 11/11 통과
+> 상세 내용: [docs/sprint/sprint7/playwright-report.md](docs/sprint/sprint7/playwright-report.md)
+
+### 12-1. 신규 패키지 설치 (Docker 재빌드)
+
+Sprint 7에서 신규 Python 패키지는 없습니다. 코드 변경만 반영하면 됩니다.
+
+```bash
+# 프로젝트 루트에서 실행
+docker compose up --build -d
+```
+
+### 12-2. 백엔드 스케줄러 로그 확인
+
+```bash
+# 손절/익절 모니터링 스케줄러 시작 확인
+docker compose logs backend | grep -E "(APScheduler|손절|익절|risk|safety)"
+# 기대: "APScheduler 시작 (손절/익절 모니터링: 장중 매 1분)" 등
+```
+
+### 12-3. 신규 API 엔드포인트 동작 검증
+
+```bash
+# 1. 로그인 → 토큰 발급
+TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "설정한_비밀번호"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# 2. 안전장치 전체 상태 조회
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/v1/safety/status
+# 기대: {"auto_trade_enabled": false, "daily_loss_check": {...}, "daily_order_check": {...}, "system": {...}}
+
+# 3. 자동매매 활성화
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": true}' \
+  http://localhost:8000/api/v1/safety/auto-trade
+# 기대: {"auto_trade_enabled": true}
+
+# 4. 자동매매 비활성화
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": false}' \
+  http://localhost:8000/api/v1/safety/auto-trade
+
+# 5. 시스템 설정 전체 조회
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/v1/system-settings
+# 기대: 설정 항목 배열
+
+# 6. 시스템 설정 일괄 업데이트
+curl -X PUT -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"settings": [{"setting_key": "daily_loss_limit_pct", "setting_value": "5", "setting_type": "float"}]}' \
+  http://localhost:8000/api/v1/system-settings
+
+# 7. 주문 목록 조회 (최신순)
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/v1/orders
+# 기대: 주문 목록 배열
+```
+
+### 12-4. Swagger UI 신규 엔드포인트 확인
+
+`http://localhost:8000/docs` 접속:
+
+- `GET /api/v1/safety/status` 확인
+- `POST /api/v1/safety/auto-trade` 확인
+- `POST /api/v1/safety/emergency-sell` 확인
+- `GET /api/v1/system-settings` 확인
+- `PUT /api/v1/system-settings` 확인
+- `GET /api/v1/system-settings/{key}` 확인
+- `GET /api/v1/orders` 확인
+
+### 12-5. 프론트엔드 연동 확인
+
+브라우저에서 `http://localhost:3001/settings` 접속 후:
+
+```
+1. 자동매매 ON/OFF 스위치 클릭
+   → Network 탭에서 POST /api/v1/safety/auto-trade 200 확인
+2. 안전장치 설정 슬라이더 조절 후 저장 버튼 클릭
+   → Network 탭에서 PUT /api/v1/system-settings 200 확인
+3. 긴급 전체 매도 버튼 → AlertDialog → "전체 매도 실행" 클릭
+   → Network 탭에서 POST /api/v1/safety/emergency-sell 200 확인
+```
+
+브라우저에서 `http://localhost:3001/orders` 접속 후:
+
+```
+1. 주문 목록이 API 데이터로 표시됨 확인
+   → Network 탭에서 GET /api/v1/orders 200 확인
+2. 미체결 탭 클릭 → 필터된 결과 확인
+```
+
+### Sprint 7 완료 체크리스트
+
+**자동 검증 완료 (Playwright MCP):**
+- [x] 설정 화면 전체 폼 렌더링 (자동매매 / KIS API / 안전장치)
+- [x] 긴급 전체 매도 AlertDialog 표시 및 취소 동작
+- [x] 주문내역 탭/테이블/취소 버튼 렌더링
+- [x] 모바일 375px 반응형 레이아웃
+- [x] 콘솔 에러 없음
+
+**수동 검증 필요 (Docker 실행 후):**
+- [ ] `docker compose up --build` 성공
+- [ ] 백엔드 로그에 손절/익절 모니터링 스케줄러 시작 확인
+- [ ] `GET /api/v1/safety/status` → 200 + 상태 JSON 반환
+- [ ] `POST /api/v1/safety/auto-trade` → 자동매매 상태 변경 성공
+- [ ] `GET /api/v1/system-settings` → 설정 목록 반환
+- [ ] `PUT /api/v1/system-settings` → 설정 업데이트 성공
+- [ ] `GET /api/v1/orders` → 주문 목록 반환
+- [ ] Swagger UI에 safety(3개), system-settings(3개), orders(1개) 엔드포인트 표시
+- [ ] `/settings` 프론트엔드 → 자동매매 토글 API 호출 확인
+- [ ] `/orders` 프론트엔드 → 실제 DB 데이터 렌더링 확인
+
+> Sprint 7 프론트엔드 자동 검증 완료 (2026-03-01) — 11/11 항목 통과
+> Sprint 7 백엔드 자동 검증: docker 환경 없이는 자동 실행 불가, 수동 검증 필요
