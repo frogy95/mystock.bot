@@ -5,6 +5,7 @@ Alembic 마이그레이션 환경 설정 모듈
 import os
 import sys
 from logging.config import fileConfig
+from urllib.parse import quote_plus
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
@@ -28,9 +29,13 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# 비동기 드라이버(asyncpg)를 동기 드라이버(psycopg2)로 변환
-# Alembic은 동기 드라이버를 사용하므로 +asyncpg를 제거한다
-_db_url = settings.database_url.replace("+asyncpg", "")
+# 비밀번호의 특수문자를 URL 인코딩하여 안전한 연결 URL 구성
+# (비밀번호에 @, $, ! 등이 포함될 경우 URL 파싱 오류 방지)
+_password = quote_plus(settings.POSTGRES_PASSWORD)
+_db_url = (
+    f"postgresql://{settings.POSTGRES_USER}:{_password}"
+    f"@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
+)
 config.set_main_option("sqlalchemy.url", _db_url)
 
 # autogenerate 지원을 위한 모델 메타데이터 설정

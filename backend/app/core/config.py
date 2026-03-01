@@ -2,6 +2,8 @@
 환경변수 설정 모듈
 pydantic-settings를 사용하여 .env 파일에서 설정값을 로드한다.
 """
+from urllib.parse import quote_plus
+
 from pydantic_settings import BaseSettings
 
 
@@ -29,9 +31,10 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
-        """비동기 PostgreSQL 연결 URL을 반환한다."""
+        """비동기 PostgreSQL 연결 URL을 반환한다. (비밀번호 특수문자 URL 인코딩 적용)"""
+        password = quote_plus(self.POSTGRES_PASSWORD)
         return (
-            f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+            f"postgresql+asyncpg://{self.POSTGRES_USER}:{password}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
 
