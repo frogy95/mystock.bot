@@ -54,6 +54,26 @@ async def execute_signal(
 
     order_type = signal.signal_type.lower()
 
+    # 안전장치 검사 (매도 주문은 손절/익절이므로 안전장치 일부 면제)
+    if order_type == "buy":
+        from app.services.safety_guard import run_all_checks
+        from app.services.system_monitor import check_error_threshold, acquire_order_lock
+        ok, msg = await check_error_threshold(user_id, db)
+        if not ok:
+            logger.warning(f"시스템 에러 임계값 초과로 주문 차단: {msg}")
+            return None
+        ok, msg = await run_all_checks(user_id, stock_code, quantity, float(price), db)
+        if not ok:
+            logger.info(f"안전장치 차단: {msg}")
+            return None
+
+    # Redis 분산 락 (동시 주문 방지)
+    from app.services.system_monitor import acquire_order_lock
+    async with acquire_order_lock(user_id, stock_code) as acquired:
+        if not acquired:
+            logger.info(f"주문 락 획득 실패: {stock_code} - 이미 처리 중")
+            return None
+
     # 중복 주문 방지
     if await _has_pending_order(user_id, stock_code, order_type, db):
         logger.info(f"중복 주문 방지: {stock_code} {order_type} 미체결 주문 존재")

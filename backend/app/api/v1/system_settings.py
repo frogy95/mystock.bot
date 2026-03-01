@@ -1,0 +1,120 @@
+"""
+시스템 설정 API 엔드포인트
+KIS/텔레그램/매매시간/안전장치 전체 설정을 관리한다.
+"""
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import select, delete
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.auth import get_current_user
+from app.core.database import get_db
+from app.models.settings import SystemSetting
+from app.models.user import User
+
+router = APIRouter()
+
+
+class SettingItem(BaseModel):
+    """개별 설정 항목"""
+
+    setting_key: str
+    setting_value: str
+    setting_type: str = "str"
+
+
+class SettingsUpdateRequest(BaseModel):
+    """설정 일괄 업데이트 요청"""
+
+    settings: List[SettingItem]
+
+
+class SettingResponse(BaseModel):
+    """설정 응답"""
+
+    setting_key: str
+    setting_value: str
+    setting_type: str
+
+    model_config = {"from_attributes": True}
+
+
+async def _get_user_id(username: str, db: AsyncSession) -> int:
+    result = await db.execute(select(User).where(User.username == username))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+    return user.id
+
+
+@router.get("", response_model=List[SettingResponse], summary="전체 설정 조회")
+async def get_all_settings(
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """사용자의 모든 시스템 설정을 반환한다."""
+    user_id = await _get_user_id(current_user, db)
+    result = await db.execute(
+        select(SystemSetting).where(SystemSetting.user_id == user_id)
+        .order_by(SystemSetting.setting_key)
+    )
+    return result.scalars().all()
+
+
+@router.put("", response_model=List[SettingResponse], summary="설정 일괄 업데이트")
+async def update_settings(
+    body: SettingsUpdateRequest,
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """설정을 일괄 업데이트한다. (upsert)"""
+    user_id = await _get_user_id(current_user, db)
+
+    for item in body.settings:
+        result = await db.execute(
+            select(SystemSetting).where(
+                SystemSetting.user_id == user_id,
+                SystemSetting.setting_key == item.setting_key,
+            )
+        )
+        setting = result.scalar_one_or_none()
+        if setting:
+            setting.setting_value = item.setting_value
+            setting.setting_type = item.setting_type
+        else:
+            db.add(SystemSetting(
+                user_id=user_id,
+                setting_key=item.setting_key,
+                setting_value=item.setting_value,
+                setting_type=item.setting_type,
+            ))
+
+    await db.commit()
+
+    result = await db.execute(
+        select(SystemSetting).where(SystemSetting.user_id == user_id)
+        .order_by(SystemSetting.setting_key)
+    )
+    return result.scalars().all()
+
+
+@router.get("/{key}", response_model=SettingResponse, summary="단일 설정 조회")
+async def get_setting(
+    key: str,
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """특정 키의 설정값을 반환한다."""
+    user_id = await _get_user_id(current_user, db)
+    result = await db.execute(
+        select(SystemSetting).where(
+            SystemSetting.user_id == user_id,
+            SystemSetting.setting_key == key,
+        )
+    )
+    setting = result.scalar_one_or_none()
+    if setting is None:
+        raise HTTPException(status_code=404, detail=f"설정 키 '{key}'를 찾을 수 없습니다.")
+    return setting
