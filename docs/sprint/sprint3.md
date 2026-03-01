@@ -130,6 +130,12 @@ frontend/src/
 
 ---
 
+## 검증 보고서
+
+- [Sprint 3 Playwright MCP 테스트 보고서](sprint3/sprint3-test-report.md)
+
+---
+
 ## 다음 Sprint (Sprint 4) 예정 작업
 
 - 전략 설정 화면 UI (파라미터 슬라이더, 활성화 토글, 종목-전략 매핑)
