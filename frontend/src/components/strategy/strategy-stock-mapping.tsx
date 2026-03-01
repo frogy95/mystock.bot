@@ -68,6 +68,8 @@ export function StrategyStockMapping({
 
       {/* 매핑된 종목 테이블 */}
       {assignedStocks.length > 0 ? (
+        /* 모바일에서 가로 스크롤 허용 */
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -92,6 +94,7 @@ export function StrategyStockMapping({
             ))}
           </TableBody>
         </Table>
+        </div>
       ) : (
         // 매핑된 종목이 없을 때 안내 메시지
         <p className="text-sm text-muted-foreground text-center py-4">

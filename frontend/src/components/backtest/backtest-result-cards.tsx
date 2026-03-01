@@ -22,7 +22,7 @@ export function BacktestResultCards({ result }: BacktestResultCardsProps) {
   const excessReturn = totalReturn - benchmarkReturn;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
       {/* 총 수익률 */}
       <StatCard
         title="총 수익률"

@@ -23,6 +23,8 @@ export function BacktestTradesTable({ trades }: BacktestTradesTableProps) {
         <CardTitle>거래 내역</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
+        {/* 모바일에서 가로 스크롤 허용 */}
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -95,6 +97,7 @@ export function BacktestTradesTable({ trades }: BacktestTradesTableProps) {
             ))}
           </TableBody>
         </Table>
+        </div>
       </CardContent>
     </Card>
   );

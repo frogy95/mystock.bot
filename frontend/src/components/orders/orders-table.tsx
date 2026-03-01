@@ -43,6 +43,8 @@ export function OrdersTable({ orders, onCancel }: OrdersTableProps) {
   return (
     <Card>
       <CardContent className="p-0">
+        {/* 모바일에서 가로 스크롤 허용 */}
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -137,6 +139,7 @@ export function OrdersTable({ orders, onCancel }: OrdersTableProps) {
             )}
           </TableBody>
         </Table>
+        </div>
       </CardContent>
     </Card>
   );
