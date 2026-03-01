@@ -100,8 +100,51 @@ async def _run_strategy_evaluation() -> None:
 
 
 async def _run_risk_monitoring() -> None:
-    """손절/익절 모니터링 (Sprint 7에서 risk_manager 통합 예정)"""
-    logger.debug("손절/익절 모니터링 실행 (Sprint 7에서 구현)")
+    """
+    보유종목의 손절/익절 조건을 평가하고 자동 매도 주문을 실행한다.
+    """
+    from app.core.database import AsyncSessionLocal
+    from app.models.holding import Holding
+    from app.services.risk_manager import evaluate_holding_risk, to_signal
+    from app.services.order_executor import execute_signal
+    from app.services.kis_client import kis_client
+    from sqlalchemy import select
+
+    if not kis_client.is_available():
+        return
+
+    now = datetime.now()
+    if not (9 <= now.hour < 15 or (now.hour == 15 and now.minute <= 30)):
+        return
+
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(Holding).where(
+                    Holding.quantity > 0,
+                    (Holding.stop_loss_rate != None) | (Holding.take_profit_rate != None),
+                )
+            )
+            holdings = result.scalars().all()
+
+            for holding in holdings:
+                try:
+                    risk_signal = await evaluate_holding_risk(holding)
+                    if risk_signal.action != "HOLD":
+                        signal = to_signal(risk_signal)
+                        await execute_signal(
+                            user_id=holding.user_id,
+                            stock_code=holding.stock_code,
+                            signal=signal,
+                            quantity=risk_signal.quantity,
+                            strategy_id=None,
+                            db=db,
+                        )
+                except Exception as e:
+                    logger.warning(f"손절/익절 모니터링 오류 [{holding.stock_code}]: {e}")
+
+    except Exception as e:
+        logger.error(f"손절/익절 모니터링 스케줄 오류: {e}")
 
 
 def get_scheduler() -> AsyncIOScheduler:
