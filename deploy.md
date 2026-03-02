@@ -903,3 +903,151 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 > Sprint 7 프론트엔드 자동 검증 완료 (2026-03-01) — 11/11 항목 통과
 > Sprint 7 백엔드 자동 검증: docker 환경 없이는 자동 실행 불가, 수동 검증 필요
+
+---
+
+## 13. Sprint 9 완료 검증 (사용자 수행 필요)
+
+Sprint 9에서는 텔레그램 알림 ON/OFF 설정, 전략 신호 사전 알림, 일일 매매 요약 API, 전략별 성과 집계 API, 일일 포트폴리오 요약 크론 잡, 대시보드 Mock → 실제 API 교체, 실시간 체결 알림 토스트 UI가 구현되었습니다.
+
+> **자동 검증 항목 (Playwright MCP)**
+> 상세 내용: [docs/sprint/sprint9/playwright-report.md](docs/sprint/sprint9/playwright-report.md)
+
+### 13-1. 신규 패키지 설치 (Docker 재빌드)
+
+Sprint 9에서 추가된 Python 패키지는 없습니다. 프론트엔드 `sonner` 패키지가 추가되었습니다.
+
+```bash
+# 프론트엔드 패키지 설치 (sonner)
+cd frontend
+npm install
+
+# Docker 재빌드 (코드 변경 반영)
+docker compose up --build -d
+```
+
+### 13-2. 신규 API 엔드포인트 검증
+
+```bash
+# 1. 로그인 → 토큰 발급
+TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "설정한_비밀번호"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# 2. 일일 매매 요약 조회
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/v1/orders/daily-summary
+# 응답 예시: {"date": "2026-03-02", "total_buy_count": 0, "total_sell_count": 0, ...}
+
+# 3. 특정 날짜 일일 매매 요약 조회
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8000/api/v1/orders/daily-summary?date=2026-03-01"
+
+# 4. 전략별 성과 집계 조회
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/v1/strategies/performance
+# 응답 예시: [{"id": 1, "name": "GoldenCrossRSI", "trade_count": 0, "win_rate": 0.0, ...}]
+
+# 5. 시장 지수 조회
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/v1/stocks/market-index
+# 응답 예시: [{"index_code": "0001", "name": "KOSPI", "current_value": 2650.5, ...}]
+```
+
+### 13-3. 스케줄러 로그 확인
+
+```bash
+# 일일 요약 알림 크론 잡 등록 확인
+docker compose logs backend | grep -E "(daily_summary|16:00|KST)"
+# 기대: "APScheduler 시작" 로그 및 daily_summary 잡 등록 확인
+```
+
+### 13-4. 텔레그램 알림 ON/OFF 설정 확인
+
+system_settings 테이블에서 알림 키를 설정하여 개별 알림을 ON/OFF할 수 있습니다:
+
+```bash
+# 알림 비활성화 예시 (notify_order_executed를 false로 설정)
+curl -X PUT -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"settings": [{"setting_key": "notify_order_executed", "setting_value": "false", "setting_type": "str"}]}' \
+  http://localhost:8000/api/v1/system-settings
+
+# 지원하는 알림 설정 키:
+# - notify_order_executed (주문 체결 알림)
+# - notify_risk_triggered (손절/익절 알림)
+# - notify_system_error (시스템 오류 알림)
+# - notify_auto_trade_disabled (자동매매 중단 알림)
+# - notify_strategy_signal (전략 신호 사전 알림)
+# - notify_daily_summary (일일 포트폴리오 요약 알림)
+```
+
+### 13-5. 텔레그램 전략 신호 알림 수동 테스트 (선택)
+
+KIS API 키 및 텔레그램 봇 설정이 완료된 경우, 전략 평가를 수동으로 트리거합니다:
+
+```bash
+# 전략 활성화 + 관심종목 등록 후 전략 평가 수동 실행
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/v1/strategies/1/evaluate/005930
+# 신호가 BUY/SELL이고 신뢰도 >= 0.5이면 텔레그램 알림 전송
+```
+
+### 13-6. 프론트엔드 대시보드 실제 API 연동 확인
+
+브라우저에서 `http://localhost:3001/dashboard` 접속:
+
+```
+1. 브라우저 개발자도구 Network 탭 열기
+2. 페이지 새로고침
+3. 다음 API 호출이 200 응답인지 확인:
+   - GET /api/v1/holdings (포트폴리오 요약)
+   - GET /api/v1/orders (매매 신호 및 주문 체결)
+   - GET /api/v1/strategies/performance (전략 성과)
+   - GET /api/v1/stocks/market-index (시장 지수)
+4. Mock 데이터가 아닌 실제 DB 데이터로 대시보드가 렌더링됨 확인
+```
+
+### 13-7. 실시간 체결 알림 토스트 확인
+
+```
+1. http://localhost:3001/dashboard 접속
+2. 브라우저 개발자도구 → Network → WS 탭 확인
+3. /ws/realtime WebSocket 연결 확인
+4. (백엔드에서 주문 발생 시) 우측 하단에 sonner 토스트 알림 표시 확인
+```
+
+### 13-8. Swagger UI 신규 엔드포인트 확인
+
+`http://localhost:8000/docs` 접속:
+
+- `GET /api/v1/orders/daily-summary` 추가 확인
+- `GET /api/v1/strategies/performance` 추가 확인
+- `GET /api/v1/stocks/market-index` 추가 확인
+
+### Sprint 9 완료 체크리스트
+
+**자동 검증 완료 (Playwright MCP, 2026-03-02):**
+- [x] 대시보드 렌더링 (레이아웃 구조 확인 — 백엔드 미실행으로 스켈레톤 상태)
+- [x] 전략 설정 페이지 렌더링 (탭 전환, 로딩 상태)
+- [x] 주문 내역 페이지 렌더링 (Mock 폴백 데이터 표시)
+- [x] 설정 페이지 렌더링 (텔레그램 알림 개별 스위치 3개 확인)
+- [x] 모바일 375px 반응형 레이아웃 (사이드바 숨김, 햄버거 메뉴)
+- [x] sonner 패키지 설치 및 layout.tsx Toaster 컴포넌트 동작 확인
+- [ ] 콘솔 에러 없음 (백엔드 재빌드 후 확인 필요 — 현재 API ERR_CONNECTION_RESET)
+
+> 상세 보고서: [docs/sprint/sprint9/playwright-report.md](docs/sprint/sprint9/playwright-report.md)
+
+**수동 검증 필요 (Docker 실행 후):**
+- [ ] `docker compose up --build` 성공 (Sprint 9 코드 반영)
+- [ ] `GET /api/v1/orders/daily-summary` → 200 + 일일 요약 JSON 반환
+- [ ] `GET /api/v1/strategies/performance` → 200 + 전략 성과 목록 반환
+- [ ] `GET /api/v1/stocks/market-index` → 200 + 시장 지수 데이터 반환
+- [ ] 백엔드 로그에 `daily_summary` 크론 잡 등록 확인
+- [ ] Swagger UI에 3개 신규 엔드포인트 표시
+- [ ] `/dashboard` 프론트엔드 → Network 탭에서 4개 API 호출 200 확인
+- [ ] `/ws/realtime` WebSocket 연결 확인
+- [ ] (선택) 텔레그램 봇 설정 완료 시 전략 신호 알림 수신 확인
+- [ ] (선택) `notify_order_executed` 설정을 "false"로 변경 후 알림 비활성화 확인
+
+> Sprint 9 백엔드 자동 검증: docker 환경 없이는 자동 실행 불가, 수동 검증 필요

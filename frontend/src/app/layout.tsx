@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "sonner";
 import { AppLayout } from "@/components/layout/app-layout";
 import { QueryProvider } from "@/lib/query-provider";
 import "./globals.css";
@@ -31,6 +32,7 @@ export default function RootLayout({
       >
         <QueryProvider>
           <AppLayout>{children}</AppLayout>
+          <Toaster position="top-right" richColors />
         </QueryProvider>
       </body>
     </html>

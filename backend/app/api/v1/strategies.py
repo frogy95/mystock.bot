@@ -5,12 +5,15 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, delete
+from pydantic import BaseModel
+from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
 from app.core.database import get_db
+from app.models.order import Order
 from app.models.strategy import Strategy, StrategyParam
+from app.models.watchlist import WatchlistItem
 from app.schemas.strategy import (
     StrategyActivateRequest,
     StrategyParamBulkUpdate,
@@ -40,6 +43,66 @@ async def _get_strategy_with_params(
     )
     strategy.params = param_result.scalars().all()
     return strategy
+
+
+class StrategyPerformanceResponse(BaseModel):
+    """전략 성과 응답 스키마"""
+
+    id: int
+    name: str
+    trade_count: int
+    buy_count: int
+    sell_count: int
+    win_rate: float
+    active_stocks: int
+    is_active: bool
+
+
+@router.get("/performance", response_model=List[StrategyPerformanceResponse], summary="전략별 성과 집계")
+async def get_strategy_performance(
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """각 전략의 매매 횟수, 승률, 적용 종목 수를 집계하여 반환한다."""
+    result = await db.execute(select(Strategy).order_by(Strategy.id))
+    strategies = result.scalars().all()
+
+    performance_list = []
+    for strategy in strategies:
+        # 해당 전략으로 실행된 주문 집계
+        order_result = await db.execute(
+            select(Order).where(Order.strategy_id == strategy.id)
+        )
+        orders = order_result.scalars().all()
+
+        buy_count = sum(1 for o in orders if o.order_type == "buy")
+        sell_count = sum(1 for o in orders if o.order_type == "sell")
+        trade_count = len(orders)
+        # 승률: 매도 주문 수 / 전체 주문 수 (매도 = 수익 실현 가정)
+        win_rate = round((sell_count / trade_count * 100) if trade_count > 0 else 0.0, 2)
+
+        # 적용 종목 수 (관심종목에 전략이 할당된 종목 수)
+        stock_result = await db.execute(
+            select(func.count(WatchlistItem.id)).where(
+                WatchlistItem.strategy_id == strategy.id
+            )
+        )
+        active_stocks = stock_result.scalar() or 0
+
+        performance_list.append(
+            StrategyPerformanceResponse(
+                id=strategy.id,
+                name=strategy.name,
+                trade_count=trade_count,
+                buy_count=buy_count,
+                sell_count=sell_count,
+                win_rate=win_rate,
+                active_stocks=active_stocks,
+                is_active=strategy.is_active,
+            )
+        )
+
+    return performance_list
 
 
 @router.get("", response_model=List[StrategyResponse], summary="전략 목록 조회")

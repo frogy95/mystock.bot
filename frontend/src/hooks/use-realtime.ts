@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { WSClient } from "@/lib/ws-client";
 
 /** 실시간 시세 데이터 타입 */
@@ -70,4 +71,42 @@ export function useRealtimeQuotes(symbols: string[]) {
   }, [symbolsKey]);
 
   return { quotes, connected };
+}
+
+/**
+ * 실시간 체결 알림 훅
+ * WebSocket으로 notification 메시지 수신 시 토스트로 표시한다.
+ */
+export function useRealtimeNotifications() {
+  const clientRef = useRef<WSClient | null>(null);
+
+  useEffect(() => {
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000";
+    const client = new WSClient(`${wsUrl}/api/v1/ws/quotes`);
+    clientRef.current = client;
+
+    const unsub = client.on("notification", (data: unknown) => {
+      const msg = data as {
+        order_type: string;
+        stock_code: string;
+        quantity: number;
+        price: number;
+        reason: string;
+      };
+      const action = msg.order_type === "buy" ? "매수" : "매도";
+      const text = `${msg.stock_code} ${action} ${msg.quantity}주 @ ${msg.price?.toLocaleString()}원`;
+      if (msg.order_type === "buy") {
+        toast.success(text, { description: msg.reason });
+      } else {
+        toast.info(text, { description: msg.reason });
+      }
+    });
+
+    client.connect();
+
+    return () => {
+      unsub();
+      client.disconnect();
+    };
+  }, []);
 }

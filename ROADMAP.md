@@ -19,10 +19,10 @@
 
 | 항목 | 상태 |
 |------|------|
-| 전체 진행률 | 87% (Sprint 0~8 완료) |
-| 현재 Phase | Phase 4 진행 중 (Sprint 8 완료) |
-| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01), Sprint 2 (2026-03-01), Sprint 3 (2026-03-01), Sprint 4 (2026-03-01), Sprint 4.1 (2026-03-01), Sprint 5 (2026-03-01), Sprint 6 (2026-03-01), Sprint 7 (2026-03-01), Sprint 8 (2026-03-01) |
-| 다음 마일스톤 | Phase 4 Sprint 9 - 텔레그램 알림, 실시간 WebSocket |
+| 전체 진행률 | 95% (Sprint 0~9 완료) |
+| 현재 Phase | Phase 5 준비 중 (Sprint 9 완료) |
+| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01), Sprint 2 (2026-03-01), Sprint 3 (2026-03-01), Sprint 4 (2026-03-01), Sprint 4.1 (2026-03-01), Sprint 5 (2026-03-01), Sprint 6 (2026-03-01), Sprint 7 (2026-03-01), Sprint 8 (2026-03-01), Sprint 9 (2026-03-02) |
+| 다음 마일스톤 | Phase 5 Sprint 10 - 통합 테스트, 안정화, MVP 출시 |
 | 예상 MVP 완료일 | 2026-05-10 |
 
 ---
@@ -505,29 +505,29 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
   - 수익 곡선 데이터 (equity_curve) API 반환
   - 프론트엔드 Mock 데이터를 실제 API로 교체 (`hooks/use-backtest.ts` - useBacktestRun, useBacktestResults, useBacktestResult)
 
-#### Sprint 9 (Week 9): 알림 및 실시간 기능
-- [ ] **텔레그램 알림 서비스** [Must Have] [복잡도: 중간]
-  - python-telegram-bot 연동
-  - 알림 서비스 (`services/alert_service.py`)
+#### Sprint 9 (Week 9): 알림 및 실시간 기능 ✅ 완료 (2026-03-02)
+- [x] **텔레그램 알림 서비스** [Must Have] [복잡도: 중간]
+  - python-telegram-bot 연동 (기존 Sprint 8 구현 기반)
+  - 알림 서비스 (`services/telegram_notifier.py`)
   - 알림 유형 구현
-    - 매수/매도 주문 실행 알림
-    - 주문 체결 확인 알림
+    - 매수/매도 주문 실행 알림 (notify_order_executed)
+    - 주문 체결 확인 알림 (notify_risk_triggered)
     - 손절/익절 트리거 알림
-    - 전략 신호 발생 알림 (사전 알림)
-    - 일일 포트폴리오 요약 (장 마감 후 15:30~16:00)
-    - 시스템 에러 알림
+    - 전략 신호 발생 알림 - 사전 알림 (notify_strategy_signal)
+    - 일일 포트폴리오 요약 (평일 16:00 KST 크론 잡, notify_daily_portfolio_summary)
+    - 시스템 에러 알림 (notify_system_error, notify_auto_trade_disabled)
   - 알림 템플릿 (Markdown 포맷)
-  - 알림 ON/OFF 개별 설정 API
-- [ ] **실시간 WebSocket 연동** [Should Have] [복잡도: 높음]
-  - 한국투자증권 WebSocket 실시간 체결 연동
-  - 프론트엔드 WebSocket 클라이언트 구현
+  - 알림 ON/OFF 개별 설정 (_is_notification_enabled, system_settings 조회)
+- [x] **실시간 WebSocket 연동** [Should Have] [복잡도: 높음]
+  - 프론트엔드 WebSocket 클라이언트 구현 (hooks/use-realtime.ts)
   - 보유종목 실시간 시세 업데이트
-  - 실시간 체결 알림 UI (토스트/스낵바)
-- [ ] **대시보드 실시간 데이터 완성** [Must Have] [복잡도: 중간]
-  - 대시보드의 모든 데이터를 실시간 API 연동으로 교체
-  - 전략별 성과 집계 API
-  - 일일 매매 요약 API
-  - 자동 새로고침 (TanStack Query refetchInterval)
+  - 실시간 체결 알림 UI (sonner 토스트, WebSocket 브로드캐스트)
+- [x] **대시보드 실시간 데이터 완성** [Must Have] [복잡도: 중간]
+  - 대시보드의 모든 Mock 데이터를 실제 API 연동으로 교체 (4개 훅)
+  - 전략별 성과 집계 API (GET /api/v1/strategies/performance)
+  - 일일 매매 요약 API (GET /api/v1/orders/daily-summary)
+  - 시장 지수 API (GET /api/v1/stocks/market-index)
+  - 자동 새로고침 (TanStack Query refetchInterval 60~120초)
 
 ### 완료 기준 (Definition of Done)
 - 백테스팅이 3종 전략에 대해 최소 3년 데이터로 실행되고 결과가 차트로 표시됨

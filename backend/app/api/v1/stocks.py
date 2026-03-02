@@ -39,6 +39,20 @@ async def get_balance(current_user: str = Depends(get_current_user)):
     return result
 
 
+@router.get("/market-index", summary="시장 지수 조회")
+async def get_market_index(current_user: str = Depends(get_current_user)):
+    """KOSPI, KOSDAQ 지수 현재가를 반환한다. KIS 미설정 시 빈 배열 반환."""
+    if not kis_client.is_available():
+        return []
+
+    results = []
+    for code in ("0001", "1001"):
+        index = await kis_client.get_market_index(code)
+        if index:
+            results.append(index)
+    return results
+
+
 @router.get("/{symbol}/quote", response_model=StockQuoteResponse, summary="현재가 조회")
 async def get_stock_quote(symbol: str, current_user: str = Depends(get_current_user)):
     """주식 심볼의 현재가를 조회한다. (인증 필요)"""

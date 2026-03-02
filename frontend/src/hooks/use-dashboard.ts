@@ -2,12 +2,6 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  mockTradeSignals,
-  mockOrderExecutions,
-  mockStrategyPerformances,
-  mockMarketIndices,
-} from "@/lib/mock";
 import type {
   TradeSignal,
   OrderExecution,
@@ -28,9 +22,38 @@ interface PortfolioSummaryAPI {
   holdings_count: number;
 }
 
-// Mock 지연 시뮬레이션 (아직 Mock 사용하는 훅들에서만 사용)
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/** 백엔드 주문 API 응답 타입 */
+interface OrderAPI {
+  id: number;
+  stock_code: string;
+  order_type: string;
+  status: string;
+  strategy_id: number | null;
+  quantity: number | null;
+  price: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** 백엔드 전략 성과 API 응답 타입 */
+interface StrategyPerformanceAPI {
+  id: number;
+  name: string;
+  trade_count: number;
+  buy_count: number;
+  sell_count: number;
+  win_rate: number;
+  active_stocks: number;
+  is_active: boolean;
+}
+
+/** 백엔드 시장 지수 API 응답 타입 */
+interface MarketIndexAPI {
+  index_code: string;
+  name: string;
+  current_value: number;
+  change_value: number;
+  change_rate: number;
 }
 
 /** 포트폴리오 요약 조회 (실제 API) */
@@ -79,46 +102,87 @@ export function useHoldings() {
   return { ...query, data: holdingsWithRealtime, wsConnected };
 }
 
-/** 매매 신호 (Sprint 6에서 실제 API 연동 예정) */
+/** 매매 신호: 오늘 주문 목록을 TradeSignal로 변환 */
 export function useTradeSignals() {
   return useQuery<TradeSignal[]>({
     queryKey: ["dashboard", "tradeSignals"],
     queryFn: async () => {
-      await delay(400);
-      return mockTradeSignals;
+      const orders = await apiClient.get<OrderAPI[]>("/api/v1/orders");
+      const today = new Date().toISOString().slice(0, 10);
+      return orders
+        .filter((o) => o.created_at.startsWith(today))
+        .map((o) => ({
+          id: String(o.id),
+          symbol: o.stock_code,
+          name: o.stock_code,
+          strategyName: o.strategy_id ? `전략 #${o.strategy_id}` : "수동",
+          signalType: o.order_type.toUpperCase() as "BUY" | "SELL",
+          reason: o.status,
+          targetPrice: o.price ?? 0,
+          confidence: 100,
+          createdAt: o.created_at,
+        }));
     },
+    refetchInterval: 60_000,
   });
 }
 
-/** 주문 체결 내역 (Sprint 6에서 실제 API 연동 예정) */
+/** 주문 체결 내역: 최근 10건을 OrderExecution으로 변환 */
 export function useOrderExecutions() {
   return useQuery<OrderExecution[]>({
     queryKey: ["dashboard", "orderExecutions"],
     queryFn: async () => {
-      await delay(500);
-      return mockOrderExecutions;
+      const orders = await apiClient.get<OrderAPI[]>("/api/v1/orders");
+      return orders.slice(0, 10).map((o) => ({
+        id: String(o.id),
+        symbol: o.stock_code,
+        name: o.stock_code,
+        orderType: o.order_type.toUpperCase() as "BUY" | "SELL",
+        quantity: o.quantity ?? 0,
+        price: o.price ?? 0,
+        status: o.status.toUpperCase() as "FILLED" | "PENDING" | "CANCELLED",
+        strategyName: o.strategy_id ? `전략 #${o.strategy_id}` : "수동",
+        executedAt: o.created_at,
+      }));
     },
+    refetchInterval: 60_000,
   });
 }
 
-/** 전략 성과 (Sprint 6에서 실제 API 연동 예정) */
+/** 전략 성과: 실제 API 연동 */
 export function useStrategyPerformances() {
   return useQuery<StrategyPerformance[]>({
     queryKey: ["dashboard", "strategyPerformances"],
     queryFn: async () => {
-      await delay(300);
-      return mockStrategyPerformances;
+      const data = await apiClient.get<StrategyPerformanceAPI[]>("/api/v1/strategies/performance");
+      return data.map((s) => ({
+        id: String(s.id),
+        name: s.name,
+        totalReturn: 0,
+        winRate: s.win_rate,
+        tradeCount: s.trade_count,
+        activeStocks: s.active_stocks,
+        isActive: s.is_active,
+      }));
     },
+    refetchInterval: 120_000,
   });
 }
 
-/** 시장 지수 (Sprint 9에서 실제 API 연동 예정) */
+/** 시장 지수: 실제 API 연동 */
 export function useMarketIndices() {
   return useQuery<MarketIndex[]>({
     queryKey: ["dashboard", "marketIndices"],
     queryFn: async () => {
-      await delay(700);
-      return mockMarketIndices;
+      const data = await apiClient.get<MarketIndexAPI[]>("/api/v1/stocks/market-index");
+      return data.map((d) => ({
+        name: d.name,
+        currentValue: d.current_value,
+        changeValue: d.change_value,
+        changeRate: d.change_rate,
+        chartData: [],
+      }));
     },
+    refetchInterval: 60_000,
   });
 }

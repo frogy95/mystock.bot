@@ -118,6 +118,16 @@ async def execute_signal(
                     reason=f"[시뮬레이션] {signal.reason}",
                 )
             )
+            # WebSocket 브로드캐스트 (실시간 체결 알림)
+            from app.services.websocket_manager import ws_manager
+            asyncio.create_task(ws_manager.broadcast({
+                "type": "notification",
+                "order_type": order_type,
+                "stock_code": stock_code,
+                "quantity": quantity,
+                "price": float(price),
+                "reason": f"[시뮬레이션] {signal.reason}",
+            }))
             return order
 
         # KIS 주문 실행
@@ -150,6 +160,16 @@ async def execute_signal(
                     reason=signal.reason,
                 )
             )
+            # WebSocket 브로드캐스트 (실시간 체결 알림)
+            from app.services.websocket_manager import ws_manager
+            asyncio.create_task(ws_manager.broadcast({
+                "type": "notification",
+                "order_type": order_type,
+                "stock_code": stock_code,
+                "quantity": quantity,
+                "price": float(price),
+                "reason": signal.reason,
+            }))
         else:
             order.status = "failed"
             log = OrderLog(
