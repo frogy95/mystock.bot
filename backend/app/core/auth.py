@@ -19,6 +19,14 @@ _bearer_scheme = HTTPBearer()
 # 토큰 유효 기간: 24시간
 _TOKEN_TTL = 86400
 
+# 데모 유저 상수
+DEMO_USERNAME = "__demo__"
+
+
+def is_demo_user(username: str) -> bool:
+    """데모 유저인지 확인한다."""
+    return username == DEMO_USERNAME
+
 
 def _sign(payload: str) -> str:
     """SECRET_KEY로 HMAC-SHA256 서명을 생성한다."""
