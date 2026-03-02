@@ -72,7 +72,7 @@ async def run_backtest_api(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"백테스팅 실행 오류 [{request.symbol}/{request.strategy_name}]: {e}")
-        raise HTTPException(status_code=500, detail=f"백테스팅 실행 오류: {e}")
+        raise HTTPException(status_code=500, detail="백테스팅 실행 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
 
     # DB에 결과 저장
     result_data = {

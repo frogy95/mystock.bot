@@ -53,6 +53,10 @@ export function useUpdateSettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["settings"] });
     },
+    onError: (error) => {
+      // 설정 업데이트 실패 로깅 (toast는 MutationCache 글로벌 핸들러에서 처리)
+      console.error("[useUpdateSettings] 설정 업데이트 실패:", error);
+    },
   });
 }
 
@@ -67,6 +71,10 @@ export function useToggleAutoTrade() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["safety"] });
     },
+    onError: (error) => {
+      // 자동매매 토글 실패 로깅 (toast는 MutationCache 글로벌 핸들러에서 처리)
+      console.error("[useToggleAutoTrade] 자동매매 토글 실패:", error);
+    },
   });
 }
 
@@ -79,6 +87,10 @@ export function useEmergencySell() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portfolio"] });
       queryClient.invalidateQueries({ queryKey: ["safety"] });
+    },
+    onError: (error) => {
+      // 긴급 매도 실패 로깅 (toast는 MutationCache 글로벌 핸들러에서 처리)
+      console.error("[useEmergencySell] 긴급 매도 실패:", error);
     },
   });
 }

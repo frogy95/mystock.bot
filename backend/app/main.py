@@ -5,10 +5,21 @@ FastAPI 애플리케이션 엔트리포인트
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 import app.core.logging as _logging_setup  # 로깅 설정 초기화
 from app.api.v1 import router as v1_router
+from app.core.exceptions import (
+    AppError,
+    handle_app_error,
+    handle_general_error,
+    handle_integrity_error,
+    handle_operational_error,
+    handle_validation_error,
+)
+from app.core.middleware import RequestIdMiddleware
 from app.services.redis_client import close_redis
 from app.services.stock_master import load_stock_master
 from app.services.scheduler import start_scheduler, stop_scheduler
@@ -61,6 +72,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Request ID 미들웨어 등록 (요청 추적)
+app.add_middleware(RequestIdMiddleware)
+
+# 글로벌 예외 핸들러 등록
+app.add_exception_handler(AppError, handle_app_error)
+app.add_exception_handler(RequestValidationError, handle_validation_error)
+app.add_exception_handler(IntegrityError, handle_integrity_error)
+app.add_exception_handler(OperationalError, handle_operational_error)
+app.add_exception_handler(Exception, handle_general_error)
 
 # v1 API 라우터 등록
 app.include_router(v1_router.router, prefix="/api/v1")

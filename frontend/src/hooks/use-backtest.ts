@@ -75,5 +75,9 @@ export function useBacktestRun() {
       // 결과 목록 캐시 무효화
       queryClient.invalidateQueries({ queryKey: ["backtest", "results"] });
     },
+    onError: (error) => {
+      // 백테스팅 실행 실패 로깅 (toast는 MutationCache 글로벌 핸들러에서 처리)
+      console.error("[useBacktestRun] 백테스팅 실행 실패:", error);
+    },
   });
 }

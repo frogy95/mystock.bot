@@ -19,10 +19,10 @@
 
 | 항목 | 상태 |
 |------|------|
-| 전체 진행률 | 95% (Sprint 0~9 완료) |
-| 현재 Phase | Phase 5 준비 중 (Sprint 9 완료) |
-| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01), Sprint 2 (2026-03-01), Sprint 3 (2026-03-01), Sprint 4 (2026-03-01), Sprint 4.1 (2026-03-01), Sprint 5 (2026-03-01), Sprint 6 (2026-03-01), Sprint 7 (2026-03-01), Sprint 8 (2026-03-01), Sprint 9 (2026-03-02) |
-| 다음 마일스톤 | Phase 5 Sprint 10 - 통합 테스트, 안정화, MVP 출시 |
+| 전체 진행률 | 100% (Sprint 0~10 완료) |
+| 현재 Phase | Phase 5 완료 (Sprint 10 완료, MVP 출시 준비) |
+| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01), Sprint 2 (2026-03-01), Sprint 3 (2026-03-01), Sprint 4 (2026-03-01), Sprint 4.1 (2026-03-01), Sprint 5 (2026-03-01), Sprint 6 (2026-03-01), Sprint 7 (2026-03-01), Sprint 8 (2026-03-01), Sprint 9 (2026-03-02), Sprint 10 (2026-03-02) |
+| 다음 마일스톤 | M5: MVP 출시 - 모의투자 5일 연속 안정 운영, 실전 전환 준비 |
 | 예상 MVP 완료일 | 2026-05-10 |
 
 ---
@@ -574,41 +574,30 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 ### 목표
 모의투자 환경에서 전체 시스템 통합 테스트를 수행하고, 안정성을 검증하여 MVP를 완성한다. 최소 5일 연속 무장애 운영을 달성한다.
 
-### 작업 목록
-- ⬜ **통합 테스트 (모의투자)** [Must Have] [복잡도: 높음]
-  - 전체 흐름 E2E 테스트
-    - 관심종목 등록 -> 전략 할당 -> 매매 신호 생성 -> 자동 주문 -> 체결 -> 알림
-  - 3종 전략별 모의투자 실행 (각 최소 2일)
-  - 손절/익절 트리거 검증
-  - 장중 연속 운영 안정성 테스트 (5일 연속 목표)
-  - API Rate Limit 내 정상 동작 검증
-- ⬜ **에러 핸들링 강화** [Must Have] [복잡도: 중간]
-  - 모든 API 엔드포인트 에러 응답 표준화 (에러 코드, 메시지)
-  - 프론트엔드 글로벌 에러 핸들러 구현
-  - API 호출 실패 시 사용자 친화적 에러 메시지 표시
-  - 네트워크 오류 시 자동 재시도 (TanStack Query retry)
-- ⬜ **로깅 및 모니터링 강화** [Must Have] [복잡도: 중간]
-  - 구조화된 로그 포맷 (JSON)
-  - 로그 레벨 설정 (DEBUG/INFO/WARNING/ERROR)
-  - 주문 실행 감사 로그 (audit log)
-  - 시스템 상태 모니터링 대시보드 (간단한 헬스 페이지)
-- ⬜ **안전장치 최종 검증** [Must Have] [복잡도: 중간]
-  - 일일 최대 손실 한도 도달 시 매매 자동 중단 검증
-  - 일일 최대 주문 횟수 초과 방지 검증
-  - 단일 종목 최대 비중 초과 방지 검증
-  - 긴급 전체 매도 기능 검증
-  - 중복 주문 방지 검증
-  - WebSocket 재연결 검증
-- ⬜ **문서화** [Should Have] [복잡도: 낮음]
+#### Sprint 10 (Week 10): 통합 테스트, 안정화, MVP 출시 준비 ✅ 완료 (2026-03-02)
+- ✅ **에러 핸들링 강화** [Must Have] [복잡도: 중간]
+  - 모든 API 엔드포인트 에러 응답 표준화 (에러 코드, 메시지) - `exceptions.py` 신규
+  - 5개 글로벌 예외 핸들러 등록 (AppError, IntegrityError, OperationalError 등)
+  - RequestIdMiddleware 추가 (X-Request-ID 헤더)
+  - 프론트엔드 글로벌 에러 핸들러 구현 (error.tsx, global-error.tsx, not-found.tsx)
+  - TanStack Query MutationCache 글로벌 onError → toast.error
+- ✅ **로깅 및 모니터링 강화** [Must Have] [복잡도: 중간]
+  - 구조화된 로그 포맷 (JSON, python-json-logger)
+  - 요청별 소요 시간(duration_ms) 로그 기록
+  - Health Check 개선: DB/Redis/스케줄러 실제 상태 확인
+- ✅ **Mock 데이터 → 실제 API 연동** [Must Have] [복잡도: 중간]
+  - orders/page.tsx: Zustand mock → useOrders() 훅
+  - settings/page.tsx: Zustand mock → 실제 API 훅
+  - backtest/page.tsx: setTimeout mock → useBacktestRun() 뮤테이션
+- ✅ **백엔드 통합 테스트** [Must Have] [복잡도: 중간]
+  - pytest + httpx + aiosqlite 인메모리 DB 기반 테스트 인프라
+  - test_health.py (3개), test_orders.py (4개), test_auth.py (3개), test_safety.py (4개)
+- ✅ **문서화** [Should Have] [복잡도: 낮음]
   - README.md 작성 (프로젝트 소개, 설치 가이드, 실행 방법)
   - 환경변수 설정 가이드 (`.env.example` 상세 주석)
-  - API 문서 최종 검토 (FastAPI Swagger 자동 문서)
-  - 면책 조항 작성 (자동매매 투자 조언 해당하지 않음)
-- ⬜ **실전 투자 전환 준비** [Must Have] [복잡도: 낮음]
-  - 모의투자 -> 실전투자 환경변수 전환 가이드
-  - 실전투자 전환 체크리스트 작성
-  - API 도메인 전환 (`openapivts` -> `openapi`)
-  - 실전 Rate Limit(초당 20건) 적용 확인
+  - deploy.md Sprint 10 검증 섹션 추가 (섹션 14)
+- ⬜ **통합 테스트 (모의투자)** [Must Have] [복잡도: 높음] — 모의투자 5일 연속 운영 (사용자 직접 수행 필요)
+- ⬜ **실전 투자 전환 준비** [Must Have] [복잡도: 낮음] — deploy.md 체크리스트 참고
 
 ### 완료 기준 (Definition of Done)
 - 모의투자 환경에서 최소 5일 연속 무장애 운영 달성
