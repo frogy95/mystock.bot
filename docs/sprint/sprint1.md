@@ -97,14 +97,14 @@ docker compose logs --tail=20 frontend
 
 ## 완료 기준 (Definition of Done)
 
-- [x] `docker compose up`으로 4개 서비스 기동 가능한 코드 완성
-- [x] `/api/v1/health` 200 OK 응답 구현
-- [x] Swagger UI (`/docs`) 렌더링 가능
-- [x] Next.js `localhost:3001` 렌더링 코드 완성
-- [x] DB 10개 테이블 ORM 모델 및 마이그레이션 파일 작성
-- [x] seed.py 스크립트 작성
-- [ ] `docker compose up` 실제 검증 (사용자 수행 필요)
-- [ ] `alembic upgrade head` 실행 (사용자 수행 필요)
+- ✅ `docker compose up`으로 4개 서비스 기동 가능한 코드 완성
+- ✅ `/api/v1/health` 200 OK 응답 구현
+- ✅ Swagger UI (`/docs`) 렌더링 가능
+- ✅ Next.js `localhost:3001` 렌더링 코드 완성
+- ✅ DB 10개 테이블 ORM 모델 및 마이그레이션 파일 작성
+- ✅ seed.py 스크립트 작성
+- ⬜ `docker compose up` 실제 검증 (사용자 수행 필요)
+- ⬜ `alembic upgrade head` 실행 (사용자 수행 필요)
 
 ---
 

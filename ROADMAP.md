@@ -80,24 +80,24 @@ Phase 5 (안정화 및 배포)
 개발 환경 설정 및 외부 서비스 사전 준비를 완료하여 즉시 개발에 착수할 수 있는 상태를 만든다.
 
 ### 작업 목록
-- [x] **한국투자증권 계정 준비**
-  - [x] 한국투자증권 계좌 개설 (비대면)
-  - [x] HTS ID 등록
-  - [x] KIS Developers 서비스 신청
-  - [x] App Key / App Secret 발급 (실계좌 + 모의투자)
-  - [x] 모의투자 계정 별도 신청
-- [x] **텔레그램 봇 생성**
-  - [x] BotFather로 봇 생성
-  - [x] 봇 토큰 발급
-  - [x] 테스트 채팅방 설정 및 Chat ID 확인
-- [x] **개발 환경 설정**
-  - [x] Python 3.12+ 설치 확인 — Python 3.12.12 (Homebrew)
-  - [x] Node.js 22+ (LTS) 설치 확인 — Node.js 25.6.0 (Homebrew)
-  - [x] Docker Desktop 설치 및 설정 — Docker 29.2.1 (Homebrew Cask)
-  - [x] Git 레포지토리 초기화 (monorepo 구조) — `cd3c6f3` (2026-02-28)
-  - [x] `.env.example` 파일 생성 (API 키 템플릿) — `cd3c6f3` (2026-02-28)
-  - [x] `.gitignore` 설정 (API 키, 환경변수 파일 제외) — `cd3c6f3` (2026-02-28)
-  - [x] `.env` 파일 생성 및 전체 환경변수 입력 완료 (2026-03-01)
+- ✅ **한국투자증권 계정 준비**
+  - ✅ 한국투자증권 계좌 개설 (비대면)
+  - ✅ HTS ID 등록
+  - ✅ KIS Developers 서비스 신청
+  - ✅ App Key / App Secret 발급 (실계좌 + 모의투자)
+  - ✅ 모의투자 계정 별도 신청
+- ✅ **텔레그램 봇 생성**
+  - ✅ BotFather로 봇 생성
+  - ✅ 봇 토큰 발급
+  - ✅ 테스트 채팅방 설정 및 Chat ID 확인
+- ✅ **개발 환경 설정**
+  - ✅ Python 3.12+ 설치 확인 — Python 3.12.12 (Homebrew)
+  - ✅ Node.js 22+ (LTS) 설치 확인 — Node.js 25.6.0 (Homebrew)
+  - ✅ Docker Desktop 설치 및 설정 — Docker 29.2.1 (Homebrew Cask)
+  - ✅ Git 레포지토리 초기화 (monorepo 구조) — `cd3c6f3` (2026-02-28)
+  - ✅ `.env.example` 파일 생성 (API 키 템플릿) — `cd3c6f3` (2026-02-28)
+  - ✅ `.gitignore` 설정 (API 키, 환경변수 파일 제외) — `cd3c6f3` (2026-02-28)
+  - ✅ `.env` 파일 생성 및 전체 환경변수 입력 완료 (2026-03-01)
 
 ### 완료 기준 (Definition of Done)
 - 한국투자증권 모의투자 API 키가 발급되어 `.env` 파일에 설정됨
@@ -119,25 +119,25 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 ### 작업 목록
 
 #### Sprint 1 (Week 1): 프로젝트 구조 및 인프라 ✅ 완료 (2026-03-01)
-- [x] **Monorepo 프로젝트 구조 생성** [Must Have] [복잡도: 낮음]
+- ✅ **Monorepo 프로젝트 구조 생성** [Must Have] [복잡도: 낮음]
   - `/frontend` - Next.js 16 프로젝트 초기화 (App Router, TypeScript, Tailwind v4)
   - `/backend` - FastAPI 프로젝트 초기화 (pydantic-settings, SQLAlchemy 2.x)
   - `/docker` - Docker 관련 설정 파일 (backend/frontend Dockerfile)
   - `docker-compose.yml` 생성 (frontend, backend, postgres, redis)
-- [x] **Docker Compose 환경 구성** [Must Have] [복잡도: 중간]
+- ✅ **Docker Compose 환경 구성** [Must Have] [복잡도: 중간]
   - PostgreSQL 16 컨테이너 설정 (healthcheck 포함)
   - Redis 7 컨테이너 설정 (healthcheck 포함)
   - FastAPI 백엔드 컨테이너 (핫 리로드 지원)
   - Next.js 프론트엔드 컨테이너 (핫 리로드 지원)
   - 네트워크 및 볼륨 설정 (postgres_data 영구 볼륨)
   - 환경변수 파일 연동 (`.env`) + Docker 네트워크 호스트 오버라이드
-- [x] **FastAPI 백엔드 기본 설정** [Must Have] [복잡도: 중간]
+- ✅ **FastAPI 백엔드 기본 설정** [Must Have] [복잡도: 중간]
   - FastAPI 앱 초기화 (`app/main.py`)
   - CORS 미들웨어 설정
   - 환경변수 설정 모듈 (`app/core/config.py`)
   - 로깅 설정 (`app/core/logging.py`)
   - 헬스체크 엔드포인트 (`/api/v1/health`)
-- [x] **DB 스키마 설계 및 마이그레이션 설정** [Must Have] [복잡도: 중간]
+- ✅ **DB 스키마 설계 및 마이그레이션 설정** [Must Have] [복잡도: 중간]
   - SQLAlchemy 2.x ORM 모델 정의 (10개 테이블)
     - `users`, `watchlist_groups`, `watchlist_items`
     - `strategies`, `strategy_params`
@@ -148,7 +148,7 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
   - seed 데이터 스크립트 (`scripts/seed.py`, 기본 전략 프리셋 3종)
 
 #### Sprint 2 (Week 2): API 연동 기반
-- [x] **한국투자증권 API 클라이언트 모듈** [Must Have] [복잡도: 높음]
+- ✅ **한국투자증권 API 클라이언트 모듈** [Must Have] [복잡도: 높음]
   - python-kis 라이브러리 설치 및 초기 설정
   - 인증 모듈 (`services/kis_client.py`)
     - OAuth 2.0 토큰 발급/갱신 로직
@@ -159,11 +159,11 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
   - 잔고 조회 API 래핑
   - API Rate Limit 처리 (모의: 초당 5건)
   - API 호출 실패 시 재시도 로직 (최대 3회, 지수 백오프)
-- [x] **기본 인증 시스템 (단일 유저)** [Must Have] [복잡도: 낮음]
+- ✅ **기본 인증 시스템 (단일 유저)** [Must Have] [복잡도: 낮음]
   - 환경변수 기반 단일 유저 인증
   - API 엔드포인트 보호 미들웨어
   - 설정 페이지용 API 키 등록/조회 엔드포인트
-- [x] **Next.js 프론트엔드 기본 설정** [Must Have] [복잡도: 중간]
+- ✅ **Next.js 프론트엔드 기본 설정** [Must Have] [복잡도: 중간]
   - Next.js 16+ App Router 프로젝트 구조 설정
   - TailwindCSS + shadcn/ui 초기화
   - 공통 레이아웃 컴포넌트 (사이드바, 헤더, 푸터)
@@ -214,28 +214,28 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 ### 작업 목록
 
 #### Sprint 3 (Week 3): 핵심 화면 UI ✅ 완료 (2026-03-01, Playwright MCP 검증 완료)
-- [x] **대시보드 화면 UI** [Must Have] [복잡도: 높음]
+- ✅ **대시보드 화면 UI** [Must Have] [복잡도: 높음]
   - 포트폴리오 총 평가금액 / 일일 손익 / 총 수익률 카드
   - 보유종목 리스트 테이블 (Mock 데이터)
   - 오늘의 매매 신호 요약 카드
   - 실행된 주문 요약 타임라인
   - 전략별 성과 요약 카드
   - KOSPI/KOSDAQ 지수 미니 차트 (Lightweight Charts v5)
-- [x] **관심종목 관리 화면 UI** [Must Have] [복잡도: 중간]
+- ✅ **관심종목 관리 화면 UI** [Must Have] [복잡도: 중간]
   - 종목 검색 입력 (종목코드 또는 종목명)
   - 검색 결과 드롭다운 (Popover)
   - 그룹별 관심종목 목록 (Tabs)
   - 종목별 현재가, 등락률, 주요 지표 테이블
   - 종목 추가/삭제 기능
   - 종목별 전략 할당 드롭다운
-- [x] **보유종목(포트폴리오) 화면 UI** [Must Have] [복잡도: 중간]
+- ✅ **보유종목(포트폴리오) 화면 UI** [Must Have] [복잡도: 중간]
   - 보유종목 테이블 (종목명, 매입가, 수량, 현재가, 수익률, 평가금액)
   - 종목별 손절/익절 라인 설정 인라인 편집
   - 종목별 매도 전략 선택
   - 포트폴리오 파이 차트 (Recharts 도넛)
 
 #### Sprint 4 (Week 4): 전략/백테스팅/설정 화면 UI ✅ 완료 (2026-03-01)
-- [x] **전략 설정 화면 UI** [Must Have] [복잡도: 높음]
+- ✅ **전략 설정 화면 UI** [Must Have] [복잡도: 높음]
   - 프리셋 전략 3종 카드 형태 표시
     - 골든크로스 + RSI 복합
     - 가치 + 모멘텀 하이브리드
@@ -243,7 +243,7 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
   - 전략 상세 파라미터 조절 폼 (슬라이더, 숫자 입력 필드)
   - 전략 활성화/비활성화 토글
   - 종목-전략 매핑 테이블 (어떤 종목에 어떤 전략 적용 중인지)
-- [x] **백테스팅 화면 UI** [Should Have] [복잡도: 중간]
+- ✅ **백테스팅 화면 UI** [Should Have] [복잡도: 중간]
   - 전략 선택 드롭다운
   - 종목 선택 (멀티 셀렉트)
   - 기간 선택 (데이트 레인지 피커, 3년~10년)
@@ -251,13 +251,13 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
   - 결과 대시보드 (Mock): 수익 곡선, MDD, 샤프비율 카드
   - 벤치마크(KOSPI) 대비 비교 차트
   - 거래 내역 테이블 (진입/청산 가격, 수익률)
-- [x] **주문 내역 화면 UI** [Must Have] [복잡도: 중간]
+- ✅ **주문 내역 화면 UI** [Must Have] [복잡도: 중간]
   - 미체결 주문 목록 탭
   - 체결 완료 주문 히스토리 탭
   - 주문별 전략명, 판단 근거 표시
   - 수동 주문 취소 버튼
   - 필터 (날짜, 종목, 전략, 매수/매도)
-- [x] **설정 화면 UI** [Must Have] [복잡도: 낮음]
+- ✅ **설정 화면 UI** [Must Have] [복잡도: 낮음]
   - 한국투자증권 API 키 등록 폼 (appkey, appsecret)
   - 모의투자/실전투자 환경 전환 토글
   - 텔레그램 봇 토큰 및 Chat ID 설정 폼
@@ -268,7 +268,7 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
     - 단일 종목 최대 투자 비중 (%)
   - 자동매매 마스터 ON/OFF 스위치
   - 긴급 전체 매도 버튼 (확인 모달 포함)
-- [x] **커스텀 전략 빌더 UI** [Could Have] [복잡도: 높음] ✅ 완료 (2026-03-01, Sprint 4.1)
+- ✅ **커스텀 전략 빌더 UI** [Could Have] [복잡도: 높음] ✅ 완료 (2026-03-01, Sprint 4.1)
   - 지표 선택 드롭다운 (SMA, EMA, RSI, MACD, BB, ATR, Volume Ratio, Price 등 8종)
   - AND/OR 조건 조합 빌더 (매수/매도 조건 섹션 분리)
   - 파라미터 입력 필드 (지표별 동적 파라미터 렌더링)
@@ -347,27 +347,27 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 ### 작업 목록
 
 #### Sprint 5 (Week 5): 관심종목/보유종목 관리 API ✅ 완료 (2026-03-01)
-- [x] **종목 검색 API** [Must Have] [복잡도: 중간]
+- ✅ **종목 검색 API** [Must Have] [복잡도: 중간]
   - pykrx 기반 종목 마스터 Redis 캐시 (TTL 24시간)
   - `GET /api/v1/stocks/search?q={query}` 엔드포인트
-- [x] **관심종목 CRUD API** [Must Have] [복잡도: 중간]
+- ✅ **관심종목 CRUD API** [Must Have] [복잡도: 중간]
   - 관심종목 그룹 생성/조회/수정/삭제
   - 관심종목 추가/삭제
   - 종목별 전략 할당
   - `POST/GET/PUT/DELETE /api/v1/watchlist/...` 엔드포인트
-- [x] **보유종목 동기화 API** [Must Have] [복잡도: 중간]
+- ✅ **보유종목 동기화 API** [Must Have] [복잡도: 중간]
   - 한국투자증권 잔고 조회 API 연동 (avg_price 포함)
   - 보유종목 데이터 DB upsert 동기화
   - 포트폴리오 요약 계산 (총평가/손익/예수금)
   - 종목별 손절/익절 라인 설정 API
   - `GET/POST /api/v1/holdings/...` 엔드포인트
-- [x] **프론트엔드-백엔드 연동 (관심종목/보유종목)** [Must Have] [복잡도: 중간]
+- ✅ **프론트엔드-백엔드 연동 (관심종목/보유종목)** [Must Have] [복잡도: 중간]
   - Mock 데이터를 실제 API 호출로 교체 (use-watchlist, use-portfolio, use-dashboard)
   - TanStack Query mutation hooks 신규 구현 (use-watchlist-mutations, use-holdings-mutations)
   - 에러 핸들링 및 로딩 상태 처리
 
 #### Sprint 6 (Week 6): 전략 엔진 및 자동매매 - 완료 (2026-03-01)
-- [x] **기술적 분석 지표 엔진** [Must Have] [복잡도: 높음]
+- ✅ **기술적 분석 지표 엔진** [Must Have] [복잡도: 높음]
   - pandas-ta 연동
   - 지표 계산 서비스 (`services/indicators.py`)
     - SMA/EMA 이동평균
@@ -378,14 +378,14 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
     - Volume Ratio
   - 지표 계산 결과 캐싱 (Redis, TTL 5분)
   - 일봉 데이터 기반 지표 계산
-- [x] **프리셋 전략 3종 구현** [Must Have] [복잡도: 높음]
+- ✅ **프리셋 전략 3종 구현** [Must Have] [복잡도: 높음]
   - 전략 엔진 코어 (`services/strategy_engine.py`) - BaseStrategy 추상 클래스
   - 전략 1: GoldenCrossRSIStrategy - SMA(20)>SMA(60) AND RSI<40 AND 거래량>20일평균×1.5
   - 전략 2: BollingerReversalStrategy - 종가<BB하단 AND RSI<30
   - 전략 3: ValueMomentumStrategy - 20일 모멘텀>5% AND RSI<65
   - 전략 파라미터 조정 API (`api/v1/strategies.py`)
   - 전략 실행 스케줄러 (`services/scheduler.py`, APScheduler, 장중 매 5분)
-- [x] **자동 주문 실행 엔진** [Must Have] [복잡도: 높음]
+- ✅ **자동 주문 실행 엔진** [Must Have] [복잡도: 높음]
   - 주문 실행 서비스 (`services/order_executor.py`)
   - 매수/매도 주문 실행 (KIS API: place_order)
   - 중복 주문 방지 (동일 종목+방향 미체결 주문 확인)
@@ -393,26 +393,26 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
   - KIS API 미설정 시 시뮬레이션 모드 지원
 
 #### Sprint 7 (Week 7): 손절/익절 및 안전장치 ✅ 완료 (2026-03-01)
-- [x] **손절/익절 자동 관리** [Must Have] [복잡도: 중간]
+- ✅ **손절/익절 자동 관리** [Must Have] [복잡도: 중간]
   - 고정 비율 손절 (-N%)
   - 트레일링 스탑 (Redis 최고가 기반, 고점 대비 -N%)
   - ATR 기반 손절 (ATR * N배)
   - 고정 비율 익절 (+N%)
   - 분할 익절 (50% 도달 시 반량 매도, 100% 도달 시 전량 매도)
   - 손절/익절 모니터링 스케줄러 (장중 1분 간격)
-- [x] **매매 안전장치 구현** [Must Have] [복잡도: 중간]
+- ✅ **매매 안전장치 구현** [Must Have] [복잡도: 중간]
   - 일일 최대 손실 한도 체크 (초과 시 당일 매매 중단)
   - 일일 최대 주문 횟수 체크
   - 단일 종목 최대 투자 비중 체크 (포트폴리오의 N%)
   - 자동매매 마스터 ON/OFF 스위치 API (Redis+DB 연동)
   - 긴급 전체 매도 API (시장가 일괄 매도 + 자동매매 비활성화)
   - 모든 안전장치 트리거 시 로그 기록
-- [x] **시스템 안전장치 구현** [Must Have] [복잡도: 중간]
+- ✅ **시스템 안전장치 구현** [Must Have] [복잡도: 중간]
   - API 호출 실패 시 재시도 (3회, 지수 백오프) — order_executor 통합
   - 중복 주문 방지 (Redis SET NX EX 분산 락)
   - 에러 카운터 및 임계값 초과 시 자동매매 중단
   - 시스템 상태 조회 API
-- [x] **프론트엔드-백엔드 연동 (전략/주문)** [Must Have] [복잡도: 중간]
+- ✅ **프론트엔드-백엔드 연동 (전략/주문)** [Must Have] [복잡도: 중간]
   - 주문 내역 화면 API 연동 (hooks/use-orders.ts)
   - 설정 화면 API 연동 (hooks/use-settings.ts: systemSettings, safetyStatus, autoTrade, emergencySell)
 
@@ -484,7 +484,7 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 ### 작업 목록
 
 #### Sprint 8 (Week 8): 백테스팅 엔진 ✅ 완료 (2026-03-01)
-- [x] **VectorBT 연동 및 백테스팅 엔진** [Should Have] [복잡도: 높음]
+- ✅ **VectorBT 연동 및 백테스팅 엔진** [Should Have] [복잡도: 높음]
   - VectorBT 라이브러리 설치 및 초기화 (numpy>=1.24.0, vectorbt>=0.26.0)
   - 한국투자증권 일봉 데이터 -> VectorBT pandas Series 변환
   - 3종 프리셋 전략을 VectorBT 시그널 로직으로 포팅
@@ -500,13 +500,13 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
   - `GET /api/v1/backtest/results` 엔드포인트
   - `GET /api/v1/backtest/results/{id}` 엔드포인트
   - Alembic 마이그레이션 (symbol, start_date, end_date 컬럼 추가, strategy_id nullable)
-- [x] **백테스팅 결과 시각화 연동** [Should Have] [복잡도: 중간]
+- ✅ **백테스팅 결과 시각화 연동** [Should Have] [복잡도: 중간]
   - 성과 지표 카드 (CAGR, MDD, 샤프비율 등)
   - 수익 곡선 데이터 (equity_curve) API 반환
   - 프론트엔드 Mock 데이터를 실제 API로 교체 (`hooks/use-backtest.ts` - useBacktestRun, useBacktestResults, useBacktestResult)
 
 #### Sprint 9 (Week 9): 알림 및 실시간 기능 ✅ 완료 (2026-03-02)
-- [x] **텔레그램 알림 서비스** [Must Have] [복잡도: 중간]
+- ✅ **텔레그램 알림 서비스** [Must Have] [복잡도: 중간]
   - python-telegram-bot 연동 (기존 Sprint 8 구현 기반)
   - 알림 서비스 (`services/telegram_notifier.py`)
   - 알림 유형 구현
@@ -518,11 +518,11 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
     - 시스템 에러 알림 (notify_system_error, notify_auto_trade_disabled)
   - 알림 템플릿 (Markdown 포맷)
   - 알림 ON/OFF 개별 설정 (_is_notification_enabled, system_settings 조회)
-- [x] **실시간 WebSocket 연동** [Should Have] [복잡도: 높음]
+- ✅ **실시간 WebSocket 연동** [Should Have] [복잡도: 높음]
   - 프론트엔드 WebSocket 클라이언트 구현 (hooks/use-realtime.ts)
   - 보유종목 실시간 시세 업데이트
   - 실시간 체결 알림 UI (sonner 토스트, WebSocket 브로드캐스트)
-- [x] **대시보드 실시간 데이터 완성** [Must Have] [복잡도: 중간]
+- ✅ **대시보드 실시간 데이터 완성** [Must Have] [복잡도: 중간]
   - 대시보드의 모든 Mock 데이터를 실제 API 연동으로 교체 (4개 훅)
   - 전략별 성과 집계 API (GET /api/v1/strategies/performance)
   - 일일 매매 요약 API (GET /api/v1/orders/daily-summary)
@@ -575,36 +575,36 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 모의투자 환경에서 전체 시스템 통합 테스트를 수행하고, 안정성을 검증하여 MVP를 완성한다. 최소 5일 연속 무장애 운영을 달성한다.
 
 ### 작업 목록
-- [ ] **통합 테스트 (모의투자)** [Must Have] [복잡도: 높음]
+- ⬜ **통합 테스트 (모의투자)** [Must Have] [복잡도: 높음]
   - 전체 흐름 E2E 테스트
     - 관심종목 등록 -> 전략 할당 -> 매매 신호 생성 -> 자동 주문 -> 체결 -> 알림
   - 3종 전략별 모의투자 실행 (각 최소 2일)
   - 손절/익절 트리거 검증
   - 장중 연속 운영 안정성 테스트 (5일 연속 목표)
   - API Rate Limit 내 정상 동작 검증
-- [ ] **에러 핸들링 강화** [Must Have] [복잡도: 중간]
+- ⬜ **에러 핸들링 강화** [Must Have] [복잡도: 중간]
   - 모든 API 엔드포인트 에러 응답 표준화 (에러 코드, 메시지)
   - 프론트엔드 글로벌 에러 핸들러 구현
   - API 호출 실패 시 사용자 친화적 에러 메시지 표시
   - 네트워크 오류 시 자동 재시도 (TanStack Query retry)
-- [ ] **로깅 및 모니터링 강화** [Must Have] [복잡도: 중간]
+- ⬜ **로깅 및 모니터링 강화** [Must Have] [복잡도: 중간]
   - 구조화된 로그 포맷 (JSON)
   - 로그 레벨 설정 (DEBUG/INFO/WARNING/ERROR)
   - 주문 실행 감사 로그 (audit log)
   - 시스템 상태 모니터링 대시보드 (간단한 헬스 페이지)
-- [ ] **안전장치 최종 검증** [Must Have] [복잡도: 중간]
+- ⬜ **안전장치 최종 검증** [Must Have] [복잡도: 중간]
   - 일일 최대 손실 한도 도달 시 매매 자동 중단 검증
   - 일일 최대 주문 횟수 초과 방지 검증
   - 단일 종목 최대 비중 초과 방지 검증
   - 긴급 전체 매도 기능 검증
   - 중복 주문 방지 검증
   - WebSocket 재연결 검증
-- [ ] **문서화** [Should Have] [복잡도: 낮음]
+- ⬜ **문서화** [Should Have] [복잡도: 낮음]
   - README.md 작성 (프로젝트 소개, 설치 가이드, 실행 방법)
   - 환경변수 설정 가이드 (`.env.example` 상세 주석)
   - API 문서 최종 검토 (FastAPI Swagger 자동 문서)
   - 면책 조항 작성 (자동매매 투자 조언 해당하지 않음)
-- [ ] **실전 투자 전환 준비** [Must Have] [복잡도: 낮음]
+- ⬜ **실전 투자 전환 준비** [Must Have] [복잡도: 낮음]
   - 모의투자 -> 실전투자 환경변수 전환 가이드
   - 실전투자 전환 체크리스트 작성
   - API 도메인 전환 (`openapivts` -> `openapi`)
@@ -699,14 +699,14 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 ## 기술 부채 관리
 
 ### Phase 1-2 발생 예상 기술 부채
-- [ ] 프론트엔드 Mock 데이터 하드코딩 (Phase 3에서 해소)
-- [ ] 단일 유저 인증 시스템 (향후 JWT 기반 멀티유저로 전환 필요)
-- [ ] APScheduler 단일 프로세스 스케줄러 (트래픽 증가 시 Celery로 전환)
+- ⬜ 프론트엔드 Mock 데이터 하드코딩 (Phase 3에서 해소)
+- ⬜ 단일 유저 인증 시스템 (향후 JWT 기반 멀티유저로 전환 필요)
+- ⬜ APScheduler 단일 프로세스 스케줄러 (트래픽 증가 시 Celery로 전환)
 
 ### Phase 3-4 발생 예상 기술 부채
-- [ ] 전략 로직과 주문 실행의 강결합 (이벤트 드리븐 아키텍처로 리팩토링 필요)
-- [ ] 백테스팅 동기 실행 (대용량 데이터 시 비동기 태스크 큐 필요)
-- [ ] 캐싱 전략 미세 조정 (TTL 최적화)
+- ⬜ 전략 로직과 주문 실행의 강결합 (이벤트 드리븐 아키텍처로 리팩토링 필요)
+- ⬜ 백테스팅 동기 실행 (대용량 데이터 시 비동기 태스크 큐 필요)
+- ⬜ 캐싱 전략 미세 조정 (TTL 최적화)
 
 ### 향후 리팩토링 계획
 - Phase 5 이후: 이벤트 드리븐 아키텍처 도입 (전략 신호 -> 주문 실행 -> 알림 파이프라인)
@@ -718,25 +718,25 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 ## 향후 계획 (Backlog) - MVP 이후
 
 ### 단기 (MVP 완료 후 1-2개월)
-- [ ] 실전투자 환경 전환 및 소액 테스트 운영
-- [ ] 커스텀 전략 빌더 고도화 (드래그 앤 드롭 UI)
-- [ ] 전략별 상세 성과 분석 리포트
-- [ ] 카카오톡 알림 연동 (나에게 보내기)
-- [ ] 모바일 최적화 (PWA)
+- ⬜ 실전투자 환경 전환 및 소액 테스트 운영
+- ⬜ 커스텀 전략 빌더 고도화 (드래그 앤 드롭 UI)
+- ⬜ 전략별 상세 성과 분석 리포트
+- ⬜ 카카오톡 알림 연동 (나에게 보내기)
+- ⬜ 모바일 최적화 (PWA)
 
 ### 중기 (MVP 완료 후 3-6개월)
-- [ ] 멀티유저 지원 (회원가입, 로그인, JWT 인증)
-- [ ] 사용자별 전략/포트폴리오 격리
-- [ ] Celery 기반 분산 작업 스케줄링
-- [ ] 실시간 호가 모니터링 (WebSocket)
-- [ ] 해외 주식 지원 (미국 주식)
+- ⬜ 멀티유저 지원 (회원가입, 로그인, JWT 인증)
+- ⬜ 사용자별 전략/포트폴리오 격리
+- ⬜ Celery 기반 분산 작업 스케줄링
+- ⬜ 실시간 호가 모니터링 (WebSocket)
+- ⬜ 해외 주식 지원 (미국 주식)
 
 ### 장기 (6개월 이후)
-- [ ] AWS/GCP 클라우드 배포 + Kubernetes
-- [ ] AI/ML 기반 전략 추천
-- [ ] 소셜 트레이딩 기능 (전략 공유/구독)
-- [ ] 금융 규제 대응 (멀티유저 오픈 시)
-- [ ] 모바일 네이티브 앱 (React Native)
+- ⬜ AWS/GCP 클라우드 배포 + Kubernetes
+- ⬜ AI/ML 기반 전략 추천
+- ⬜ 소셜 트레이딩 기능 (전략 공유/구독)
+- ⬜ 금융 규제 대응 (멀티유저 오픈 시)
+- ⬜ 모바일 네이티브 앱 (React Native)
 
 ---
 

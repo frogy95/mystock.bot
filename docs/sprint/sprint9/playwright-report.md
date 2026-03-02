@@ -122,20 +122,20 @@
 
 ## 자동 검증 통과 항목 요약
 
-- [x] 프론트엔드 페이지 렌더링 (200 응답) — 대시보드, 전략, 주문내역, 설정 4개 페이지
-- [x] 사이드바 6개 메뉴 렌더링
-- [x] layout.tsx에 Toaster 컴포넌트 추가 확인
-- [x] 설정 화면 텔레그램 알림 개별 ON/OFF 스위치 3개 표시 확인
-- [x] 모바일 375px 반응형 레이아웃 (사이드바 숨김, 햄버거 메뉴)
-- [x] sonner 패키지 설치 및 500 에러 해결
+- ✅ 프론트엔드 페이지 렌더링 (200 응답) — 대시보드, 전략, 주문내역, 설정 4개 페이지
+- ✅ 사이드바 6개 메뉴 렌더링
+- ✅ layout.tsx에 Toaster 컴포넌트 추가 확인
+- ✅ 설정 화면 텔레그램 알림 개별 ON/OFF 스위치 3개 표시 확인
+- ✅ 모바일 375px 반응형 레이아웃 (사이드바 숨김, 햄버거 메뉴)
+- ✅ sonner 패키지 설치 및 500 에러 해결
 
 ## 수동 검증 필요 항목 (백엔드 재빌드 후)
 
-- [ ] `docker compose up --build` 로 백엔드 재빌드 (`apscheduler` 포함)
-- [ ] GET /api/v1/orders/daily-summary → 200 응답 확인
-- [ ] GET /api/v1/strategies/performance → 200 응답 확인
-- [ ] GET /api/v1/stocks/market-index → 200 응답 확인
-- [ ] 대시보드 4개 훅 실제 API 데이터 렌더링 확인
-- [ ] /ws/realtime WebSocket 연결 성공 확인
-- [ ] 텔레그램 전략 신호 알림 수신 확인 (KIS API 설정 후)
-- [ ] 일일 요약 크론 잡 등록 로그 확인
+- ⬜ `docker compose up --build` 로 백엔드 재빌드 (`apscheduler` 포함)
+- ⬜ GET /api/v1/orders/daily-summary → 200 응답 확인
+- ⬜ GET /api/v1/strategies/performance → 200 응답 확인
+- ⬜ GET /api/v1/stocks/market-index → 200 응답 확인
+- ⬜ 대시보드 4개 훅 실제 API 데이터 렌더링 확인
+- ⬜ /ws/realtime WebSocket 연결 성공 확인
+- ⬜ 텔레그램 전략 신호 알림 수신 확인 (KIS API 설정 후)
+- ⬜ 일일 요약 크론 잡 등록 로그 확인
