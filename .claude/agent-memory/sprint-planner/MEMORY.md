@@ -38,11 +38,27 @@
   - 공통 컴포넌트: PriceChangeBadge, StatCard, LoadingSkeleton
   - 커스텀 훅 패턴: use-dashboard.ts, use-watchlist.ts, use-portfolio.ts
   - zustand 스토어: watchlist-store.ts, sidebar-store.ts
-- **Sprint 4 (Phase 2):** 계획 수립 완료 (2026-03-01)
+- **Sprint 4 (Phase 2):** 완료 (2026-03-01)
   - 범위: 전략 설정 UI, 백테스팅 UI, 주문 내역 UI, 설정 UI (Mock 데이터 기반)
-  - 기간: 2026-03-23 ~ 2026-03-28
-  - 12개 Task (Task 0~11), 42 SP
-  - Plan 파일: inherited-booping-hamming-agent-a95f3ef59ac297e0f.md
+  - 브랜치: sprint4
+- **Sprint 4.1 (Phase 2):** 완료 (2026-03-01)
+  - 커스텀 전략 빌더 UI (Could Have 항목)
+- **Sprint 5 (Phase 3):** 완료 (2026-03-01)
+  - 관심종목/보유종목 API 연동, Mock → 실제 API 교체
+- **Sprint 6 (Phase 3):** 완료 (2026-03-01)
+  - 전략 엔진 (indicators.py, strategy_engine.py), 자동 주문 실행 엔진
+- **Sprint 7 (Phase 3):** 완료 (2026-03-01)
+  - 손절/익절 자동 관리, 매매 안전장치, 시스템 안전장치
+- **Sprint 8 (Phase 4):** 완료 (2026-03-01)
+  - VectorBT 백테스팅 엔진, 결과 시각화 프론트엔드 연동
+- **Sprint 9 (Phase 4):** 완료 (2026-03-02)
+  - 텔레그램 알림 서비스 완성, 실시간 WebSocket 체결 알림 UI, 대시보드 Mock → 실제 API 교체
+  - 브랜치: sprint9, PR: https://github.com/frogy95/mystock.bot/pull/14
+- **Sprint 10 (Phase 5):** 계획 수립 완료 (2026-03-02)
+  - 범위: 백엔드 에러 핸들링 강화, 구조화 로깅, 프론트엔드 에러 핸들링, Mock→API 전환, 통합 테스트, 안전장치 검증
+  - 기간: 2026-05-04 ~ 2026-05-09
+  - 6개 Task (Task 0~6), 브랜치: sprint10
+  - 계획 파일: /docs/sprint/sprint10.md
 
 ## 핵심 파일 경로
 - ROADMAP: /ROADMAP.md
@@ -98,3 +114,14 @@ users, watchlist_groups, watchlist_items, strategies, strategy_params, orders, o
 - 설정 화면: max-w-3xl 제한하여 과도한 폼 너비 방지
 - 주문 내역: 상태별 Badge 색상 - FILLED(초록), PENDING(노랑), CANCELLED(회색)
 - Mock delay: 300~700ms 범위 (Sprint 3 패턴 유지)
+
+## Sprint 10 핵심 주의사항
+- 표준 에러 응답 스키마: `{"error": {"code": "...", "message": "...", "detail": "..."}}` 형식
+- 글로벌 예외 핸들러: AppError, IntegrityError, OperationalError, Exception 4가지 등록
+- JSON 로깅: python-json-logger 2.0.7, pythonjsonlogger.JsonFormatter 사용
+- Request ID 미들웨어: X-Request-ID 헤더, uuid4()[:8] 축약 형식
+- pytest 테스트 DB: SQLite 인메모리(aiosqlite) 사용, PostgreSQL 의존성 제거
+- Mock→API 전환 대상: orders/page.tsx, settings/page.tsx, backtest/page.tsx
+- Next.js Error Boundary 3종: error.tsx(라우트), global-error.tsx(루트), not-found.tsx(404)
+- TanStack Query mutationCache.onError: 개별 onError 없는 mutation에만 글로벌 toast.error 적용
+- API 클라이언트 타임아웃: 30초(30_000ms), AbortController 기반
