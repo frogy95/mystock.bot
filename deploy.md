@@ -1335,5 +1335,5 @@ docker compose exec backend pytest -v
 - ⬜ `docker compose up --build` 성공
 - ⬜ `GET /api/v1/settings/kis-status` → `is_available: true` 확인
 - ⬜ `GET /api/v1/stocks/005930/quote` → 실제 시세 데이터 반환 확인 (실전 키 필요)
-- ⬜ `/settings` 페이지 → KIS API 폼에 모의투자/실전 키 입력란 구분 확인
+- ✅ `/settings` 페이지 → KIS API 폼에 모의투자/실전 키 입력란 구분 확인 (Playwright 자동 검증 완료, 2026-03-03)
 - ⬜ `docker compose exec backend pytest -v` → 14개 PASSED 확인
