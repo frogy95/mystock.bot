@@ -9,8 +9,9 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, is_demo_user
 from app.core.database import get_db
+from app.services.demo_data import get_demo_orders, get_demo_daily_summary
 from app.models.order import Order
 from app.models.user import User
 from datetime import datetime
@@ -62,6 +63,8 @@ async def get_daily_summary(
     db: AsyncSession = Depends(get_db),
 ):
     """특정 날짜의 매매 요약(매수/매도 건수 및 금액)을 반환한다. date 미입력 시 오늘 날짜."""
+    if is_demo_user(current_user):
+        return get_demo_daily_summary()
     from datetime import date as date_type
 
     # date 파라미터가 있으면 ISO 형식(YYYY-MM-DD)으로 파싱 시도
@@ -113,6 +116,8 @@ async def list_orders(
     db: AsyncSession = Depends(get_db),
 ):
     """사용자의 주문 목록을 최신순으로 반환한다."""
+    if is_demo_user(current_user):
+        return get_demo_orders()
     user_id = await _get_user_id(current_user, db)
     result = await db.execute(
         select(Order)

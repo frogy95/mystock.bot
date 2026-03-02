@@ -4,7 +4,7 @@
 """
 from fastapi import APIRouter, HTTPException, status
 
-from app.core.auth import create_token
+from app.core.auth import DEMO_USERNAME, create_token
 from app.core.config import settings
 from app.schemas.auth import LoginRequest, TokenResponse
 
@@ -24,4 +24,11 @@ async def login(body: LoginRequest):
         )
 
     token = create_token(body.username)
+    return TokenResponse(access_token=token)
+
+
+@router.post("/demo", response_model=TokenResponse, summary="데모 로그인")
+async def demo_login():
+    """비밀번호 없이 데모 유저 토큰을 즉시 발급한다."""
+    token = create_token(DEMO_USERNAME)
     return TokenResponse(access_token=token)

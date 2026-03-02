@@ -8,8 +8,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, is_demo_user
 from app.core.database import get_db
+from app.services.demo_data import (
+    get_demo_holdings,
+    get_demo_portfolio_summary,
+)
 from app.models.holding import Holding
 from app.models.user import User
 from app.schemas.holding import (
@@ -39,6 +43,8 @@ async def list_holdings(
     db: AsyncSession = Depends(get_db),
 ):
     """DB에 저장된 보유종목 목록을 조회한다."""
+    if is_demo_user(current_user):
+        return get_demo_holdings()
     user_id = await _get_user_id(current_user, db)
     result = await db.execute(
         select(Holding)
@@ -53,6 +59,8 @@ async def sync_holdings(
     current_user: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if is_demo_user(current_user):
+        raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
     """KIS 실제 잔고를 조회하여 DB를 동기화한다."""
     user_id = await _get_user_id(current_user, db)
     try:
@@ -74,6 +82,8 @@ async def update_stop_loss(
     db: AsyncSession = Depends(get_db),
 ):
     """보유종목의 손절/익절 비율을 설정한다."""
+    if is_demo_user(current_user):
+        raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
     user_id = await _get_user_id(current_user, db)
     result = await db.execute(
         select(Holding).where(Holding.id == holding_id, Holding.user_id == user_id)
@@ -96,6 +106,8 @@ async def update_sell_strategy(
     db: AsyncSession = Depends(get_db),
 ):
     """보유종목의 매도 전략을 설정한다."""
+    if is_demo_user(current_user):
+        raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
     user_id = await _get_user_id(current_user, db)
     result = await db.execute(
         select(Holding).where(Holding.id == holding_id, Holding.user_id == user_id)
@@ -115,6 +127,8 @@ async def get_summary(
     db: AsyncSession = Depends(get_db),
 ):
     """포트폴리오 전체 요약 (총평가/손익/예수금 등)을 반환한다."""
+    if is_demo_user(current_user):
+        return get_demo_portfolio_summary()
     user_id = await _get_user_id(current_user, db)
     summary = await calculate_summary(user_id, db)
     return summary

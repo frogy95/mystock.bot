@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { formatPercent, formatChange } from "@/lib/format";
 
 interface PriceChangeBadgeProps {
-  changeRate: number;
+  changeRate: number | undefined | null;
   changePrice?: number;
   showPrice?: boolean;
   size?: "sm" | "md" | "lg";
@@ -17,8 +17,8 @@ export function PriceChangeBadge({
   showPrice = false,
   size = "md",
 }: PriceChangeBadgeProps) {
-  const isPositive = changeRate > 0;
-  const isNegative = changeRate < 0;
+  const isPositive = (changeRate ?? 0) > 0;
+  const isNegative = (changeRate ?? 0) < 0;
 
   const sizeClasses = {
     sm: "text-xs px-1.5 py-0.5",

@@ -37,13 +37,13 @@ export function StatCard({
             <p
               className={cn(
                 "text-xs mt-1",
-                trend.value > 0 && "text-red-600",
-                trend.value < 0 && "text-blue-600",
-                trend.value === 0 && "text-muted-foreground"
+                (trend.value ?? 0) > 0 && "text-red-600",
+                (trend.value ?? 0) < 0 && "text-blue-600",
+                (trend.value ?? 0) === 0 && "text-muted-foreground"
               )}
             >
-              {trend.value > 0 ? "+" : ""}
-              {trend.value.toFixed(2)}% {trend.label}
+              {(trend.value ?? 0) > 0 ? "+" : ""}
+              {(trend.value ?? 0).toFixed(2)}% {trend.label}
             </p>
           )}
           {description && (

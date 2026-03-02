@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
-import { AppLayout } from "@/components/layout/app-layout";
+import { ConditionalLayout } from "@/components/layout/conditional-layout";
 import { QueryProvider } from "@/lib/query-provider";
 import "./globals.css";
 
@@ -31,7 +31,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <QueryProvider>
-          <AppLayout>{children}</AppLayout>
+          <ConditionalLayout>{children}</ConditionalLayout>
           <Toaster position="top-right" richColors />
         </QueryProvider>
       </body>

@@ -23,8 +23,10 @@ export interface HoldingAPI {
 /** 포트폴리오 파이 차트용 가공 타입 */
 export interface PortfolioPieData {
   name: string;
+  symbol: string;
   value: number;
   color: string;
+  percentage: number;
 }
 
 /** 포트폴리오 보유종목 조회 훅 */
@@ -46,13 +48,16 @@ export function usePortfolioPieData() {
     "#06B6D4", "#F97316", "#84CC16", "#EC4899", "#6366F1",
   ];
 
-  const pieData: PortfolioPieData[] = holdings
-    .filter((h) => h.total_value != null && h.total_value > 0)
-    .map((h, i) => ({
-      name: h.stock_name,
-      value: h.total_value!,
-      color: PIE_COLORS[i % PIE_COLORS.length],
-    }));
+  const filtered = holdings.filter((h) => h.total_value != null && h.total_value > 0);
+  const total = filtered.reduce((sum, h) => sum + h.total_value!, 0);
+
+  const pieData: PortfolioPieData[] = filtered.map((h, i) => ({
+    name: h.stock_name,
+    symbol: h.stock_code,
+    value: h.total_value!,
+    color: PIE_COLORS[i % PIE_COLORS.length],
+    percentage: total > 0 ? (h.total_value! / total) * 100 : 0,
+  }));
 
   return { data: pieData, ...rest };
 }

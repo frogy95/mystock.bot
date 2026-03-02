@@ -11,22 +11,14 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PriceChangeBadge } from "@/components/common/price-change-badge";
 import { TableRowSkeleton } from "@/components/common/loading-skeleton";
 import { usePortfolioHoldings } from "@/hooks/use-portfolio";
-import { sellStrategyOptions } from "@/lib/mock/portfolio";
+import type { HoldingAPI } from "@/hooks/use-portfolio";
 import { formatKRW } from "@/lib/format";
 import { Pencil, Check, X } from "lucide-react";
-import type { HoldingItem } from "@/lib/mock/types";
 
 export function PortfolioHoldingsTable() {
   const { data: holdings, isLoading } = usePortfolioHoldings();
@@ -34,15 +26,13 @@ export function PortfolioHoldingsTable() {
   const [editValues, setEditValues] = useState<{
     stopLossRate: string;
     takeProfitRate: string;
-    sellStrategy: string;
-  }>({ stopLossRate: "", takeProfitRate: "", sellStrategy: "" });
+  }>({ stopLossRate: "", takeProfitRate: "" });
 
-  const startEdit = (item: HoldingItem) => {
-    setEditingId(item.symbol);
+  const startEdit = (item: HoldingAPI) => {
+    setEditingId(String(item.id));
     setEditValues({
-      stopLossRate: item.stopLossRate?.toString() ?? "",
-      takeProfitRate: item.takeProfitRate?.toString() ?? "",
-      sellStrategy: item.sellStrategy ?? "none",
+      stopLossRate: item.stop_loss_rate?.toString() ?? "",
+      takeProfitRate: item.take_profit_rate?.toString() ?? "",
     });
   };
 
@@ -82,29 +72,29 @@ export function PortfolioHoldingsTable() {
               ))
             ) : holdings && holdings.length > 0 ? (
               holdings.map((item) => {
-                const isEditing = editingId === item.symbol;
+                const isEditing = editingId === String(item.id);
                 return (
-                  <TableRow key={item.symbol}>
+                  <TableRow key={item.id}>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-xs text-muted-foreground">{item.symbol}</p>
+                        <p className="font-medium">{item.stock_name}</p>
+                        <p className="text-xs text-muted-foreground">{item.stock_code}</p>
                       </div>
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm">
-                      {formatKRW(item.avgPrice)}
+                      {formatKRW(item.avg_price)}
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm">
                       {item.quantity.toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm">
-                      {formatKRW(item.currentPrice)}
+                      {item.current_price != null ? formatKRW(item.current_price) : "-"}
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm">
-                      {formatKRW(item.evalAmount)}
+                      {item.total_value != null ? formatKRW(item.total_value) : "-"}
                     </TableCell>
                     <TableCell className="text-right">
-                      <PriceChangeBadge changeRate={item.profitRate} />
+                      <PriceChangeBadge changeRate={item.profit_loss_rate} />
                     </TableCell>
 
                     {/* 손절률 */}
@@ -121,7 +111,7 @@ export function PortfolioHoldingsTable() {
                         />
                       ) : (
                         <span className="text-sm font-mono text-blue-600">
-                          {item.stopLossRate !== null ? `${item.stopLossRate}%` : "-"}
+                          {item.stop_loss_rate != null ? `${item.stop_loss_rate}%` : "-"}
                         </span>
                       )}
                     </TableCell>
@@ -140,35 +130,16 @@ export function PortfolioHoldingsTable() {
                         />
                       ) : (
                         <span className="text-sm font-mono text-red-600">
-                          {item.takeProfitRate !== null ? `+${item.takeProfitRate}%` : "-"}
+                          {item.take_profit_rate != null ? `+${item.take_profit_rate}%` : "-"}
                         </span>
                       )}
                     </TableCell>
 
                     {/* 매도 전략 */}
                     <TableCell>
-                      {isEditing ? (
-                        <Select
-                          value={editValues.sellStrategy}
-                          onValueChange={(value) =>
-                            setEditValues((v) => ({ ...v, sellStrategy: value }))
-                          }
-                        >
-                          <SelectTrigger className="h-7 text-xs w-[130px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">미설정</SelectItem>
-                            {sellStrategyOptions.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : item.sellStrategy ? (
+                      {item.sell_strategy_id != null ? (
                         <Badge variant="secondary" className="text-xs">
-                          {sellStrategyOptions.find((o) => o.value === item.sellStrategy)?.label ?? item.sellStrategy}
+                          전략 #{item.sell_strategy_id}
                         </Badge>
                       ) : (
                         <span className="text-xs text-muted-foreground">미설정</span>
