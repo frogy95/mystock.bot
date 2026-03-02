@@ -37,6 +37,14 @@ async function request<T>(
   });
 
   if (!response.ok) {
+    // 401: 자동 로그아웃 + /login 리다이렉트
+    if (response.status === 401) {
+      useAuthStore.getState().logout();
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+      throw new Error("인증이 만료되었습니다.");
+    }
     const error = await response.json().catch(() => ({ detail: response.statusText }));
     throw new Error(error.detail ?? `HTTP ${response.status}`);
   }
