@@ -64,7 +64,17 @@ async def get_daily_summary(
     """특정 날짜의 매매 요약(매수/매도 건수 및 금액)을 반환한다. date 미입력 시 오늘 날짜."""
     from datetime import date as date_type
 
-    target_date = date_type.fromisoformat(date) if date else date_type.today()
+    # date 파라미터가 있으면 ISO 형식(YYYY-MM-DD)으로 파싱 시도
+    if date:
+        try:
+            target_date = date_type.fromisoformat(date)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="날짜 형식이 올바르지 않습니다. YYYY-MM-DD 형식으로 입력해주세요.",
+            )
+    else:
+        target_date = date_type.today()
     user_id = await _get_user_id(current_user, db)
 
     start = datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0)

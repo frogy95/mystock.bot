@@ -1,27 +1,71 @@
 "use client";
 
+import { useState } from "react";
 import { BacktestConfigForm } from "@/components/backtest/backtest-config-form";
 import { BacktestResultCards } from "@/components/backtest/backtest-result-cards";
 import { BacktestEquityChart } from "@/components/backtest/backtest-equity-chart";
 import { BacktestTradesTable } from "@/components/backtest/backtest-trades-table";
-import { useBacktestStore } from "@/stores/backtest-store";
-import { mockBacktestResult, mockBacktestTrades } from "@/lib/mock";
+import { useBacktestRun } from "@/hooks/use-backtest";
+import type { BacktestResultAPI } from "@/hooks/use-backtest";
+import type { BacktestResult } from "@/lib/mock/types";
+
+/**
+ * BacktestResultAPI → BacktestResult 타입 변환
+ * 컴포넌트가 기대하는 필드명으로 매핑한다.
+ */
+function mapBacktestAPIToResult(api: BacktestResultAPI): BacktestResult {
+  return {
+    strategyId: String(api.id),
+    strategyName: api.strategy_name,
+    symbol: api.symbol,
+    stockName: api.symbol, // API에 종목명 없으므로 코드로 대체
+    startDate: api.start_date,
+    endDate: api.end_date,
+    totalReturn: api.total_return,
+    annualReturn: api.cagr,
+    maxDrawdown: api.mdd,
+    winRate: api.win_rate,
+    tradeCount: api.total_trades,
+    sharpeRatio: api.sharpe_ratio,
+    benchmarkReturn: api.benchmark_return,
+    equityCurve: api.equity_curve.map((point) => ({
+      date: point.date,
+      value: point.value,
+      benchmark: 0, // API에 벤치마크 곡선 없음
+    })),
+  };
+}
 
 export default function BacktestPage() {
-  // 백테스팅 스토어에서 상태 및 액션 가져오기
-  const { result, trades, isRunning, setResult, setRunning, reset } =
-    useBacktestStore();
+  // 백테스팅 실행 mutation 훅
+  const backtestRun = useBacktestRun();
+
+  // 현재 화면에 표시할 결과 상태
+  const [result, setResult] = useState<BacktestResult | null>(null);
 
   /**
    * 백테스트 실행 핸들러
-   * 1.5초 시뮬레이션 후 Mock 결과 데이터를 스토어에 저장
+   * BacktestConfigForm에서 전달받은 설정으로 실제 API 호출
    */
-  const handleRun = () => {
-    setRunning(true);
-    setTimeout(() => {
-      setResult(mockBacktestResult, mockBacktestTrades);
-      setRunning(false);
-    }, 1500);
+  const handleRun = (config: {
+    strategyId: string;
+    symbol: string;
+    startDate: string;
+    endDate: string;
+  }) => {
+    backtestRun.mutate(
+      {
+        strategy_name: config.strategyId,
+        symbol: config.symbol,
+        start_date: config.startDate,
+        end_date: config.endDate,
+      },
+      {
+        onSuccess: (apiResult) => {
+          setResult(mapBacktestAPIToResult(apiResult));
+        },
+      }
+    );
   };
 
   return (
@@ -29,24 +73,27 @@ export default function BacktestPage() {
       <h2 className="text-2xl font-semibold">백테스팅</h2>
 
       {/* 백테스트 설정 폼 */}
-      <BacktestConfigForm onRun={handleRun} isRunning={isRunning} />
+      <BacktestConfigForm onRun={handleRun} isRunning={backtestRun.isPending} />
+
+      {/* API 에러 메시지 */}
+      {backtestRun.isError && (
+        <p className="text-destructive text-sm">
+          백테스트 실행 중 오류가 발생했습니다.
+        </p>
+      )}
 
       {/* 백테스트 결과 영역 */}
       {result && (
         <>
-          {/* 요약 지표 카드 */}
           <BacktestResultCards result={result} />
-
-          {/* 자산 곡선 차트 */}
           <BacktestEquityChart equityCurve={result.equityCurve} />
-
-          {/* 거래 내역 테이블 */}
-          <BacktestTradesTable trades={trades} />
+          {/* API에 개별 거래 내역이 없으므로 빈 배열 전달 */}
+          <BacktestTradesTable trades={[]} />
         </>
       )}
 
-      {/* 초기 안내 메시지 (결과 없고 실행 중이 아닐 때) */}
-      {!result && !isRunning && (
+      {/* 초기 안내 메시지 */}
+      {!result && !backtestRun.isPending && (
         <div className="text-center text-muted-foreground py-12">
           백테스트를 실행하면 결과가 여기에 표시됩니다.
         </div>
