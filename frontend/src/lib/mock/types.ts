@@ -199,9 +199,16 @@ export interface OrderDetail {
 
 /** KIS API 설정 */
 export interface KisApiConfig {
-  appKey: string;
-  appSecret: string;
-  mode: "paper" | "real"; // 모의투자 / 실전투자
+  // 모의투자 앱 키 (주문/잔고 - KIS_ENVIRONMENT=vts 시)
+  vtsAppKey: string;
+  vtsAppSecret: string;
+  vtsAccountNumber: string;
+  // 실전투자 앱 키 (시세 API 항상 사용 + KIS_ENVIRONMENT=real 시 주문/잔고에도 사용)
+  realAppKey: string;
+  realAppSecret: string;
+  realAccountNumber: string;
+  htsId: string;
+  mode: "vts" | "real"; // 모의투자 / 실전투자
 }
 
 /** 텔레그램 설정 */

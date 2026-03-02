@@ -19,9 +19,9 @@
 
 | 항목 | 상태 |
 |------|------|
-| 전체 진행률 | 100% (Sprint 0~11 완료) |
-| 현재 Phase | Phase 5 완료 + Sprint 11 완료 (로그인 페이지 + 데모 모드) |
-| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01), Sprint 2 (2026-03-01), Sprint 3 (2026-03-01), Sprint 4 (2026-03-01), Sprint 4.1 (2026-03-01), Sprint 5 (2026-03-01), Sprint 6 (2026-03-01), Sprint 7 (2026-03-01), Sprint 8 (2026-03-01), Sprint 9 (2026-03-02), Sprint 10 (2026-03-02), Sprint 11 (2026-03-03) |
+| 전체 진행률 | 100% (Sprint 0~12 완료) |
+| 현재 Phase | Phase 5+ 완료 + Sprint 12 완료 (KIS API 듀얼 환경 분리) |
+| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01), Sprint 2 (2026-03-01), Sprint 3 (2026-03-01), Sprint 4 (2026-03-01), Sprint 4.1 (2026-03-01), Sprint 5 (2026-03-01), Sprint 6 (2026-03-01), Sprint 7 (2026-03-01), Sprint 8 (2026-03-01), Sprint 9 (2026-03-02), Sprint 10 (2026-03-02), Sprint 11 (2026-03-03), Sprint 12 (2026-03-03) |
 | 다음 마일스톤 | M5: MVP 출시 - 모의투자 5일 연속 안정 운영, 실전 전환 준비 |
 | 예상 MVP 완료일 | 2026-05-10 |
 
@@ -657,6 +657,38 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 
 ---
 
+---
+
+## Phase 5+: 기반 개선 (Sprint 11-12)
+### 목표
+MVP 출시 이후 발견된 구조적 문제 및 UX 개선 사항을 해결한다.
+
+#### Sprint 11: 로그인 페이지 + 데모 모드 ✅ 완료 (2026-03-02)
+- ✅ 로그인 페이지 구현 (단일 유저 세션 기반)
+- ✅ 데모 모드 구현 (KIS API 미설정 시 Mock 데이터로 전체 기능 체험 가능)
+
+#### Sprint 12: KIS API 듀얼 환경 분리 ✅ 완료 (2026-03-03)
+- ✅ **`backend/app/core/config.py`**: `KIS_VTS_*` / `KIS_REAL_*` 듀얼 키 환경변수 구조로 변경
+- ✅ **`backend/app/services/kis_client.py`**: 시세 API는 항상 실전 키, 주문/잔고 API는 `KIS_ENVIRONMENT`에 따라 분기
+  - `is_quote_available()` 신규 메서드 추가
+  - `_get_access_token(env)` 환경별 토큰 캐시 분리
+  - `_get_trade_credentials()` 주문/잔고용 자격증명 선택
+- ✅ **`.env.example`**: 듀얼 키 설정 예제 업데이트
+- ✅ **`frontend/src/lib/mock/types.ts`**: `KisApiConfig` 타입 듀얼 키 구조로 변경
+- ✅ **`frontend/src/lib/mock/settings.ts`**: 목 데이터 업데이트
+- ✅ **`frontend/src/components/settings/kis-api-form.tsx`**: 모의/실전 키 입력 섹션 분리
+- ✅ **`frontend/src/app/settings/page.tsx`**: 파싱/저장 로직 업데이트
+- ✅ **`deploy.md`**: Sprint 12 마이그레이션 가이드 추가
+- ✅ 백엔드 통합 테스트 14개 PASSED
+
+### 완료 기준 (Definition of Done)
+- 모의투자 모드(`KIS_ENVIRONMENT=vts`)에서도 현재가, 차트, 시장지수 데이터가 정상 조회됨
+- 주문/잔고는 모의투자 서버에서, 시세는 실전 서버에서 각각 처리됨
+- `.env.example`에 새 환경변수 구조가 명확히 문서화됨
+- 설정 페이지에 모의투자/실전투자 키 분리 섹션이 표시됨
+
+---
+
 ## 리스크 및 완화 전략
 
 | 리스크 | 영향도 | 발생 확률 | 완화 전략 |
@@ -744,5 +776,7 @@ Monorepo 프로젝트 구조를 확립하고, Docker 기반 개발 환경을 구
 | Sprint 8 | 2026-04-20 ~ 04-25 | Phase 4 | 백테스팅 엔진 |
 | Sprint 9 | 2026-04-27 ~ 05-02 | Phase 4 | 텔레그램 알림, 실시간 WebSocket |
 | Sprint 10 | 2026-05-04 ~ 05-09 | Phase 5 | 통합 테스트, 안정화, MVP 출시 |
+| Sprint 11 | 2026-03-02 | Phase 5+ | 로그인 페이지 + 데모 모드 구현 |
+| Sprint 12 | 2026-03-03 | Phase 5+ | KIS API 듀얼 환경 분리 (모의투자/실전투자 키 분리) |
 
 > **참고:** 1-2인 소규모 팀 기준으로 각 스프린트는 5 영업일(월-금)로 설정. 주말 및 공휴일은 버퍼로 활용. 예상보다 빠르게 진행되면 Phase 간 간격을 줄이고, 지연 시 Could Have 항목을 다음 Phase로 이동.

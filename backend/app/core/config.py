@@ -30,11 +30,18 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # 한국투자증권 (KIS) API 설정
-    KIS_APP_KEY: str = ""
-    KIS_APP_SECRET: str = ""
-    KIS_ACCOUNT_NUMBER: str = ""
+    # 모의투자 전용 키 (주문/잔고에 사용, KIS_ENVIRONMENT=vts 시)
+    KIS_VTS_APP_KEY: str = ""
+    KIS_VTS_APP_SECRET: str = ""
+    KIS_VTS_ACCOUNT_NUMBER: str = ""
+
+    # 실전 전용 키 (시세 조회 항상 사용 + KIS_ENVIRONMENT=real 시 주문/잔고에도 사용)
+    KIS_REAL_APP_KEY: str = ""
+    KIS_REAL_APP_SECRET: str = ""
+    KIS_REAL_ACCOUNT_NUMBER: str = ""
+
     KIS_HTS_ID: str = ""  # eFriend Plus (HTS) 로그인 ID
-    KIS_ENVIRONMENT: str = "vts"  # vts: 모의투자, prod: 실거래
+    KIS_ENVIRONMENT: str = "vts"  # vts: 모의투자, real: 실전투자
 
     # 단일 유저 인증 설정
     ADMIN_USERNAME: str = "admin"
