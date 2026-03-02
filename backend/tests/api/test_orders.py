@@ -7,17 +7,17 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_list_orders_empty(client):
+async def test_list_orders_empty(client_with_user):
     """주문 목록 조회 - 빈 결과"""
-    response = await client.get("/api/v1/orders")
+    response = await client_with_user.get("/api/v1/orders")
     assert response.status_code == 200
     assert response.json() == []
 
 
 @pytest.mark.asyncio
-async def test_daily_summary_default_date(client):
+async def test_daily_summary_default_date(client_with_user):
     """일일 매매 요약 조회 - 기본(오늘) 날짜"""
-    response = await client.get("/api/v1/orders/daily-summary")
+    response = await client_with_user.get("/api/v1/orders/daily-summary")
     assert response.status_code == 200
     data = response.json()
     assert "date" in data
@@ -29,9 +29,9 @@ async def test_daily_summary_default_date(client):
 
 
 @pytest.mark.asyncio
-async def test_daily_summary_with_valid_date(client):
+async def test_daily_summary_with_valid_date(client_with_user):
     """일일 매매 요약 조회 - 유효한 날짜 파라미터"""
-    response = await client.get("/api/v1/orders/daily-summary?date=2026-01-01")
+    response = await client_with_user.get("/api/v1/orders/daily-summary?date=2026-01-01")
     assert response.status_code == 200
     data = response.json()
     assert data["date"] == "2026-01-01"

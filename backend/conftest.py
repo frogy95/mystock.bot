@@ -5,8 +5,11 @@ pytest 전역 fixture 설정
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.pool import StaticPool
+from sqlalchemy.types import JSON
 
 from app.main import app
 from app.core.database import get_db
@@ -15,8 +18,26 @@ from app.models.base import Base  # noqa: F401 - 모든 모델 임포트 트리�
 from app.models.user import User
 
 
+# SQLite에서 PostgreSQL JSONB를 JSON(TEXT)으로 렌더링
+@compiles(JSONB, "sqlite")
+def compile_jsonb_sqlite(element, compiler, **kw):
+    return compiler.visit_JSON(JSON(), **kw)
+
+
 # 인메모리 SQLite (테스트용)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def reset_redis_after_test():
+    """각 테스트 종료 후 Redis 연결을 닫아 이벤트 루프 간 연결 재사용 방지"""
+    yield
+    try:
+        from app.services.redis_client import get_redis
+        redis = get_redis()
+        await redis.aclose()
+    except Exception:
+        pass
 
 
 @pytest_asyncio.fixture(scope="function")
