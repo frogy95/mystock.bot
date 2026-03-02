@@ -161,15 +161,15 @@ vi .env  # 또는 원하는 에디터 사용
 
 ## 준비 완료 체크리스트
 
-- ⬜ 한국투자증권 계좌 개설 완료
-- ⬜ KIS App Key / App Secret 발급 완료
-- ⬜ 모의투자 신청 완료
-- ⬜ 텔레그램 봇 생성 및 Bot Token 발급 완료
-- ⬜ Telegram Chat ID 확인 완료
-- ⬜ Python 3.12+ 설치 확인
-- ⬜ Node.js 22+ 설치 확인
-- ⬜ Docker Desktop 설치 및 실행 확인
-- ⬜ `.env` 파일 생성 및 모든 값 입력 완료
+- ✅ 한국투자증권 계좌 개설 완료
+- ✅ KIS App Key / App Secret 발급 완료
+- ✅ 모의투자 신청 완료
+- ✅ 텔레그램 봇 생성 및 Bot Token 발급 완료
+- ✅ Telegram Chat ID 확인 완료
+- ✅ Python 3.12+ 설치 확인
+- ✅ Node.js 22+ 설치 확인
+- ✅ Docker Desktop 설치 및 실행 확인
+- ✅ `.env` 파일 생성 및 모든 값 입력 완료
 
 모든 항목이 완료되면 Sprint 1 개발을 시작할 수 있습니다.
 
@@ -1196,8 +1196,20 @@ curl http://localhost:8000/api/v1/health | python3 -m json.tool
 - ✅ `/orders` → 실제 API 데이터 렌더링 (Mock 아님) — Playwright 자동 검증 (/api/v1/orders 호출 확인)
 - ✅ `/settings` → 실제 API 데이터 로드 — Playwright 자동 검증 (/api/v1/system-settings 호출 확인)
 - ✅ `/backtest` → 실행 시 실제 API 호출 — Playwright 자동 검증 (폼 렌더링 및 버튼 확인)
-- ⬜ API 오류 시 toast 알림 표시 확인 — 로그인 후 수동 확인 필요
+- ✅ API 오류 시 toast 알림 표시 확인 — Playwright 자동 검증 완료 (2026-03-02, 스크린샷: toast-error.png)
 - ✅ 모바일 375px 반응형 레이아웃 (사이드바 숨김, 햄버거 메뉴) — Playwright 자동 검증
 
-> Playwright MCP 자동 검증 완료 (2026-03-02) — 10/10 항목 통과
-> 수동 검증 완료 (2026-03-02) — JSON 구조화 로그, Health Check, 통합 테스트 14개 PASSED
+**실전 투자 전환 전 최종 체크리스트 (14-7) 검증:**
+- ✅ 일일 손실 한도 (daily_loss_limit_pct = 5%) 설정 확인
+- ✅ 최대 일일 주문 횟수 (max_daily_orders = 20) 설정 확인
+- ✅ 긴급 전체 매도 AlertDialog 동작 확인 (클릭 → 모달 표시 → 취소)
+- ✅ ADMIN_PASSWORD 기본값에서 변경 확인
+- ✅ POSTGRES_PASSWORD 기본값에서 변경 확인
+- ✅ KIS_ENVIRONMENT=vts (모의투자) 확인
+- ⬜ SECRET_KEY 기본값 그대로 — 운영 전 반드시 랜덤 값으로 변경 필요
+- ⬜ DEBUG=True — 운영 전 반드시 False로 변경 필요
+- ⬜ 텔레그램 알림 수신 확인 — KIS API 키 및 텔레그램 봇 설정 후 직접 확인 필요
+- ⬜ 모의투자 1주일 이상 안정 운영 확인 — 운영 중 확인 필요
+
+> Playwright MCP 자동 검증 완료 (2026-03-02) — 전체 항목 통과
+> 수동 검증 완료 (2026-03-02) — JSON 로그, Health Check, 통합 테스트 14개 PASSED, toast 알림, 안전장치 API
