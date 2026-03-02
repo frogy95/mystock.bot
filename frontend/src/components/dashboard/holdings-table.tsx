@@ -43,32 +43,32 @@ export function HoldingsTable() {
               ))
             ) : holdings && holdings.length > 0 ? (
               holdings.map((item) => (
-                <TableRow key={item.symbol}>
+                <TableRow key={item.stock_code}>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">{item.symbol}</p>
+                      <p className="font-medium">{item.stock_name}</p>
+                      <p className="text-xs text-muted-foreground">{item.stock_code}</p>
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    {formatKRW(item.currentPrice)}
+                    {item.current_price != null ? formatKRW(item.current_price) : "-"}
                   </TableCell>
                   <TableCell className="text-right font-mono">
                     {item.quantity.toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    {formatKRW(item.avgPrice)}
+                    {formatKRW(item.avg_price)}
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    {formatKRW(item.evalAmount)}
+                    {item.total_value != null ? formatKRW(item.total_value) : "-"}
                   </TableCell>
                   <TableCell className="text-right">
-                    <PriceChangeBadge changeRate={item.profitRate} />
+                    <PriceChangeBadge changeRate={item.profit_loss_rate ?? undefined} />
                   </TableCell>
                   <TableCell>
-                    {item.sellStrategy ? (
+                    {item.sell_strategy_id != null ? (
                       <Badge variant="secondary" className="text-xs">
-                        {item.sellStrategy}
+                        전략 #{item.sell_strategy_id}
                       </Badge>
                     ) : (
                       <span className="text-xs text-muted-foreground">미설정</span>

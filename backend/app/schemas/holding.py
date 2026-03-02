@@ -77,3 +77,5 @@ class PortfolioSummaryResponse(BaseModel):
     total_profit_loss_rate: float  # 총 수익률 (%)
     deposit: float           # 예수금
     holdings_count: int      # 보유 종목 수
+    daily_profit_loss: float = 0.0  # 일일 손익
+    daily_profit_rate: float = 0.0  # 일일 수익률 (%)

@@ -20,6 +20,8 @@ interface PortfolioSummaryAPI {
   total_profit_loss_rate: number;
   deposit: number;
   holdings_count: number;
+  daily_profit_loss?: number;
+  daily_profit_rate?: number;
 }
 
 /** 백엔드 주문 API 응답 타입 */
@@ -56,11 +58,23 @@ interface MarketIndexAPI {
   change_rate: number;
 }
 
-/** 포트폴리오 요약 조회 (실제 API) */
+/** 포트폴리오 요약 조회 (실제 API) — snake_case → camelCase 변환 */
 export function usePortfolioSummary() {
-  return useQuery<PortfolioSummaryAPI>({
+  return useQuery({
     queryKey: ["portfolio", "summary"],
-    queryFn: () => apiClient.get<PortfolioSummaryAPI>("/api/v1/holdings/summary"),
+    queryFn: async () => {
+      const raw = await apiClient.get<PortfolioSummaryAPI>("/api/v1/holdings/summary");
+      return {
+        totalEvaluation: raw.total_evaluation,
+        totalPurchase: raw.total_purchase,
+        totalProfitLoss: raw.total_profit_loss,
+        totalProfitRate: raw.total_profit_loss_rate,
+        dailyProfitLoss: raw.daily_profit_loss ?? 0,
+        dailyProfitRate: raw.daily_profit_rate ?? 0,
+        cashBalance: raw.deposit,
+        holdingsCount: raw.holdings_count,
+      };
+    },
     staleTime: 60_000,
   });
 }

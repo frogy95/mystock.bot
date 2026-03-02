@@ -15,7 +15,8 @@ export function formatKRWCompact(value: number): string {
 }
 
 /** 수익률 포맷 (예: +3.47%, -1.22%) */
-export function formatPercent(value: number): string {
+export function formatPercent(value: number | undefined | null): string {
+  if (value == null) return "0.00%";
   const sign = value > 0 ? "+" : "";
   return `${sign}${value.toFixed(2)}%`;
 }

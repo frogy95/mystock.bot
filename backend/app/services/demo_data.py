@@ -92,6 +92,8 @@ def get_demo_portfolio_summary() -> dict:
         "total_profit_loss_rate": 4.68,
         "deposit": 12500000.0,
         "holdings_count": 5,
+        "daily_profit_loss": 156000.0,
+        "daily_profit_rate": 0.30,
     }
 
 
