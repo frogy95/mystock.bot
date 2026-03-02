@@ -161,15 +161,15 @@ vi .env  # 또는 원하는 에디터 사용
 
 ## 준비 완료 체크리스트
 
-- [ ] 한국투자증권 계좌 개설 완료
-- [ ] KIS App Key / App Secret 발급 완료
-- [ ] 모의투자 신청 완료
-- [ ] 텔레그램 봇 생성 및 Bot Token 발급 완료
-- [ ] Telegram Chat ID 확인 완료
-- [ ] Python 3.12+ 설치 확인
-- [ ] Node.js 22+ 설치 확인
-- [ ] Docker Desktop 설치 및 실행 확인
-- [ ] `.env` 파일 생성 및 모든 값 입력 완료
+- ⬜ 한국투자증권 계좌 개설 완료
+- ⬜ KIS App Key / App Secret 발급 완료
+- ⬜ 모의투자 신청 완료
+- ⬜ 텔레그램 봇 생성 및 Bot Token 발급 완료
+- ⬜ Telegram Chat ID 확인 완료
+- ⬜ Python 3.12+ 설치 확인
+- ⬜ Node.js 22+ 설치 확인
+- ⬜ Docker Desktop 설치 및 실행 확인
+- ⬜ `.env` 파일 생성 및 모든 값 입력 완료
 
 모든 항목이 완료되면 Sprint 1 개발을 시작할 수 있습니다.
 
@@ -245,13 +245,13 @@ docker compose logs --tail=20 frontend
 
 ### Sprint 1 완료 체크리스트
 
-- [x] `docker compose up --build` 성공
-- [x] 4개 서비스 모두 Up 상태
-- [x] `curl http://localhost:8000/api/v1/health` → 200 OK
-- [x] `http://localhost:3001` → "AutoTrader KR" 표시
-- [x] `alembic upgrade head` 성공
-- [x] 10개 테이블 확인 (Sprint 누적으로 12개)
-- [x] seed 데이터 삽입 완료 (admin 유저 + 전략 3개)
+- ✅ `docker compose up --build` 성공
+- ✅ 4개 서비스 모두 Up 상태
+- ✅ `curl http://localhost:8000/api/v1/health` → 200 OK
+- ✅ `http://localhost:3001` → "AutoTrader KR" 표시
+- ✅ `alembic upgrade head` 성공
+- ✅ 10개 테이블 확인 (Sprint 누적으로 12개)
+- ✅ seed 데이터 삽입 완료 (admin 유저 + 전략 3개)
 
 ---
 
@@ -307,10 +307,10 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/v1/settings/kis
 
 브라우저에서 `http://localhost:3001` 접속:
 
-- [x] 사이드바(6개 메뉴)와 헤더가 표시됨
-- [x] 루트(`/`) 접근 시 `/dashboard`로 자동 리다이렉트 (307)
-- [x] 사이드바 클릭으로 6개 페이지 이동 가능 (href 6개 + 각 200 응답 확인)
-- [x] 브라우저 콘솔에 에러 없음
+- ✅ 사이드바(6개 메뉴)와 헤더가 표시됨
+- ✅ 루트(`/`) 접근 시 `/dashboard`로 자동 리다이렉트 (307)
+- ✅ 사이드바 클릭으로 6개 페이지 이동 가능 (href 6개 + 각 200 응답 확인)
+- ✅ 브라우저 콘솔에 에러 없음
 
 ### 6-5. KIS API 연동 (선택 - API 키가 있는 경우)
 
@@ -333,15 +333,15 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ### Sprint 2 완료 체크리스트
 
-- [x] `docker compose up --build` 성공
-- [x] `curl /api/v1/health` → 200 응답
-- [x] `POST /api/v1/auth/login` → Bearer 토큰 발급
-- [x] 인증 없이 보호 엔드포인트 → 401 차단
-- [x] 토큰으로 `GET /api/v1/settings/kis-status` → 200 응답
-- [x] Swagger UI에 7개 엔드포인트 표시 (Sprint 누적 34개 포함)
-- [x] `http://localhost:3001` → 사이드바(6개 메뉴) + 헤더 렌더링
-- [x] 사이드바 클릭으로 6개 페이지 이동 가능
-- [x] 콘솔 에러 없음
+- ✅ `docker compose up --build` 성공
+- ✅ `curl /api/v1/health` → 200 응답
+- ✅ `POST /api/v1/auth/login` → Bearer 토큰 발급
+- ✅ 인증 없이 보호 엔드포인트 → 401 차단
+- ✅ 토큰으로 `GET /api/v1/settings/kis-status` → 200 응답
+- ✅ Swagger UI에 7개 엔드포인트 표시 (Sprint 누적 34개 포함)
+- ✅ `http://localhost:3001` → 사이드바(6개 메뉴) + 헤더 렌더링
+- ✅ 사이드바 클릭으로 6개 페이지 이동 가능
+- ✅ 콘솔 에러 없음
 
 ---
 
@@ -374,40 +374,40 @@ docker compose up --build frontend
 브라우저에서 각 URL 접속:
 
 **대시보드** (`http://localhost:3001/dashboard` 또는 `http://localhost:3000/dashboard`):
-- [x] 총 평가금액 / 일일 손익 / 총 평가손익 / 예수금 4개 카드 표시
-- [x] KOSPI / KOSDAQ 미니 차트 2개 렌더링 (약 700ms 로딩)
-- [x] 보유종목 테이블 (5개 종목, 수익률 색상 구분)
-- [x] 오늘의 매매 신호 3건 (매수=빨강, 매도=파랑)
-- [x] 최근 주문 타임라인 (체결/대기/취소 상태)
-- [x] 전략별 성과 카드 (승률 Progress bar)
-- [x] 포트폴리오 상세 테이블 (인라인 편집 아이콘)
-- [x] 포트폴리오 도넛 파이차트
+- ✅ 총 평가금액 / 일일 손익 / 총 평가손익 / 예수금 4개 카드 표시
+- ✅ KOSPI / KOSDAQ 미니 차트 2개 렌더링 (약 700ms 로딩)
+- ✅ 보유종목 테이블 (5개 종목, 수익률 색상 구분)
+- ✅ 오늘의 매매 신호 3건 (매수=빨강, 매도=파랑)
+- ✅ 최근 주문 타임라인 (체결/대기/취소 상태)
+- ✅ 전략별 성과 카드 (승률 Progress bar)
+- ✅ 포트폴리오 상세 테이블 (인라인 편집 아이콘)
+- ✅ 포트폴리오 도넛 파이차트
 
 **관심종목** (`/watchlist`):
-- [x] 검색창에 "삼성" 입력 시 검색 결과 드롭다운 표시
-- [x] 검색 결과 클릭 시 현재 탭에 종목 추가
-- [x] 반도체 / 2차전지 / 바이오 3개 그룹 탭 전환
-- [x] 종목별 전략 Select 드롭다운 작동
-- [x] 휴지통 아이콘 클릭 시 종목 삭제
-- [x] "그룹 추가" 버튼으로 새 그룹 생성
+- ✅ 검색창에 "삼성" 입력 시 검색 결과 드롭다운 표시
+- ✅ 검색 결과 클릭 시 현재 탭에 종목 추가
+- ✅ 반도체 / 2차전지 / 바이오 3개 그룹 탭 전환
+- ✅ 종목별 전략 Select 드롭다운 작동
+- ✅ 휴지통 아이콘 클릭 시 종목 삭제
+- ✅ "그룹 추가" 버튼으로 새 그룹 생성
 
 **반응형 (모바일 375px)**:
-- [x] 브라우저 개발자도구에서 375px 너비로 설정
-- [x] 사이드바가 숨겨짐
-- [x] 헤더 왼쪽에 햄버거 메뉴(☰) 표시
-- [x] 햄버거 클릭 시 사이드바 슬라이드 인
-- [x] 오버레이 또는 사이드바 외부 클릭 시 닫힘
+- ✅ 브라우저 개발자도구에서 375px 너비로 설정
+- ✅ 사이드바가 숨겨짐
+- ✅ 헤더 왼쪽에 햄버거 메뉴(☰) 표시
+- ✅ 햄버거 클릭 시 사이드바 슬라이드 인
+- ✅ 오버레이 또는 사이드바 외부 클릭 시 닫힘
 
 **브라우저 콘솔**:
-- [x] 에러(빨간 글씨) 없음
+- ✅ 에러(빨간 글씨) 없음
 
 ### Sprint 3 완료 체크리스트
 
-- [x] `npm install` 완료
-- [x] 대시보드 6개 섹션 모두 렌더링
-- [x] 관심종목 검색/추가/삭제 작동
-- [x] 모바일 반응형 레이아웃 작동
-- [x] 콘솔 에러 없음
+- ✅ `npm install` 완료
+- ✅ 대시보드 6개 섹션 모두 렌더링
+- ✅ 관심종목 검색/추가/삭제 작동
+- ✅ 모바일 반응형 레이아웃 작동
+- ✅ 콘솔 에러 없음
 
 > Sprint 3 검증 완료 (2026-03-01, Playwright MCP 자동 검증)
 
@@ -448,46 +448,46 @@ docker compose up --build frontend
 브라우저에서 각 URL 접속:
 
 **전략 설정** (`/strategy`):
-- [x] 프리셋 전략 3종 카드 렌더링 (골든크로스+RSI / 볼린저 밴드 반전 / 가치+모멘텀)
-- [x] 전략 카드 클릭 시 상세 패널 표시 (파라미터 슬라이더, 종목 매핑 테이블)
-- [x] 활성화/비활성화 토글 스위치 동작
+- ✅ 프리셋 전략 3종 카드 렌더링 (골든크로스+RSI / 볼린저 밴드 반전 / 가치+모멘텀)
+- ✅ 전략 카드 클릭 시 상세 패널 표시 (파라미터 슬라이더, 종목 매핑 테이블)
+- ✅ 활성화/비활성화 토글 스위치 동작
 
 **백테스팅** (`/backtest`):
-- [x] 설정 폼 렌더링 (전략 선택, 종목코드, 시작/종료일)
-- [x] 전략 미선택 시 실행 버튼 비활성화
-- [x] 백테스팅 실행 후 결과 대시보드 표시 (총수익률, MDD, 샤프비율, 승률 카드)
-- [x] 수익 곡선 차트 + 벤치마크 비교 라인 렌더링
+- ✅ 설정 폼 렌더링 (전략 선택, 종목코드, 시작/종료일)
+- ✅ 전략 미선택 시 실행 버튼 비활성화
+- ✅ 백테스팅 실행 후 결과 대시보드 표시 (총수익률, MDD, 샤프비율, 승률 카드)
+- ✅ 수익 곡선 차트 + 벤치마크 비교 라인 렌더링
 
 **주문 내역** (`/orders`):
-- [x] 주문 테이블 렌더링 (전체/미체결/체결완료/취소 탭)
-- [x] 미체결 주문에 취소 버튼 표시
-- [x] 주문 행 클릭 시 상세 다이얼로그 표시 (판단 근거, 신뢰도 Progress bar)
+- ✅ 주문 테이블 렌더링 (전체/미체결/체결완료/취소 탭)
+- ✅ 미체결 주문에 취소 버튼 표시
+- ✅ 주문 행 클릭 시 상세 다이얼로그 표시 (판단 근거, 신뢰도 Progress bar)
 
 **설정** (`/settings`):
-- [x] KIS API 키 폼 렌더링 (App Key/Secret 마스킹, 투자 모드 라디오)
-- [x] 텔레그램 설정 폼 렌더링
-- [x] 안전장치 설정 폼 렌더링 (슬라이더, 숫자 입력)
-- [x] 자동매매 마스터 ON/OFF 스위치
-- [x] 긴급 전체 매도 버튼 클릭 시 AlertDialog 표시
-- [x] AlertDialog 취소 버튼 클릭 시 모달 닫힘
+- ✅ KIS API 키 폼 렌더링 (App Key/Secret 마스킹, 투자 모드 라디오)
+- ✅ 텔레그램 설정 폼 렌더링
+- ✅ 안전장치 설정 폼 렌더링 (슬라이더, 숫자 입력)
+- ✅ 자동매매 마스터 ON/OFF 스위치
+- ✅ 긴급 전체 매도 버튼 클릭 시 AlertDialog 표시
+- ✅ AlertDialog 취소 버튼 클릭 시 모달 닫힘
 
 **반응형 레이아웃**:
-- [x] 375px(모바일): 사이드바 숨김, 햄버거 메뉴(≡) 표시
-- [ ] 1920px(데스크톱): 사이드바 표시, 전체 레이아웃 정상 확인 (수동 확인 필요)
+- ✅ 375px(모바일): 사이드바 숨김, 햄버거 메뉴(≡) 표시
+- ⬜ 1920px(데스크톱): 사이드바 표시, 전체 레이아웃 정상 확인 (수동 확인 필요)
 
 **콘솔 에러**:
-- [x] Error 레벨 메시지 0건 확인
+- ✅ Error 레벨 메시지 0건 확인
 
 ### Sprint 4 완료 체크리스트
 
-- [x] `npm install` 완료
-- [x] 전략 설정 화면 4개 섹션 렌더링 (카드 목록, 상세 패널, 파라미터 폼, 종목 매핑)
-- [x] 백테스팅 실행 및 결과 차트 렌더링
-- [x] 주문 내역 탭/필터/상세 다이얼로그 동작
-- [x] 설정 화면 전체 폼 및 긴급 매도 AlertDialog 동작
-- [x] 모바일 375px 반응형 레이아웃 동작
-- [x] 콘솔 에러 없음
-- [ ] 데스크톱 1920px 레이아웃 수동 확인 (사용자 직접 수행)
+- ✅ `npm install` 완료
+- ✅ 전략 설정 화면 4개 섹션 렌더링 (카드 목록, 상세 패널, 파라미터 폼, 종목 매핑)
+- ✅ 백테스팅 실행 및 결과 차트 렌더링
+- ✅ 주문 내역 탭/필터/상세 다이얼로그 동작
+- ✅ 설정 화면 전체 폼 및 긴급 매도 AlertDialog 동작
+- ✅ 모바일 375px 반응형 레이아웃 동작
+- ✅ 콘솔 에러 없음
+- ⬜ 데스크톱 1920px 레이아웃 수동 확인 (사용자 직접 수행)
 
 > Playwright MCP 자동 검증 완료 (2026-03-01) — 11/11 항목 통과
 
@@ -519,50 +519,50 @@ docker compose up --build frontend
 브라우저에서 `http://localhost:3000/strategy` 접속 후 **커스텀 전략** 탭 클릭:
 
 **전략 생성 및 편집:**
-- [x] "새 전략 만들기" 클릭 시 이름 입력 폼 표시
-- [x] 이름 입력 후 Enter 또는 "추가" 버튼으로 전략 생성
-- [x] 생성된 전략이 목록에 추가되고 자동 선택됨
-- [x] 전략 이름 인라인 편집 가능 (텍스트박스)
+- ✅ "새 전략 만들기" 클릭 시 이름 입력 폼 표시
+- ✅ 이름 입력 후 Enter 또는 "추가" 버튼으로 전략 생성
+- ✅ 생성된 전략이 목록에 추가되고 자동 선택됨
+- ✅ 전략 이름 인라인 편집 가능 (텍스트박스)
 
 **조건 빌더:**
-- [x] "조건 추가" 버튼 클릭 시 조건 행 추가
-- [x] 지표 선택 드롭다운 (SMA/EMA/RSI/MACD/BB/ATR/거래량비율/현재가 8종)
-- [x] 지표 변경 시 파라미터 입력 필드 동적 렌더링
-- [x] 비교 연산자 선택 (>/>=/</<=/골든크로스/데드크로스)
-- [x] 우변 종류 선택 (고정값 또는 지표)
-- [x] 조건 2개 이상 추가 시 AND/OR 토글 배지 표시
-- [x] AND/OR 배지 클릭 시 전환 동작
+- ✅ "조건 추가" 버튼 클릭 시 조건 행 추가
+- ✅ 지표 선택 드롭다운 (SMA/EMA/RSI/MACD/BB/ATR/거래량비율/현재가 8종)
+- ✅ 지표 변경 시 파라미터 입력 필드 동적 렌더링
+- ✅ 비교 연산자 선택 (>/>=/</<=/골든크로스/데드크로스)
+- ✅ 우변 종류 선택 (고정값 또는 지표)
+- ✅ 조건 2개 이상 추가 시 AND/OR 토글 배지 표시
+- ✅ AND/OR 배지 클릭 시 전환 동작
 
 **전략 미리보기:**
-- [x] 조건 추가/수정 즉시 미리보기 텍스트 자동 업데이트
-- [x] 매수/매도 조건 섹션 분리 표시
-- [x] 조건 없을 시 "(조건 없음)" 표시
+- ✅ 조건 추가/수정 즉시 미리보기 텍스트 자동 업데이트
+- ✅ 매수/매도 조건 섹션 분리 표시
+- ✅ 조건 없을 시 "(조건 없음)" 표시
 
 **전략 관리:**
-- [x] 활성화/비활성화 Switch 토글 동작
-- [x] 복제 버튼으로 전략 복제 (이름에 "복사본" 추가)
-- [x] 삭제 버튼으로 전략 삭제
-- [x] 페이지 새로고침 후 전략 목록 유지 (localStorage persist)
+- ✅ 활성화/비활성화 Switch 토글 동작
+- ✅ 복제 버튼으로 전략 복제 (이름에 "복사본" 추가)
+- ✅ 삭제 버튼으로 전략 삭제
+- ✅ 페이지 새로고침 후 전략 목록 유지 (localStorage persist)
 
 **수동 확인 필요 항목:**
-- [ ] MACD 지표 선택 후 우변이 "시그널선 / 0"으로 고정됨 확인
-- [ ] BB 지표 선택 후 "위치" 드롭다운 (하단/중단/상단밴드) 표시 확인
-- [ ] 지표를 우변으로 선택 (SMA/EMA) 후 파라미터 입력 확인
-- [ ] 복제된 전략 조건 수정 시 원본에 영향 없음 확인
-- [ ] 데스크톱 1920px 레이아웃 확인
+- ⬜ MACD 지표 선택 후 우변이 "시그널선 / 0"으로 고정됨 확인
+- ⬜ BB 지표 선택 후 "위치" 드롭다운 (하단/중단/상단밴드) 표시 확인
+- ⬜ 지표를 우변으로 선택 (SMA/EMA) 후 파라미터 입력 확인
+- ⬜ 복제된 전략 조건 수정 시 원본에 영향 없음 확인
+- ⬜ 데스크톱 1920px 레이아웃 확인
 
 ### Sprint 4.1 완료 체크리스트
 
-- [x] 커스텀 전략 탭 전환 정상
-- [x] 전략 생성/삭제/복제 동작
-- [x] 조건 행 추가/삭제 동작
-- [x] AND/OR 토글 동작
-- [x] 전략 미리보기 실시간 업데이트
-- [x] localStorage persist (새로고침 후 유지)
-- [x] 모바일 375px 반응형 레이아웃 동작
-- [x] 콘솔 에러 없음
-- [ ] MACD/BB 특수 케이스 수동 확인 (사용자 직접 수행)
-- [ ] 데스크톱 1920px 레이아웃 수동 확인 (사용자 직접 수행)
+- ✅ 커스텀 전략 탭 전환 정상
+- ✅ 전략 생성/삭제/복제 동작
+- ✅ 조건 행 추가/삭제 동작
+- ✅ AND/OR 토글 동작
+- ✅ 전략 미리보기 실시간 업데이트
+- ✅ localStorage persist (새로고침 후 유지)
+- ✅ 모바일 375px 반응형 레이아웃 동작
+- ✅ 콘솔 에러 없음
+- ⬜ MACD/BB 특수 케이스 수동 확인 (사용자 직접 수행)
+- ⬜ 데스크톱 1920px 레이아웃 수동 확인 (사용자 직접 수행)
 
 > Playwright MCP 자동 검증 완료 (2026-03-01) — 8/8 항목 통과
 
@@ -663,16 +663,16 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 
 ### Sprint 5 완료 체크리스트
 
-- [x] `docker compose up --build` 성공 (신규 패키지 포함)
-- [x] `alembic upgrade head` 성공 (holdings 테이블 생성)
-- [x] `GET /api/v1/stocks/search?q=삼성전자` → 200 응답 (KIS 키 없이 빈 배열 정상)
-- [x] `GET /api/v1/watchlist/groups` → 200 응답
-- [x] `POST /api/v1/watchlist/groups` → 그룹 생성 201
-- [x] `GET /api/v1/holdings/summary` → 포트폴리오 요약 반환
-- [x] Swagger UI에 watchlist/holdings 엔드포인트 표시
-- [x] `/watchlist` 프론트엔드 → 실제 API 검색/그룹 조회 연동 확인 (use-watchlist.ts 코드 확인)
-- [x] `/dashboard` 프론트엔드 → 포트폴리오 요약 API 연동 확인 (use-portfolio.ts 코드 확인)
-- [ ] (선택) `POST /api/v1/holdings/sync` → KIS 잔고 동기화 성공
+- ✅ `docker compose up --build` 성공 (신규 패키지 포함)
+- ✅ `alembic upgrade head` 성공 (holdings 테이블 생성)
+- ✅ `GET /api/v1/stocks/search?q=삼성전자` → 200 응답 (KIS 키 없이 빈 배열 정상)
+- ✅ `GET /api/v1/watchlist/groups` → 200 응답
+- ✅ `POST /api/v1/watchlist/groups` → 그룹 생성 201
+- ✅ `GET /api/v1/holdings/summary` → 포트폴리오 요약 반환
+- ✅ Swagger UI에 watchlist/holdings 엔드포인트 표시
+- ✅ `/watchlist` 프론트엔드 → 실제 API 검색/그룹 조회 연동 확인 (use-watchlist.ts 코드 확인)
+- ✅ `/dashboard` 프론트엔드 → 포트폴리오 요약 API 연동 확인 (use-portfolio.ts 코드 확인)
+- ⬜ (선택) `POST /api/v1/holdings/sync` → KIS 잔고 동기화 성공
 
 > Sprint 5 백엔드 자동 검증: docker 환경 없이는 자동 실행 불가, 수동 검증 필요
 
@@ -764,16 +764,16 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 
 ### Sprint 6 완료 체크리스트
 
-- [x] `docker compose up --build` 성공 (신규 패키지 포함)
-- [x] 백엔드 로그에 "APScheduler 시작" 메시지 확인 ("APScheduler 시작 (전략 평가: 장중 매 5분)")
-- [x] `GET /api/v1/strategies` → 전략 3개 목록 반환
-- [x] `GET /api/v1/strategies/1` → 전략 상세 + 파라미터 반환
-- [x] `PUT /api/v1/strategies/1/activate` → 활성화 상태 변경 성공
-- [x] `PUT /api/v1/strategies/1/params` → 파라미터 업데이트 성공
-- [x] Swagger UI에 `strategies` 엔드포인트 5개 표시
-- [x] `/strategy` 프론트엔드 → 실제 DB 데이터 렌더링 확인 (use-strategy.ts 코드 확인)
-- [x] `/strategy` 프론트엔드 → 토글 클릭 시 API 호출 확인 (activateStrategy 뮤테이션 확인)
-- [ ] (선택) `POST /api/v1/strategies/1/evaluate/005930` → 신호 평가 성공
+- ✅ `docker compose up --build` 성공 (신규 패키지 포함)
+- ✅ 백엔드 로그에 "APScheduler 시작" 메시지 확인 ("APScheduler 시작 (전략 평가: 장중 매 5분)")
+- ✅ `GET /api/v1/strategies` → 전략 3개 목록 반환
+- ✅ `GET /api/v1/strategies/1` → 전략 상세 + 파라미터 반환
+- ✅ `PUT /api/v1/strategies/1/activate` → 활성화 상태 변경 성공
+- ✅ `PUT /api/v1/strategies/1/params` → 파라미터 업데이트 성공
+- ✅ Swagger UI에 `strategies` 엔드포인트 5개 표시
+- ✅ `/strategy` 프론트엔드 → 실제 DB 데이터 렌더링 확인 (use-strategy.ts 코드 확인)
+- ✅ `/strategy` 프론트엔드 → 토글 클릭 시 API 호출 확인 (activateStrategy 뮤테이션 확인)
+- ⬜ (선택) `POST /api/v1/strategies/1/evaluate/005930` → 신호 평가 성공
 
 > Sprint 6 백엔드 자동 검증: docker 환경 없이는 자동 실행 불가, 수동 검증 필요
 
@@ -883,23 +883,23 @@ curl -H "Authorization: Bearer $TOKEN" \
 ### Sprint 7 완료 체크리스트
 
 **자동 검증 완료 (Playwright MCP):**
-- [x] 설정 화면 전체 폼 렌더링 (자동매매 / KIS API / 안전장치)
-- [x] 긴급 전체 매도 AlertDialog 표시 및 취소 동작
-- [x] 주문내역 탭/테이블/취소 버튼 렌더링
-- [x] 모바일 375px 반응형 레이아웃
-- [x] 콘솔 에러 없음
+- ✅ 설정 화면 전체 폼 렌더링 (자동매매 / KIS API / 안전장치)
+- ✅ 긴급 전체 매도 AlertDialog 표시 및 취소 동작
+- ✅ 주문내역 탭/테이블/취소 버튼 렌더링
+- ✅ 모바일 375px 반응형 레이아웃
+- ✅ 콘솔 에러 없음
 
 **수동 검증 필요 (Docker 실행 후):**
-- [x] `docker compose up --build` 성공
-- [x] 백엔드 로그에 손절/익절 모니터링 스케줄러 시작 확인 (APScheduler + daily_summary 잡 확인)
-- [x] `GET /api/v1/safety/status` → 200 + 상태 JSON 반환 (auto_trade_enabled 등 키 확인)
-- [x] `POST /api/v1/safety/auto-trade` → 자동매매 상태 변경 성공
-- [x] `GET /api/v1/system-settings` → 설정 목록 반환
-- [x] `PUT /api/v1/system-settings` → 설정 업데이트 성공
-- [x] `GET /api/v1/orders` → 주문 목록 반환
-- [x] Swagger UI에 safety(3개), system-settings(3개), orders(1개) 엔드포인트 표시
-- [x] `/settings` 프론트엔드 → 자동매매 토글 API 호출 확인 (use-settings.ts toggleAutoTrade 확인)
-- [x] `/orders` 프론트엔드 → 실제 DB 데이터 렌더링 확인 (use-orders.ts 코드 확인)
+- ✅ `docker compose up --build` 성공
+- ✅ 백엔드 로그에 손절/익절 모니터링 스케줄러 시작 확인 (APScheduler + daily_summary 잡 확인)
+- ✅ `GET /api/v1/safety/status` → 200 + 상태 JSON 반환 (auto_trade_enabled 등 키 확인)
+- ✅ `POST /api/v1/safety/auto-trade` → 자동매매 상태 변경 성공
+- ✅ `GET /api/v1/system-settings` → 설정 목록 반환
+- ✅ `PUT /api/v1/system-settings` → 설정 업데이트 성공
+- ✅ `GET /api/v1/orders` → 주문 목록 반환
+- ✅ Swagger UI에 safety(3개), system-settings(3개), orders(1개) 엔드포인트 표시
+- ✅ `/settings` 프론트엔드 → 자동매매 토글 API 호출 확인 (use-settings.ts toggleAutoTrade 확인)
+- ✅ `/orders` 프론트엔드 → 실제 DB 데이터 렌더링 확인 (use-orders.ts 코드 확인)
 
 > Sprint 7 프론트엔드 자동 검증 완료 (2026-03-01) — 11/11 항목 통과
 > Sprint 7 백엔드 자동 검증: docker 환경 없이는 자동 실행 불가, 수동 검증 필요
@@ -1028,26 +1028,26 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 ### Sprint 9 완료 체크리스트
 
 **자동 검증 완료 (Playwright MCP, 2026-03-02):**
-- [x] 대시보드 렌더링 (레이아웃 구조 확인 — 백엔드 미실행으로 스켈레톤 상태)
-- [x] 전략 설정 페이지 렌더링 (탭 전환, 로딩 상태)
-- [x] 주문 내역 페이지 렌더링 (Mock 폴백 데이터 표시)
-- [x] 설정 페이지 렌더링 (텔레그램 알림 개별 스위치 3개 확인)
-- [x] 모바일 375px 반응형 레이아웃 (사이드바 숨김, 햄버거 메뉴)
-- [x] sonner 패키지 설치 및 layout.tsx Toaster 컴포넌트 동작 확인
-- [x] 콘솔 에러 없음 (2026-03-02 백엔드 재빌드 후 확인 완료)
+- ✅ 대시보드 렌더링 (레이아웃 구조 확인 — 백엔드 미실행으로 스켈레톤 상태)
+- ✅ 전략 설정 페이지 렌더링 (탭 전환, 로딩 상태)
+- ✅ 주문 내역 페이지 렌더링 (Mock 폴백 데이터 표시)
+- ✅ 설정 페이지 렌더링 (텔레그램 알림 개별 스위치 3개 확인)
+- ✅ 모바일 375px 반응형 레이아웃 (사이드바 숨김, 햄버거 메뉴)
+- ✅ sonner 패키지 설치 및 layout.tsx Toaster 컴포넌트 동작 확인
+- ✅ 콘솔 에러 없음 (2026-03-02 백엔드 재빌드 후 확인 완료)
 
 > 상세 보고서: [docs/sprint/sprint9/playwright-report.md](docs/sprint/sprint9/playwright-report.md)
 
 **수동 검증 완료 (2026-03-02, Docker 실행 후):**
-- [x] `docker compose up --build` 성공 (Sprint 9 코드 반영)
-- [x] `GET /api/v1/orders/daily-summary` → 200 + 일일 요약 JSON 반환 (`{"date":"2026-03-02","total_buy_count":0,...}`)
-- [x] `GET /api/v1/strategies/performance` → 200 + 전략 성과 목록 반환 (3개 전략)
-- [x] `GET /api/v1/stocks/market-index` → 200 + 시장 지수 데이터 반환 (KOSPI 6244.13, KOSDAQ 1192.78)
-- [x] 백엔드 로그에 `_run_daily_summary` 크론 잡 등록 확인
-- [x] Swagger UI에 3개 신규 엔드포인트 표시 (`/orders/daily-summary`, `/strategies/performance`, `/stocks/market-index`)
-- [x] `/dashboard` 프론트엔드 → 4개 API 엔드포인트 200 응답 확인
-- [x] `/api/v1/ws/quotes` WebSocket 연결 확인 (101 Switching Protocols)
-- [x] `notify_order_executed` 설정을 "false"로 변경 → 재설정 "true"로 원복 확인
-- [ ] (선택) 텔레그램 봇 설정 완료 시 전략 신호 알림 수신 확인
+- ✅ `docker compose up --build` 성공 (Sprint 9 코드 반영)
+- ✅ `GET /api/v1/orders/daily-summary` → 200 + 일일 요약 JSON 반환 (`{"date":"2026-03-02","total_buy_count":0,...}`)
+- ✅ `GET /api/v1/strategies/performance` → 200 + 전략 성과 목록 반환 (3개 전략)
+- ✅ `GET /api/v1/stocks/market-index` → 200 + 시장 지수 데이터 반환 (KOSPI 6244.13, KOSDAQ 1192.78)
+- ✅ 백엔드 로그에 `_run_daily_summary` 크론 잡 등록 확인
+- ✅ Swagger UI에 3개 신규 엔드포인트 표시 (`/orders/daily-summary`, `/strategies/performance`, `/stocks/market-index`)
+- ✅ `/dashboard` 프론트엔드 → 4개 API 엔드포인트 200 응답 확인
+- ✅ `/api/v1/ws/quotes` WebSocket 연결 확인 (101 Switching Protocols)
+- ✅ `notify_order_executed` 설정을 "false"로 변경 → 재설정 "true"로 원복 확인
+- ⬜ (선택) 텔레그램 봇 설정 완료 시 전략 신호 알림 수신 확인
 
 > Sprint 9 수동 검증 완료 (2026-03-02) — 9/9 항목 통과 (선택 항목 1건 제외)
