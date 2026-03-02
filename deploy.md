@@ -544,12 +544,12 @@ docker compose up --build frontend
 - ✅ 삭제 버튼으로 전략 삭제
 - ✅ 페이지 새로고침 후 전략 목록 유지 (localStorage persist)
 
-**수동 확인 필요 항목:**
-- ⬜ MACD 지표 선택 후 우변이 "시그널선 / 0"으로 고정됨 확인
-- ⬜ BB 지표 선택 후 "위치" 드롭다운 (하단/중단/상단밴드) 표시 확인
-- ⬜ 지표를 우변으로 선택 (SMA/EMA) 후 파라미터 입력 확인
-- ⬜ 복제된 전략 조건 수정 시 원본에 영향 없음 확인
-- ⬜ 데스크톱 1920px 레이아웃 확인
+**수동 확인 필요 항목 (Playwright Chromium 자동 검증 완료, 2026-03-02):**
+- ✅ MACD 지표 선택 후 우변이 "시그널선 / 0"으로 고정됨 확인
+- ✅ BB 지표 선택 후 "위치" 드롭다운 (하단/중단/상단밴드) 표시 확인
+- ✅ 지표를 우변으로 선택 (SMA/EMA) 후 파라미터 입력 확인
+- ✅ 복제된 전략 조건 수정 시 원본에 영향 없음 확인 ("복사본" 이름으로 독립 생성)
+- ✅ 데스크톱 1920px 레이아웃 확인 (가로 오버플로우 없음)
 
 ### Sprint 4.1 완료 체크리스트
 
@@ -561,10 +561,12 @@ docker compose up --build frontend
 - ✅ localStorage persist (새로고침 후 유지)
 - ✅ 모바일 375px 반응형 레이아웃 동작
 - ✅ 콘솔 에러 없음
-- ⬜ MACD/BB 특수 케이스 수동 확인 (사용자 직접 수행)
-- ⬜ 데스크톱 1920px 레이아웃 수동 확인 (사용자 직접 수행)
+- ✅ MACD/BB 특수 케이스 수동 확인 (Playwright Chromium 자동 검증 완료, 2026-03-02)
+- ✅ 데스크톱 1920px 레이아웃 수동 확인 (Playwright Chromium 자동 검증 완료, 2026-03-02)
 
 > Playwright MCP 자동 검증 완료 (2026-03-01) — 8/8 항목 통과
+> Playwright Chromium 추가 검증 완료 (2026-03-02) — 수동 검증 항목 5/5 통과
+> 상세 내용: [docs/sprint/sprint10/sprint4-1-report-v2.md](docs/sprint/sprint10/sprint4-1-report-v2.md)
 
 ---
 
