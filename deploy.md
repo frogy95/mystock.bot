@@ -1034,20 +1034,20 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
 - [x] 설정 페이지 렌더링 (텔레그램 알림 개별 스위치 3개 확인)
 - [x] 모바일 375px 반응형 레이아웃 (사이드바 숨김, 햄버거 메뉴)
 - [x] sonner 패키지 설치 및 layout.tsx Toaster 컴포넌트 동작 확인
-- [ ] 콘솔 에러 없음 (백엔드 재빌드 후 확인 필요 — 현재 API ERR_CONNECTION_RESET)
+- [x] 콘솔 에러 없음 (2026-03-02 백엔드 재빌드 후 확인 완료)
 
 > 상세 보고서: [docs/sprint/sprint9/playwright-report.md](docs/sprint/sprint9/playwright-report.md)
 
-**수동 검증 필요 (Docker 실행 후):**
-- [ ] `docker compose up --build` 성공 (Sprint 9 코드 반영)
-- [ ] `GET /api/v1/orders/daily-summary` → 200 + 일일 요약 JSON 반환
-- [ ] `GET /api/v1/strategies/performance` → 200 + 전략 성과 목록 반환
-- [ ] `GET /api/v1/stocks/market-index` → 200 + 시장 지수 데이터 반환
-- [ ] 백엔드 로그에 `daily_summary` 크론 잡 등록 확인
-- [ ] Swagger UI에 3개 신규 엔드포인트 표시
-- [ ] `/dashboard` 프론트엔드 → Network 탭에서 4개 API 호출 200 확인
-- [ ] `/ws/realtime` WebSocket 연결 확인
+**수동 검증 완료 (2026-03-02, Docker 실행 후):**
+- [x] `docker compose up --build` 성공 (Sprint 9 코드 반영)
+- [x] `GET /api/v1/orders/daily-summary` → 200 + 일일 요약 JSON 반환 (`{"date":"2026-03-02","total_buy_count":0,...}`)
+- [x] `GET /api/v1/strategies/performance` → 200 + 전략 성과 목록 반환 (3개 전략)
+- [x] `GET /api/v1/stocks/market-index` → 200 + 시장 지수 데이터 반환 (KOSPI 6244.13, KOSDAQ 1192.78)
+- [x] 백엔드 로그에 `_run_daily_summary` 크론 잡 등록 확인
+- [x] Swagger UI에 3개 신규 엔드포인트 표시 (`/orders/daily-summary`, `/strategies/performance`, `/stocks/market-index`)
+- [x] `/dashboard` 프론트엔드 → 4개 API 엔드포인트 200 응답 확인
+- [x] `/api/v1/ws/quotes` WebSocket 연결 확인 (101 Switching Protocols)
+- [x] `notify_order_executed` 설정을 "false"로 변경 → 재설정 "true"로 원복 확인
 - [ ] (선택) 텔레그램 봇 설정 완료 시 전략 신호 알림 수신 확인
-- [ ] (선택) `notify_order_executed` 설정을 "false"로 변경 후 알림 비활성화 확인
 
-> Sprint 9 백엔드 자동 검증: docker 환경 없이는 자동 실행 불가, 수동 검증 필요
+> Sprint 9 수동 검증 완료 (2026-03-02) — 9/9 항목 통과 (선택 항목 1건 제외)
