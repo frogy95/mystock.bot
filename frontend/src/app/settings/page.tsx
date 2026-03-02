@@ -30,9 +30,14 @@ function getVal(settings: SettingItemAPI[], key: string, defaultValue = ""): str
 /** SettingItemAPI[] → KisApiConfig 파싱 */
 function parseKisApiConfig(s: SettingItemAPI[]): KisApiConfig {
   return {
-    appKey: getVal(s, "kis_app_key"),
-    appSecret: getVal(s, "kis_app_secret"),
-    mode: getVal(s, "kis_mode", "paper") as "paper" | "real",
+    vtsAppKey: getVal(s, "kis_vts_app_key"),
+    vtsAppSecret: getVal(s, "kis_vts_app_secret"),
+    vtsAccountNumber: getVal(s, "kis_vts_account_number"),
+    realAppKey: getVal(s, "kis_real_app_key"),
+    realAppSecret: getVal(s, "kis_real_app_secret"),
+    realAccountNumber: getVal(s, "kis_real_account_number"),
+    htsId: getVal(s, "kis_hts_id"),
+    mode: getVal(s, "kis_mode", "vts") as "vts" | "real",
   };
 }
 
@@ -115,8 +120,13 @@ export default function SettingsPage() {
         config={parseKisApiConfig(settings)}
         onUpdate={(updates) => {
           const items = buildItems({
-            ...(updates.appKey !== undefined && { kis_app_key: updates.appKey }),
-            ...(updates.appSecret !== undefined && { kis_app_secret: updates.appSecret }),
+            ...(updates.vtsAppKey !== undefined && { kis_vts_app_key: updates.vtsAppKey }),
+            ...(updates.vtsAppSecret !== undefined && { kis_vts_app_secret: updates.vtsAppSecret }),
+            ...(updates.vtsAccountNumber !== undefined && { kis_vts_account_number: updates.vtsAccountNumber }),
+            ...(updates.realAppKey !== undefined && { kis_real_app_key: updates.realAppKey }),
+            ...(updates.realAppSecret !== undefined && { kis_real_app_secret: updates.realAppSecret }),
+            ...(updates.realAccountNumber !== undefined && { kis_real_account_number: updates.realAccountNumber }),
+            ...(updates.htsId !== undefined && { kis_hts_id: updates.htsId }),
             ...(updates.mode !== undefined && { kis_mode: updates.mode }),
           });
           if (items.length > 0) updateSettings.mutate(items);

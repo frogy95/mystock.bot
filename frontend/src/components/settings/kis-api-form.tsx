@@ -14,91 +14,140 @@ interface KisApiFormProps {
   onUpdate: (updates: Partial<KisApiConfig>) => void;
 }
 
-export function KisApiForm({ config, onUpdate }: KisApiFormProps) {
-  // 로컬 편집 상태 (저장 버튼 클릭 시 반영)
-  const [localConfig, setLocalConfig] = useState<KisApiConfig>(config);
-  // App Key 표시/숨김 토글
-  const [showAppKey, setShowAppKey] = useState(false);
-  // App Secret 표시/숨김 토글
-  const [showAppSecret, setShowAppSecret] = useState(false);
+/** password 필드 표시/숨김 토글이 포함된 입력 컴포넌트 */
+function SecretInput({
+  id,
+  value,
+  onChange,
+  placeholder,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="flex gap-2">
+      <Input
+        id={id}
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+      <Button type="button" variant="outline" size="sm" onClick={() => setShow((p) => !p)}>
+        {show ? "숨기기" : "표시"}
+      </Button>
+    </div>
+  );
+}
 
-  const handleSave = () => {
-    onUpdate(localConfig);
-  };
+export function KisApiForm({ config, onUpdate }: KisApiFormProps) {
+  const [local, setLocal] = useState<KisApiConfig>(config);
+
+  const set = (field: keyof KisApiConfig) => (value: string) =>
+    setLocal((prev) => ({ ...prev, [field]: value }));
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>KIS API 설정</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* App Key 입력 */}
-        <div className="space-y-2">
-          <Label htmlFor="appKey">App Key</Label>
-          <div className="flex gap-2">
-            <Input
-              id="appKey"
-              type={showAppKey ? "text" : "password"}
-              value={localConfig.appKey}
-              onChange={(e) =>
-                setLocalConfig((prev) => ({ ...prev, appKey: e.target.value }))
-              }
-              placeholder="App Key를 입력하세요"
+      <CardContent className="space-y-6">
+        {/* 모의투자 앱 키 */}
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-muted-foreground">모의투자 앱 키 (주문/잔고)</p>
+          <div className="space-y-2">
+            <Label htmlFor="vtsAppKey">App Key</Label>
+            <SecretInput
+              id="vtsAppKey"
+              value={local.vtsAppKey}
+              onChange={set("vtsAppKey")}
+              placeholder="모의투자 App Key"
             />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAppKey((prev) => !prev)}
-            >
-              {showAppKey ? "숨기기" : "표시"}
-            </Button>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="vtsAppSecret">App Secret</Label>
+            <SecretInput
+              id="vtsAppSecret"
+              value={local.vtsAppSecret}
+              onChange={set("vtsAppSecret")}
+              placeholder="모의투자 App Secret"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="vtsAccountNumber">계좌번호</Label>
+            <Input
+              id="vtsAccountNumber"
+              value={local.vtsAccountNumber}
+              onChange={(e) => set("vtsAccountNumber")(e.target.value)}
+              placeholder="모의투자 계좌번호 (예: 50123456-01)"
+            />
           </div>
         </div>
 
-        {/* App Secret 입력 */}
-        <div className="space-y-2">
-          <Label htmlFor="appSecret">App Secret</Label>
-          <div className="flex gap-2">
-            <Input
-              id="appSecret"
-              type={showAppSecret ? "text" : "password"}
-              value={localConfig.appSecret}
-              onChange={(e) =>
-                setLocalConfig((prev) => ({
-                  ...prev,
-                  appSecret: e.target.value,
-                }))
-              }
-              placeholder="App Secret을 입력하세요"
+        {/* 실전투자 앱 키 */}
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-muted-foreground">
+            실전투자 앱 키 (시세 조회 + 실전 주문/잔고)
+          </p>
+          <p className="text-xs text-blue-600 bg-blue-50 rounded px-2 py-1">
+            시세(현재가·차트·지수)는 실전 키로만 조회됩니다. 모의투자 모드에서도 반드시 입력하세요.
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="realAppKey">App Key</Label>
+            <SecretInput
+              id="realAppKey"
+              value={local.realAppKey}
+              onChange={set("realAppKey")}
+              placeholder="실전투자 App Key"
             />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAppSecret((prev) => !prev)}
-            >
-              {showAppSecret ? "숨기기" : "표시"}
-            </Button>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="realAppSecret">App Secret</Label>
+            <SecretInput
+              id="realAppSecret"
+              value={local.realAppSecret}
+              onChange={set("realAppSecret")}
+              placeholder="실전투자 App Secret"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="realAccountNumber">계좌번호</Label>
+            <Input
+              id="realAccountNumber"
+              value={local.realAccountNumber}
+              onChange={(e) => set("realAccountNumber")(e.target.value)}
+              placeholder="실전 계좌번호 (예: 50123456-01)"
+            />
           </div>
         </div>
 
-        {/* 모의/실전 선택 */}
+        {/* HTS ID */}
+        <div className="space-y-2">
+          <Label htmlFor="htsId">HTS ID</Label>
+          <Input
+            id="htsId"
+            value={local.htsId}
+            onChange={(e) => set("htsId")(e.target.value)}
+            placeholder="eFriend Plus 로그인 ID"
+          />
+        </div>
+
+        {/* 투자 모드 */}
         <div className="space-y-2">
           <Label>투자 모드</Label>
           <RadioGroup
-            value={localConfig.mode}
+            value={local.mode}
             onValueChange={(value) =>
-              setLocalConfig((prev) => ({
-                ...prev,
-                mode: value as "paper" | "real",
-              }))
+              setLocal((prev) => ({ ...prev, mode: value as "vts" | "real" }))
             }
             className="flex gap-6"
           >
             <div className="flex items-center gap-2">
-              <RadioGroupItem value="paper" id="mode-paper" />
-              <Label htmlFor="mode-paper" className="cursor-pointer">
+              <RadioGroupItem value="vts" id="mode-vts" />
+              <Label htmlFor="mode-vts" className="cursor-pointer">
                 모의투자
               </Label>
             </div>
@@ -110,16 +159,20 @@ export function KisApiForm({ config, onUpdate }: KisApiFormProps) {
             </div>
           </RadioGroup>
 
-          {/* 모의투자 선택 시 경고 배지 표시 */}
-          {localConfig.mode === "paper" && (
+          {local.mode === "vts" && (
             <Badge className="bg-yellow-500 text-yellow-950 hover:bg-yellow-500">
               모의투자 모드 — 실제 주문이 실행되지 않습니다
+            </Badge>
+          )}
+          {local.mode === "real" && (
+            <Badge variant="destructive">
+              실전투자 모드 — 실제 자금이 거래됩니다 ⚠️
             </Badge>
           )}
         </div>
 
         {/* 저장 버튼 */}
-        <Button onClick={handleSave} className="w-full">
+        <Button onClick={() => onUpdate(local)} className="w-full">
           저장
         </Button>
       </CardContent>

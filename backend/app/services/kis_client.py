@@ -1,7 +1,10 @@
 """
 KIS (한국투자증권) API 클라이언트 서비스
 httpx를 사용하여 KIS REST API를 직접 호출하는 싱글턴 클래스.
-KIS API 키 미설정 시 경고만 출력하고 동작한다.
+
+듀얼 환경 설계:
+- 시세 API (get_quote, get_chart, get_market_index): 항상 실전 키 + 실전 서버
+- 주문/잔고 API (get_balance, place_order, get_order_status): KIS_ENVIRONMENT에 따라 선택
 """
 from __future__ import annotations
 
@@ -18,7 +21,7 @@ logger = logging.getLogger(__name__)
 _KIS_REAL_BASE = "https://openapi.koreainvestment.com:9443"
 _KIS_VTS_BASE = "https://openapivts.koreainvestment.com:29443"
 
-# 메모리 토큰 캐시 (프로세스 내)
+# 메모리 토큰 캐시 (앱 키별로 분리 관리)
 _token_cache: dict[str, Any] = {}
 
 
@@ -33,35 +36,65 @@ class KISClient:
         return cls._instance
 
     def is_available(self) -> bool:
-        """KIS API 클라이언트 사용 가능 여부를 반환한다."""
+        """KIS API 클라이언트 사용 가능 여부를 반환한다.
+        시세 API용 실전 키와 주문/잔고용 키(환경에 따라)가 모두 설정되어야 한다.
+        """
         from app.core.config import settings
-        return all([
-            settings.KIS_APP_KEY,
-            settings.KIS_APP_SECRET,
-            settings.KIS_ACCOUNT_NUMBER,
-            settings.KIS_HTS_ID,
-        ])
+        is_virtual = settings.KIS_ENVIRONMENT == "vts"
 
-    async def _get_access_token(self) -> str:
-        """KIS OAuth 액세스 토큰을 발급/캐싱한다."""
+        # 시세 API용 실전 키는 항상 필요
+        real_keys_ok = bool(settings.KIS_REAL_APP_KEY and settings.KIS_REAL_APP_SECRET)
+
+        # 주문/잔고용 키: 환경에 따라 확인
+        if is_virtual:
+            trade_keys_ok = bool(
+                settings.KIS_VTS_APP_KEY
+                and settings.KIS_VTS_APP_SECRET
+                and settings.KIS_VTS_ACCOUNT_NUMBER
+            )
+        else:
+            trade_keys_ok = bool(
+                settings.KIS_REAL_APP_KEY
+                and settings.KIS_REAL_APP_SECRET
+                and settings.KIS_REAL_ACCOUNT_NUMBER
+            )
+
+        return real_keys_ok and trade_keys_ok
+
+    def is_quote_available(self) -> bool:
+        """시세 조회 가능 여부 (실전 키만 필요)."""
+        from app.core.config import settings
+        return bool(settings.KIS_REAL_APP_KEY and settings.KIS_REAL_APP_SECRET)
+
+    async def _get_access_token(self, env: str = "real") -> str:
+        """지정된 환경의 KIS OAuth 액세스 토큰을 발급/캐싱한다.
+        env: "vts" → 모의투자 키 사용, "real" → 실전 키 사용
+        토큰은 앱 키별로 분리 캐싱된다.
+        """
         import time
         from app.core.config import settings
 
-        cache_key = settings.KIS_APP_KEY
+        if env == "vts":
+            app_key = settings.KIS_VTS_APP_KEY
+            app_secret = settings.KIS_VTS_APP_SECRET
+            base_url = _KIS_VTS_BASE
+        else:
+            app_key = settings.KIS_REAL_APP_KEY
+            app_secret = settings.KIS_REAL_APP_SECRET
+            base_url = _KIS_REAL_BASE
+
+        cache_key = app_key
         cached = _token_cache.get(cache_key)
         if cached and cached["expires_at"] > time.time() + 60:
             return cached["token"]
-
-        is_virtual = settings.KIS_ENVIRONMENT == "vts"
-        base_url = _KIS_VTS_BASE if is_virtual else _KIS_REAL_BASE
 
         async with httpx.AsyncClient() as client:
             resp = await client.post(
                 f"{base_url}/oauth2/tokenP",
                 json={
                     "grant_type": "client_credentials",
-                    "appkey": settings.KIS_APP_KEY,
-                    "appsecret": settings.KIS_APP_SECRET,
+                    "appkey": app_key,
+                    "appsecret": app_secret,
                 },
                 timeout=10,
             )
@@ -71,29 +104,66 @@ class KISClient:
         token = data["access_token"]
         expires_in = int(data.get("expires_in", 86400))
         _token_cache[cache_key] = {"token": token, "expires_at": time.time() + expires_in}
-        logger.info("KIS 액세스 토큰 발급 완료 (유효기간: %d초)", expires_in)
+        logger.info("KIS 액세스 토큰 발급 완료 [%s] (유효기간: %d초)", env, expires_in)
         return token
 
-    async def get_quote(self, symbol: str) -> dict[str, Any] | None:
-        """주식 현재가를 조회한다 (KIS REST API 직접 호출, rate limit + retry 적용).
-        시세 데이터는 모의투자 여부와 무관하게 실전 서버에서만 제공된다.
+    def _get_trade_env(self) -> str:
+        """주문/잔고 API에 사용할 환경 코드를 반환한다."""
+        from app.core.config import settings
+        return "vts" if settings.KIS_ENVIRONMENT == "vts" else "real"
+
+    def _get_trade_credentials(self) -> tuple[str, str, str, str, str, str]:
+        """주문/잔고 API용 자격증명과 서버 URL, TR-ID 접두사를 반환한다.
+        Returns: (app_key, app_secret, cano, acnt_prdt_cd, base_url, tr_prefix)
         """
-        if not self.is_available():
+        from app.core.config import settings
+        is_virtual = settings.KIS_ENVIRONMENT == "vts"
+
+        if is_virtual:
+            account_no = settings.KIS_VTS_ACCOUNT_NUMBER
+            cano = account_no[:8] if len(account_no) >= 8 else account_no
+            acnt_prdt_cd = account_no[8:] if len(account_no) > 8 else "01"
+            return (
+                settings.KIS_VTS_APP_KEY,
+                settings.KIS_VTS_APP_SECRET,
+                cano,
+                acnt_prdt_cd,
+                _KIS_VTS_BASE,
+                "V",  # 모의: VTTC...
+            )
+        else:
+            account_no = settings.KIS_REAL_ACCOUNT_NUMBER
+            cano = account_no[:8] if len(account_no) >= 8 else account_no
+            acnt_prdt_cd = account_no[8:] if len(account_no) > 8 else "01"
+            return (
+                settings.KIS_REAL_APP_KEY,
+                settings.KIS_REAL_APP_SECRET,
+                cano,
+                acnt_prdt_cd,
+                _KIS_REAL_BASE,
+                "T",  # 실전: TTTC...
+            )
+
+    async def get_quote(self, symbol: str) -> dict[str, Any] | None:
+        """주식 현재가를 조회한다 (항상 실전 서버 + 실전 키 사용).
+        시세 데이터는 모의투자 환경과 무관하게 실전 서버에서만 제공된다.
+        """
+        if not self.is_quote_available():
             return None
 
         from app.core.config import settings
-        limiter = get_rate_limiter(settings.KIS_ENVIRONMENT == "vts")
+        limiter = get_rate_limiter(is_virtual=False)  # 시세 = 항상 실전 Rate Limiter
         await limiter.acquire()
 
         async def _fetch() -> dict[str, Any]:
-            token = await self._get_access_token()
+            token = await self._get_access_token("real")
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
                     f"{_KIS_REAL_BASE}/uapi/domestic-stock/v1/quotations/inquire-price",
                     headers={
                         "tr_id": "FHKST01010100",
-                        "appkey": settings.KIS_APP_KEY,
-                        "appsecret": settings.KIS_APP_SECRET,
+                        "appkey": settings.KIS_REAL_APP_KEY,
+                        "appsecret": settings.KIS_REAL_APP_SECRET,
                         "Authorization": f"Bearer {token}",
                     },
                     params={"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": symbol},
@@ -123,30 +193,29 @@ class KISClient:
             raise
 
     async def get_chart(self, symbol: str, period: str = "day", count: int = 30) -> list[dict[str, Any]] | None:
-        """주식 차트 데이터(OHLCV)를 조회한다 (KIS REST API 직접 호출).
-        시세 데이터는 실전 서버에서만 제공된다.
+        """주식 차트 데이터(OHLCV)를 조회한다 (항상 실전 서버 + 실전 키 사용).
         period: "day" → "D", "week" → "W", "month" → "M"
         """
-        if not self.is_available():
+        if not self.is_quote_available():
             return None
 
         from app.core.config import settings
         import datetime
         _PERIOD_MAP = {"day": "D", "week": "W", "month": "M"}
         period_code = _PERIOD_MAP.get(period, "D")
-        limiter = get_rate_limiter(settings.KIS_ENVIRONMENT == "vts")
+        limiter = get_rate_limiter(is_virtual=False)  # 시세 = 항상 실전 Rate Limiter
         await limiter.acquire()
 
         async def _fetch() -> list[dict[str, Any]]:
             today = datetime.date.today().strftime("%Y%m%d")
-            token = await self._get_access_token()
+            token = await self._get_access_token("real")
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
                     f"{_KIS_REAL_BASE}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice",
                     headers={
                         "tr_id": "FHKST03010100",
-                        "appkey": settings.KIS_APP_KEY,
-                        "appsecret": settings.KIS_APP_SECRET,
+                        "appkey": settings.KIS_REAL_APP_KEY,
+                        "appsecret": settings.KIS_REAL_APP_SECRET,
                         "Authorization": f"Bearer {token}",
                     },
                     params={
@@ -185,34 +254,29 @@ class KISClient:
             raise
 
     async def get_balance(self) -> dict[str, Any] | None:
-        """계좌 잔고를 조회한다 (KIS REST API 직접 호출, rate limit + retry 적용).
-        모의투자: VTTC8434R (VTS 서버), 실전투자: TTTC8434R (실전 서버).
+        """계좌 잔고를 조회한다.
+        KIS_ENVIRONMENT에 따라 모의(VTTC8434R) 또는 실전(TTTC8434R) 서버 사용.
         """
         if not self.is_available():
             return None
 
-        from app.core.config import settings
-        is_virtual = settings.KIS_ENVIRONMENT == "vts"
-        base_url = _KIS_VTS_BASE if is_virtual else _KIS_REAL_BASE
-        tr_id = "VTTC8434R" if is_virtual else "TTTC8434R"
+        trade_env = self._get_trade_env()
+        app_key, app_secret, cano, acnt_prdt_cd, base_url, tr_prefix = self._get_trade_credentials()
+        tr_id = f"{tr_prefix}TTC8434R"
+        is_virtual = trade_env == "vts"
 
-        # KIS 계좌번호는 8자리 본계좌 + 상품코드 2자리 (기본 "01")
-        account_no = settings.KIS_ACCOUNT_NUMBER
-        cano = account_no[:8] if len(account_no) >= 8 else account_no
-        acnt_prdt_cd = account_no[8:] if len(account_no) > 8 else "01"
-
-        limiter = get_rate_limiter(is_virtual)
+        limiter = get_rate_limiter(is_virtual=is_virtual)
         await limiter.acquire()
 
         async def _fetch() -> dict[str, Any]:
-            token = await self._get_access_token()
+            token = await self._get_access_token(trade_env)
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
                     f"{base_url}/uapi/domestic-stock/v1/trading/inquire-balance",
                     headers={
                         "tr_id": tr_id,
-                        "appkey": settings.KIS_APP_KEY,
-                        "appsecret": settings.KIS_APP_SECRET,
+                        "appkey": app_key,
+                        "appsecret": app_secret,
                         "Authorization": f"Bearer {token}",
                     },
                     params={
@@ -269,44 +333,39 @@ class KISClient:
         quantity: int,
         price: int = 0,
     ) -> dict[str, Any] | None:
-        """
-        KIS API로 매수/매도 주문을 실행한다.
+        """KIS API로 매수/매도 주문을 실행한다.
         order_type: "buy" | "sell"
         price: 0 이면 시장가 주문
-        모의투자: VTTC0802U(매수)/VTTC0801U(매도), 실전: TTTC0802U/TTTC0801U
+        KIS_ENVIRONMENT에 따라 모의(VTTC0802U/VTTC0801U) 또는 실전(TTTC0802U/TTTC0801U) 사용.
         """
         if not self.is_available():
             return None
 
-        from app.core.config import settings
-        is_virtual = settings.KIS_ENVIRONMENT == "vts"
-        base_url = _KIS_VTS_BASE if is_virtual else _KIS_REAL_BASE
+        trade_env = self._get_trade_env()
+        app_key, app_secret, cano, acnt_prdt_cd, base_url, tr_prefix = self._get_trade_credentials()
+        is_virtual = trade_env == "vts"
 
         if order_type == "buy":
-            tr_id = "VTTC0802U" if is_virtual else "TTTC0802U"
+            tr_id = f"{tr_prefix}TTC0802U"
         else:
-            tr_id = "VTTC0801U" if is_virtual else "TTTC0801U"
-
-        account_no = settings.KIS_ACCOUNT_NUMBER
-        cano = account_no[:8] if len(account_no) >= 8 else account_no
-        acnt_prdt_cd = account_no[8:] if len(account_no) > 8 else "01"
+            tr_id = f"{tr_prefix}TTC0801U"
 
         # 지정가: "00", 시장가: "01"
         ord_dvsn = "01" if price == 0 else "00"
         ord_price = "0" if price == 0 else str(price)
 
-        limiter = get_rate_limiter(is_virtual)
+        limiter = get_rate_limiter(is_virtual=is_virtual)
         await limiter.acquire()
 
         async def _fetch() -> dict[str, Any]:
-            token = await self._get_access_token()
+            token = await self._get_access_token(trade_env)
             async with httpx.AsyncClient() as client:
                 resp = await client.post(
                     f"{base_url}/uapi/domestic-stock/v1/trading/order-cash",
                     headers={
                         "tr_id": tr_id,
-                        "appkey": settings.KIS_APP_KEY,
-                        "appsecret": settings.KIS_APP_SECRET,
+                        "appkey": app_key,
+                        "appsecret": app_secret,
                         "Authorization": f"Bearer {token}",
                         "Content-Type": "application/json",
                     },
@@ -343,23 +402,25 @@ class KISClient:
             raise
 
     async def get_market_index(self, index_code: str) -> dict[str, Any] | None:
-        """업종 현재가(시장 지수)를 조회한다. index_code: '0001'=KOSPI, '1001'=KOSDAQ"""
-        if not self.is_available():
+        """업종 현재가(시장 지수)를 조회한다 (항상 실전 서버 + 실전 키 사용).
+        index_code: '0001'=KOSPI, '1001'=KOSDAQ
+        """
+        if not self.is_quote_available():
             return None
 
         from app.core.config import settings
-        limiter = get_rate_limiter(settings.KIS_ENVIRONMENT == "vts")
+        limiter = get_rate_limiter(is_virtual=False)  # 시세 = 항상 실전 Rate Limiter
         await limiter.acquire()
 
         async def _fetch() -> dict[str, Any]:
-            token = await self._get_access_token()
+            token = await self._get_access_token("real")
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
                     f"{_KIS_REAL_BASE}/uapi/domestic-stock/v1/quotations/inquire-index-price",
                     headers={
                         "tr_id": "FHPUP02100000",
-                        "appkey": settings.KIS_APP_KEY,
-                        "appsecret": settings.KIS_APP_SECRET,
+                        "appkey": settings.KIS_REAL_APP_KEY,
+                        "appsecret": settings.KIS_REAL_APP_SECRET,
                         "Authorization": f"Bearer {token}",
                     },
                     params={
@@ -390,31 +451,29 @@ class KISClient:
             return None
 
     async def get_order_status(self, order_no: str) -> dict[str, Any] | None:
-        """주문 체결 상태를 조회한다."""
+        """주문 체결 상태를 조회한다.
+        KIS_ENVIRONMENT에 따라 모의(VTTC8001R) 또는 실전(TTTC8001R) 서버 사용.
+        """
         if not self.is_available():
             return None
 
-        from app.core.config import settings
-        is_virtual = settings.KIS_ENVIRONMENT == "vts"
-        base_url = _KIS_VTS_BASE if is_virtual else _KIS_REAL_BASE
-        tr_id = "VTTC8001R" if is_virtual else "TTTC8001R"
+        trade_env = self._get_trade_env()
+        app_key, app_secret, cano, acnt_prdt_cd, base_url, tr_prefix = self._get_trade_credentials()
+        tr_id = f"{tr_prefix}TTC8001R"
+        is_virtual = trade_env == "vts"
 
-        account_no = settings.KIS_ACCOUNT_NUMBER
-        cano = account_no[:8] if len(account_no) >= 8 else account_no
-        acnt_prdt_cd = account_no[8:] if len(account_no) > 8 else "01"
-
-        limiter = get_rate_limiter(is_virtual)
+        limiter = get_rate_limiter(is_virtual=is_virtual)
         await limiter.acquire()
 
         async def _fetch() -> dict[str, Any]:
-            token = await self._get_access_token()
+            token = await self._get_access_token(trade_env)
             async with httpx.AsyncClient() as client:
                 resp = await client.get(
                     f"{base_url}/uapi/domestic-stock/v1/trading/inquire-daily-ccld",
                     headers={
                         "tr_id": tr_id,
-                        "appkey": settings.KIS_APP_KEY,
-                        "appsecret": settings.KIS_APP_SECRET,
+                        "appkey": app_key,
+                        "appsecret": app_secret,
                         "Authorization": f"Bearer {token}",
                     },
                     params={

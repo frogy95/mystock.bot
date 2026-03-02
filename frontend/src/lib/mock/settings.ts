@@ -10,9 +10,14 @@ import type { SystemSettings } from "./types";
 export const mockSystemSettings: SystemSettings = {
   kisApi: {
     // 실제 서비스에서는 환경변수로 관리, Mock에서는 마스킹 처리
-    appKey: "DEMO_APP_KEY_XXXXXXXX",
-    appSecret: "DEMO_APP_SECRET_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-    mode: "paper", // 모의투자 모드 (기본값)
+    vtsAppKey: "DEMO_VTS_APP_KEY_XXXXXXXX",
+    vtsAppSecret: "DEMO_VTS_APP_SECRET_XXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    vtsAccountNumber: "DEMO_VTS_ACCOUNT_XXXXXXXX",
+    realAppKey: "DEMO_REAL_APP_KEY_XXXXXXXX",
+    realAppSecret: "DEMO_REAL_APP_SECRET_XXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    realAccountNumber: "DEMO_REAL_ACCOUNT_XXXXXXXX",
+    htsId: "DEMO_HTS_ID",
+    mode: "vts", // 모의투자 모드 (기본값)
   },
   telegram: {
     botToken: "0000000000:DEMO_BOT_TOKEN_XXXXXXXXXXXXXXXXXXXXXXXX",
