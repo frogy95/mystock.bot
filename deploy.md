@@ -1183,13 +1183,13 @@ curl http://localhost:8000/api/v1/health | python3 -m json.tool
 - ✅ 응답 헤더에 `X-Request-ID` 포함 확인 — Playwright 자동 검증
 
 **구조화 로깅:**
-- ⬜ 백엔드 로그가 JSON 형식으로 출력됨 확인 — `docker compose up --build` 후 재빌드 시 확인 필요 (python-json-logger 설치 후)
+- ✅ 백엔드 로그가 JSON 형식으로 출력됨 확인 — `docker compose up --build` 후 로그 확인 완료 (2026-03-02)
 
 **Health Check:**
-- ✅ `/api/v1/health` → `database`, `redis`, `scheduler` 실제 상태 포함 응답 확인 — Playwright 자동 검증
+- ✅ `/api/v1/health` → `database`, `redis`, `scheduler` 실제 상태 포함 응답 확인 — 수동 검증 완료 (2026-03-02)
 
 **통합 테스트:**
-- ⬜ `docker compose exec backend pytest -v` → 14개 테스트 모두 PASSED — 사용자 직접 수행 필요
+- ✅ `docker compose exec backend pytest -v` → **14개 테스트 모두 PASSED** — 수동 검증 완료 (2026-03-02)
 
 **프론트엔드:**
 - ✅ `/nonexistent` → 커스텀 404 페이지 표시 — Playwright 자동 검증
@@ -1200,3 +1200,4 @@ curl http://localhost:8000/api/v1/health | python3 -m json.tool
 - ✅ 모바일 375px 반응형 레이아웃 (사이드바 숨김, 햄버거 메뉴) — Playwright 자동 검증
 
 > Playwright MCP 자동 검증 완료 (2026-03-02) — 10/10 항목 통과
+> 수동 검증 완료 (2026-03-02) — JSON 구조화 로그, Health Check, 통합 테스트 14개 PASSED
