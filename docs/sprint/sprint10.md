@@ -1342,6 +1342,17 @@ git commit -m "docs: .env.example 상세 주석 추가 및 실전 투자 전환 
 
 ---
 
+## 검증 결과
+
+- [Playwright 테스트 보고서](sprint10/playwright-report.md)
+- [스크린샷 모음](sprint10/)
+  - [대시보드 페이지](sprint10/dashboard-page.png)
+  - [백테스팅 페이지](sprint10/backtest-page.png)
+  - [404 커스텀 페이지](sprint10/not-found-page.png)
+  - [모바일 375px 레이아웃](sprint10/mobile-375px.png)
+
+---
+
 ## 참고 문서
 
 - ROADMAP.md Phase 5 - 안정화 및 MVP 출시 섹션
