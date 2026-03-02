@@ -8,7 +8,8 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, is_demo_user
+from app.services.demo_data import get_demo_market_index, get_demo_stock_search
 from app.schemas.search import StockSearchResult
 from app.schemas.stock import BalanceResponse, StockChartResponse, StockQuoteResponse
 from app.services.kis_client import kis_client
@@ -23,6 +24,8 @@ async def search(
     current_user: str = Depends(get_current_user),
 ):
     """종목코드 또는 종목명으로 KRX 종목을 검색한다. (Redis 캐시 기반)"""
+    if is_demo_user(current_user):
+        return get_demo_stock_search(q)
     results = await search_stocks(q)
     return results
 
@@ -42,6 +45,8 @@ async def get_balance(current_user: str = Depends(get_current_user)):
 @router.get("/market-index", summary="시장 지수 조회")
 async def get_market_index(current_user: str = Depends(get_current_user)):
     """KOSPI, KOSDAQ 지수 현재가를 반환한다. KIS 미설정 시 빈 배열 반환."""
+    if is_demo_user(current_user):
+        return get_demo_market_index()
     if not kis_client.is_available():
         return []
 

@@ -9,7 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, is_demo_user
+from app.services.demo_data import get_demo_backtest_results, get_demo_backtest_result
 from app.core.database import get_db
 from app.models.backtest import BacktestResult
 from app.schemas.backtest import BacktestRunRequest, BacktestResultResponse, EquityPoint
@@ -57,6 +58,8 @@ async def run_backtest_api(
     백테스팅을 실행하고 결과를 DB에 저장한다.
     KIS API 차트 데이터를 조회하여 전략 신호를 생성한 후 포트폴리오를 시뮬레이션한다.
     """
+    if is_demo_user(current_user):
+        raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
     try:
         config = BacktestConfig(
             symbol=request.symbol,
@@ -109,6 +112,8 @@ async def list_results(
     current_user: str = Depends(get_current_user),
 ):
     """최근 백테스팅 결과 목록을 반환한다 (최대 20건, 최신순)."""
+    if is_demo_user(current_user):
+        return get_demo_backtest_results()
     result = await db.execute(
         select(BacktestResult)
         .order_by(BacktestResult.created_at.desc())
@@ -125,6 +130,11 @@ async def get_result(
     current_user: str = Depends(get_current_user),
 ):
     """특정 백테스팅 결과를 반환한다."""
+    if is_demo_user(current_user):
+        record = get_demo_backtest_result(result_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="백테스팅 결과를 찾을 수 없습니다.")
+        return record
     result = await db.execute(
         select(BacktestResult).where(BacktestResult.id == result_id)
     )

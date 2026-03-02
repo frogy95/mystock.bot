@@ -9,8 +9,13 @@ from pydantic import BaseModel
 from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, is_demo_user
 from app.core.database import get_db
+from app.services.demo_data import (
+    get_demo_strategies,
+    get_demo_strategy,
+    get_demo_strategy_performance,
+)
 from app.models.order import Order
 from app.models.strategy import Strategy, StrategyParam
 from app.models.watchlist import WatchlistItem
@@ -64,6 +69,8 @@ async def get_strategy_performance(
     db: AsyncSession = Depends(get_db),
 ):
     """각 전략의 매매 횟수, 승률, 적용 종목 수를 집계하여 반환한다."""
+    if is_demo_user(current_user):
+        return get_demo_strategy_performance()
     result = await db.execute(select(Strategy).order_by(Strategy.id))
     strategies = result.scalars().all()
 
@@ -111,6 +118,8 @@ async def list_strategies(
     db: AsyncSession = Depends(get_db),
 ):
     """전체 전략 목록과 파라미터를 반환한다."""
+    if is_demo_user(current_user):
+        return get_demo_strategies()
     result = await db.execute(select(Strategy).order_by(Strategy.id))
     strategies = result.scalars().all()
 
@@ -133,6 +142,11 @@ async def get_strategy_detail(
     db: AsyncSession = Depends(get_db),
 ):
     """단일 전략 상세 정보와 파라미터를 반환한다."""
+    if is_demo_user(current_user):
+        strategy = get_demo_strategy(strategy_id)
+        if strategy is None:
+            raise HTTPException(status_code=404, detail="전략을 찾을 수 없습니다.")
+        return strategy
     strategy = await _get_strategy_with_params(strategy_id, db)
     if strategy is None:
         raise HTTPException(status_code=404, detail="전략을 찾을 수 없습니다.")
@@ -147,6 +161,8 @@ async def toggle_strategy(
     db: AsyncSession = Depends(get_db),
 ):
     """전략의 활성화 상태를 변경한다."""
+    if is_demo_user(current_user):
+        raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
     result = await db.execute(select(Strategy).where(Strategy.id == strategy_id))
     strategy = result.scalar_one_or_none()
     if strategy is None:
@@ -165,6 +181,8 @@ async def update_strategy_params(
     db: AsyncSession = Depends(get_db),
 ):
     """전략 파라미터를 일괄 업데이트한다. (기존 파라미터 삭제 후 재생성)"""
+    if is_demo_user(current_user):
+        raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
     result = await db.execute(select(Strategy).where(Strategy.id == strategy_id))
     if result.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="전략을 찾을 수 없습니다.")
@@ -197,6 +215,8 @@ async def evaluate_strategy_signal(
     db: AsyncSession = Depends(get_db),
 ):
     """특정 전략으로 종목의 현재 신호를 평가한다."""
+    if is_demo_user(current_user):
+        raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
     strategy = await _get_strategy_with_params(strategy_id, db)
     if strategy is None:
         raise HTTPException(status_code=404, detail="전략을 찾을 수 없습니다.")
