@@ -86,6 +86,7 @@ async def run_backtest_api(
         **metrics,
     }
     backtest_record = BacktestResult(
+        user_id=current_user.id,         # 사용자별 결과 격리
         strategy_id=None,                # 커스텀 백테스트는 전략 레코드 없음
         symbol=request.symbol,
         start_date=request.start_date,
@@ -112,11 +113,14 @@ async def list_results(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """최근 백테스팅 결과 목록을 반환한다 (최대 20건, 최신순)."""
+    """최근 백테스팅 결과 목록을 반환한다 (최대 20건, 최신순, 본인 결과만)."""
     if is_demo_user(current_user.username):
         return get_demo_backtest_results()
+
+    # 본인 결과만 조회 (사용자별 데이터 격리)
     result = await db.execute(
         select(BacktestResult)
+        .where(BacktestResult.user_id == current_user.id)
         .order_by(BacktestResult.created_at.desc())
         .limit(20)
     )
@@ -130,14 +134,19 @@ async def get_result(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """특정 백테스팅 결과를 반환한다."""
+    """특정 백테스팅 결과를 반환한다. (본인 결과만 접근 허용)"""
     if is_demo_user(current_user.username):
         record = get_demo_backtest_result(result_id)
         if record is None:
             raise HTTPException(status_code=404, detail="백테스팅 결과를 찾을 수 없습니다.")
         return record
+
+    # 소유권 확인: 본인 결과만 접근 허용
     result = await db.execute(
-        select(BacktestResult).where(BacktestResult.id == result_id)
+        select(BacktestResult).where(
+            BacktestResult.id == result_id,
+            BacktestResult.user_id == current_user.id,
+        )
     )
     record = result.scalar_one_or_none()
     if not record:

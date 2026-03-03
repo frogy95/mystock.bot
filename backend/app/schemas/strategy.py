@@ -34,6 +34,7 @@ class StrategyResponse(BaseModel):
     strategy_type: str
     is_active: bool
     is_preset: bool
+    user_id: int | None = None
     params: List[StrategyParamResponse] = []
     created_at: datetime
 
