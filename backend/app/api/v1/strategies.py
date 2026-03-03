@@ -18,6 +18,7 @@ from app.services.demo_data import (
 )
 from app.models.order import Order
 from app.models.strategy import Strategy, StrategyParam
+from app.models.user import User
 from app.models.watchlist import WatchlistItem
 from app.schemas.strategy import (
     StrategyActivateRequest,
@@ -65,11 +66,11 @@ class StrategyPerformanceResponse(BaseModel):
 
 @router.get("/performance", response_model=List[StrategyPerformanceResponse], summary="전략별 성과 집계")
 async def get_strategy_performance(
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """각 전략의 매매 횟수, 승률, 적용 종목 수를 집계하여 반환한다."""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         return get_demo_strategy_performance()
     result = await db.execute(select(Strategy).order_by(Strategy.id))
     strategies = result.scalars().all()
@@ -122,11 +123,11 @@ async def get_strategy_performance(
 
 @router.get("", response_model=List[StrategyResponse], summary="전략 목록 조회")
 async def list_strategies(
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """전체 전략 목록과 파라미터를 반환한다."""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         return get_demo_strategies()
     result = await db.execute(select(Strategy).order_by(Strategy.id))
     strategies = result.scalars().all()
@@ -149,11 +150,11 @@ async def list_strategies(
 @router.get("/{strategy_id}", response_model=StrategyResponse, summary="전략 상세 조회")
 async def get_strategy_detail(
     strategy_id: int,
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """단일 전략 상세 정보와 파라미터를 반환한다."""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         strategy = get_demo_strategy(strategy_id)
         if strategy is None:
             raise HTTPException(status_code=404, detail="전략을 찾을 수 없습니다.")
@@ -168,11 +169,11 @@ async def get_strategy_detail(
 async def toggle_strategy(
     strategy_id: int,
     body: StrategyActivateRequest,
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """전략의 활성화 상태를 변경한다."""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
     result = await db.execute(select(Strategy).where(Strategy.id == strategy_id))
     strategy = result.scalar_one_or_none()
@@ -188,11 +189,11 @@ async def toggle_strategy(
 async def update_strategy_params(
     strategy_id: int,
     body: StrategyParamBulkUpdate,
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """전략 파라미터를 일괄 업데이트한다. (기존 파라미터 삭제 후 재생성)"""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
     result = await db.execute(select(Strategy).where(Strategy.id == strategy_id))
     if result.scalar_one_or_none() is None:
@@ -222,11 +223,11 @@ async def update_strategy_params(
 async def evaluate_strategy_signal(
     strategy_id: int,
     symbol: str,
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """특정 전략으로 종목의 현재 신호를 평가한다."""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
     strategy = await _get_strategy_with_params(strategy_id, db)
     if strategy is None:

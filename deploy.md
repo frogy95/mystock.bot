@@ -1381,3 +1381,63 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/v1/stocks/00
 - ✅ 데모 모드 API 9개 엔드포인트 200 확인 (자동 검증 완료, 2026-03-03)
 - ✅ TypeScript 빌드 성공 (`npm run build` 2026-03-03)
 - ⬜ 실제 KIS API 연동 환경에서 주문 취소 기능 수동 확인
+
+---
+
+## Sprint 14: JWT 인증 + User 모델 확장
+
+### 환경변수 추가
+
+`.env` 파일에 다음을 추가해주세요:
+
+```env
+# JWT 설정 (Sprint 14 신규)
+JWT_SECRET=<openssl rand -hex 32 으로 생성한 랜덤 시크릿>
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+REFRESH_TOKEN_EXPIRE_DAYS=30
+
+# 관리자 이메일 (Sprint 14 신규)
+ADMIN_EMAIL=admin@mystock.bot
+```
+
+### Sprint 14 배포 절차
+
+```bash
+# 1. 환경변수 추가 후 컨테이너 재시작
+docker compose up -d --build backend
+
+# 2. 의존성 설치 확인 (python-jose, passlib)
+docker compose exec backend pip list | grep -E "jose|passlib"
+
+# 3. Alembic 마이그레이션 실행
+docker compose exec backend alembic upgrade head
+
+# 4. 신규 관리자 계정으로 로그인 테스트
+curl -s -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@mystock.bot", "password": "change-me-in-production"}'
+# 기대: {"access_token": "...", "refresh_token": "...", "token_type": "bearer"}
+```
+
+### ⚠️ 기존 운영 중인 경우 주의사항
+
+기존에 이미 users 테이블이 있는 경우, 마이그레이션에서 기존 사용자의 `role='admin'`, `is_approved=true`로 자동 설정됩니다.
+단, `password_hash`와 `email`은 NULL로 남으므로, 로그인하려면 반드시 seed.py를 실행하거나 DB에서 직접 업데이트해주세요.
+
+```bash
+# 기존 사용자가 없는 경우에만 seed.py 실행
+docker compose exec backend python scripts/seed.py
+```
+
+### Sprint 14 완료 체크리스트
+
+> **자동 검증 완료 (정적 분석, 2026-03-03)**
+> Python 문법 검증, JWT 설정, 인증/관리자 API 엔드포인트, User 모델 필드, 라우터 의존성, Alembic 마이그레이션, 프론트엔드 auth-store, client.ts 401 갱신 로직 — 59/59 항목 통과
+> 상세 내용: [docs/sprint/sprint14/validation-report.md](docs/sprint/sprint14/validation-report.md)
+
+- ⬜ `alembic upgrade head` 실행 확인
+- ⬜ 관리자 이메일로 로그인 테스트
+- ⬜ 초대 코드 생성 (`POST /api/v1/admin/invitations`)
+- ⬜ 새 사용자 회원가입 (`POST /api/v1/auth/register`)
+- ⬜ 데모 모드 여전히 정상 동작 확인

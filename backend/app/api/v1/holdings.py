@@ -10,12 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user, is_demo_user
 from app.core.database import get_db
-from app.core.deps import get_user_id
 from app.services.demo_data import (
     get_demo_holdings,
     get_demo_portfolio_summary,
 )
 from app.models.holding import Holding
+from app.models.user import User
 from app.schemas.holding import (
     HoldingResponse,
     HoldingSellStrategyUpdate,
@@ -30,16 +30,15 @@ router = APIRouter()
 
 @router.get("", response_model=List[HoldingResponse], summary="보유종목 목록 조회")
 async def list_holdings(
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """DB에 저장된 보유종목 목록을 조회한다."""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         return get_demo_holdings()
-    user_id = await get_user_id(current_user, db)
     result = await db.execute(
         select(Holding)
-        .where(Holding.user_id == user_id, Holding.quantity > 0)
+        .where(Holding.user_id == current_user.id, Holding.quantity > 0)
         .order_by(Holding.id)
     )
     return result.scalars().all()
@@ -47,15 +46,14 @@ async def list_holdings(
 
 @router.post("/sync", response_model=PortfolioSyncResponse, summary="KIS 잔고 동기화")
 async def sync_holdings(
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
     """KIS 실제 잔고를 조회하여 DB를 동기화한다."""
-    user_id = await get_user_id(current_user, db)
     try:
-        holdings = await sync_with_kis(user_id, db)
+        holdings = await sync_with_kis(current_user.id, db)
         active = [h for h in holdings if h.quantity > 0]
         return PortfolioSyncResponse(
             synced_count=len(active),
@@ -69,15 +67,14 @@ async def sync_holdings(
 async def update_stop_loss(
     holding_id: int,
     body: HoldingStopLossUpdate,
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """보유종목의 손절/익절 비율을 설정한다."""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
-    user_id = await get_user_id(current_user, db)
     result = await db.execute(
-        select(Holding).where(Holding.id == holding_id, Holding.user_id == user_id)
+        select(Holding).where(Holding.id == holding_id, Holding.user_id == current_user.id)
     )
     holding = result.scalar_one_or_none()
     if holding is None:
@@ -93,15 +90,14 @@ async def update_stop_loss(
 async def update_sell_strategy(
     holding_id: int,
     body: HoldingSellStrategyUpdate,
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """보유종목의 매도 전략을 설정한다."""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
-    user_id = await get_user_id(current_user, db)
     result = await db.execute(
-        select(Holding).where(Holding.id == holding_id, Holding.user_id == user_id)
+        select(Holding).where(Holding.id == holding_id, Holding.user_id == current_user.id)
     )
     holding = result.scalar_one_or_none()
     if holding is None:
@@ -114,12 +110,11 @@ async def update_sell_strategy(
 
 @router.get("/summary", response_model=PortfolioSummaryResponse, summary="포트폴리오 요약")
 async def get_summary(
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """포트폴리오 전체 요약 (총평가/손익/예수금 등)을 반환한다."""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         return get_demo_portfolio_summary()
-    user_id = await get_user_id(current_user, db)
-    summary = await calculate_summary(user_id, db)
+    summary = await calculate_summary(current_user.id, db)
     return summary
