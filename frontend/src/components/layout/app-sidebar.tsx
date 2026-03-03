@@ -9,9 +9,11 @@ import {
   Cpu,
   LayoutDashboard,
   Settings,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/stores/sidebar-store";
+import { useAuthStore } from "@/stores/auth-store";
 
 const navItems = [
   { href: "/dashboard", label: "대시보드", icon: LayoutDashboard },
@@ -25,6 +27,7 @@ const navItems = [
 function SidebarContent() {
   const pathname = usePathname();
   const close = useSidebarStore((state) => state.close);
+  const role = useAuthStore((state) => state.role);
 
   return (
     <aside className="w-56 shrink-0 border-r bg-background flex flex-col h-full">
@@ -51,6 +54,23 @@ function SidebarContent() {
             {label}
           </Link>
         ))}
+
+        {/* 관리자 메뉴 — role=admin인 경우에만 표시 */}
+        {role === "admin" && (
+          <Link
+            href="/admin"
+            onClick={close}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+              pathname === "/admin"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            )}
+          >
+            <Shield className="h-4 w-4 shrink-0" />
+            관리자
+          </Link>
+        )}
       </nav>
     </aside>
   );
