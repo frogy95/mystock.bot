@@ -53,6 +53,12 @@ class StrategyParamBulkUpdate(BaseModel):
     params: List[StrategyParamUpdate]
 
 
+class StrategyRenameRequest(BaseModel):
+    """전략 이름 변경 요청 스키마"""
+
+    name: str
+
+
 class StrategySignalResponse(BaseModel):
     """전략 신호 응답 스키마"""
 

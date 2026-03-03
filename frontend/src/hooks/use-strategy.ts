@@ -101,3 +101,27 @@ export function useCloneStrategy() {
     },
   });
 }
+
+/** 전략 이름 변경 훅 */
+export function useRenameStrategy() {
+  const queryClient = useQueryClient();
+  return useMutation<StrategyAPI, Error, { id: number; name: string }>({
+    mutationFn: ({ id, name }) =>
+      apiClient.put<StrategyAPI>(`/api/v1/strategies/${id}/name`, { name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["strategy"] });
+    },
+  });
+}
+
+/** 전략 삭제 훅 */
+export function useDeleteStrategy() {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, { id: number }>({
+    mutationFn: ({ id }) =>
+      apiClient.delete<void>(`/api/v1/strategies/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["strategy"] });
+    },
+  });
+}

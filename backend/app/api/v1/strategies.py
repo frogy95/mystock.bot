@@ -6,7 +6,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select, delete, func, or_
+from sqlalchemy import select, delete, update, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user, is_demo_user
@@ -16,6 +16,8 @@ from app.services.demo_data import (
     get_demo_strategy,
     get_demo_strategy_performance,
 )
+from app.models.backtest import BacktestResult
+from app.models.holding import Holding
 from app.models.order import Order
 from app.models.strategy import Strategy, StrategyParam
 from app.models.user import User
@@ -23,6 +25,7 @@ from app.models.watchlist import WatchlistItem
 from app.schemas.strategy import (
     StrategyActivateRequest,
     StrategyParamBulkUpdate,
+    StrategyRenameRequest,
     StrategyResponse,
     StrategySignalResponse,
 )
@@ -363,3 +366,73 @@ async def clone_strategy(
 
     await db.commit()
     return await _get_strategy_with_params(cloned.id, db)
+
+
+@router.put("/{strategy_id}/name", response_model=StrategyResponse, summary="전략 이름 변경")
+async def rename_strategy(
+    strategy_id: int,
+    body: StrategyRenameRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """본인 소유 전략의 이름을 변경한다. (프리셋 전략은 변경 불가)"""
+    if is_demo_user(current_user.username):
+        raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
+
+    # 본인 소유이며 프리셋이 아닌 전략만 이름 변경 가능
+    result = await db.execute(
+        select(Strategy).where(
+            Strategy.id == strategy_id,
+            Strategy.user_id == current_user.id,
+            Strategy.is_preset.is_(False),
+        )
+    )
+    strategy = result.scalar_one_or_none()
+    if strategy is None:
+        raise HTTPException(status_code=404, detail="전략을 찾을 수 없습니다.")
+
+    strategy.name = body.name
+    await db.commit()
+    return await _get_strategy_with_params(strategy_id, db)
+
+
+@router.delete("/{strategy_id}", status_code=204, summary="전략 삭제")
+async def delete_strategy(
+    strategy_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """본인 소유 전략을 삭제한다. (프리셋 전략은 삭제 불가)"""
+    if is_demo_user(current_user.username):
+        raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
+
+    # 본인 소유이며 프리셋이 아닌 전략만 삭제 가능
+    result = await db.execute(
+        select(Strategy).where(
+            Strategy.id == strategy_id,
+            Strategy.user_id == current_user.id,
+            Strategy.is_preset.is_(False),
+        )
+    )
+    strategy = result.scalar_one_or_none()
+    if strategy is None:
+        raise HTTPException(status_code=404, detail="전략을 찾을 수 없습니다.")
+
+    # FK 참조 NULL 처리 후 삭제 (NO ACTION 제약 해제)
+    await db.execute(
+        update(WatchlistItem).where(WatchlistItem.strategy_id == strategy_id).values(strategy_id=None)
+    )
+    await db.execute(
+        update(Holding).where(Holding.sell_strategy_id == strategy_id).values(sell_strategy_id=None)
+    )
+    await db.execute(
+        update(Order).where(Order.strategy_id == strategy_id).values(strategy_id=None)
+    )
+    await db.execute(
+        update(BacktestResult).where(BacktestResult.strategy_id == strategy_id).values(strategy_id=None)
+    )
+    await db.execute(
+        delete(StrategyParam).where(StrategyParam.strategy_id == strategy_id)
+    )
+    await db.delete(strategy)
+    await db.commit()

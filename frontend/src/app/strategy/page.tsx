@@ -29,7 +29,10 @@ export default function StrategyPage() {
         {/* 프리셋 전략 탭 */}
         <TabsContent value="preset" className="space-y-6 mt-4">
           <StrategyCardList onSelectStrategy={selectStrategy} />
-          <StrategyDetailPanel strategyId={selectedStrategyId} />
+          <StrategyDetailPanel
+            strategyId={selectedStrategyId}
+            onDeleted={() => selectStrategy(null)}
+          />
         </TabsContent>
 
         {/* 커스텀 전략 탭 */}

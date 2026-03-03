@@ -1,10 +1,12 @@
 """
 전략 API 통합 테스트
-GET  /api/v1/strategies
-GET  /api/v1/strategies/{id}
-GET  /api/v1/strategies/performance
-PUT  /api/v1/strategies/{id}/activate
-POST /api/v1/strategies/{id}/clone
+GET    /api/v1/strategies
+GET    /api/v1/strategies/{id}
+GET    /api/v1/strategies/performance
+PUT    /api/v1/strategies/{id}/activate
+POST   /api/v1/strategies/{id}/clone
+PUT    /api/v1/strategies/{id}/name
+DELETE /api/v1/strategies/{id}
 """
 import pytest
 
@@ -254,3 +256,101 @@ async def test_clone_creates_new_strategy_with_params(client_with_user, db_sessi
     # 복사본은 본인 소유이고 새로운 id를 가짐
     assert data["user_id"] == testuser.id
     assert data["id"] != preset.id
+
+
+@pytest.mark.asyncio
+async def test_rename_own_strategy(client_with_user, db_session):
+    """전략 이름 변경 - 본인 소유 전략 이름 변경 성공"""
+    from sqlalchemy import select
+    result = await db_session.execute(select(User).where(User.username == "testuser"))
+    testuser = result.scalar_one()
+
+    # 본인 소유 전략 생성
+    own = Strategy(
+        name="OriginalName",
+        strategy_type="technical",
+        is_active=True,
+        is_preset=False,
+        user_id=testuser.id,
+    )
+    db_session.add(own)
+    await db_session.commit()
+
+    # 이름 변경 요청
+    response = await client_with_user.put(
+        f"/api/v1/strategies/{own.id}/name",
+        json={"name": "NewName"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["name"] == "NewName"
+
+
+@pytest.mark.asyncio
+async def test_rename_preset_strategy_returns_404(client_with_user, db_session):
+    """전략 이름 변경 - 프리셋 전략 이름 변경 시 404 반환"""
+    # 프리셋 전략 생성 (user_id=None)
+    preset = Strategy(
+        name="PresetName",
+        strategy_type="technical",
+        is_active=True,
+        is_preset=True,
+        user_id=None,
+    )
+    db_session.add(preset)
+    await db_session.commit()
+
+    # 프리셋은 user_id가 None이므로 본인 소유가 아님 → 404
+    response = await client_with_user.put(
+        f"/api/v1/strategies/{preset.id}/name",
+        json={"name": "NewName"},
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_own_strategy(client_with_user, db_session):
+    """전략 삭제 - 본인 소유 전략 삭제 성공"""
+    from sqlalchemy import select
+    result = await db_session.execute(select(User).where(User.username == "testuser"))
+    testuser = result.scalar_one()
+
+    # 본인 소유 전략 생성
+    own = Strategy(
+        name="ToBeDeleted",
+        strategy_type="technical",
+        is_active=True,
+        is_preset=False,
+        user_id=testuser.id,
+    )
+    db_session.add(own)
+    await db_session.commit()
+
+    strategy_id = own.id
+
+    # 전략 삭제 요청
+    response = await client_with_user.delete(f"/api/v1/strategies/{strategy_id}")
+    assert response.status_code == 204
+
+    # 삭제 후 조회 시 404
+    get_response = await client_with_user.get(f"/api/v1/strategies/{strategy_id}")
+    assert get_response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_preset_strategy_returns_404(client_with_user, db_session):
+    """전략 삭제 - 프리셋 전략 삭제 시 404 반환"""
+    # 프리셋 전략 생성 (user_id=None)
+    preset = Strategy(
+        name="PresetsAreUndeletable",
+        strategy_type="technical",
+        is_active=True,
+        is_preset=True,
+        user_id=None,
+    )
+    db_session.add(preset)
+    await db_session.commit()
+
+    # 프리셋은 user_id가 None이므로 본인 소유가 아님 → 404
+    response = await client_with_user.delete(f"/api/v1/strategies/{preset.id}")
+    assert response.status_code == 404

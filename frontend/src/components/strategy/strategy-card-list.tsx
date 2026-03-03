@@ -21,6 +21,28 @@ function mapStrategyTypeToCategory(type: string): "trend" | "reversal" | "value"
   return mapping[type] ?? "trend";
 }
 
+/** param_key → 한국어 레이블 매핑 */
+const PARAM_LABEL: Record<string, string> = {
+  rsi_threshold: "RSI 임계값",
+  bb_period: "볼린저 밴드 기간",
+  bb_std: "표준편차 배수",
+  rsi_buy_threshold: "RSI 매수 기준",
+  per_ratio: "PER 비율",
+  pbr_max: "PBR 최대값",
+  roe_min: "ROE 최소값",
+};
+
+/** param_key → 설명 매핑 */
+const PARAM_DESCRIPTION: Record<string, string> = {
+  rsi_threshold: "RSI 과매도 기준값. 이 값 이하일 때 매수 신호를 생성합니다 (기본값: 35)",
+  bb_period: "볼린저 밴드 계산에 사용할 봉 개수 (기본값: 20일)",
+  bb_std: "볼린저 밴드 상·하단 폭을 결정하는 표준편차 배수 (기본값: 2.0)",
+  rsi_buy_threshold: "RSI가 이 값 이하일 때 과매도 구간으로 판단하여 매수 신호를 생성합니다 (기본값: 30)",
+  per_ratio: "저평가 종목 필터링에 사용하는 PER 비율 기준값 (기본값: 0.7)",
+  pbr_max: "저평가 종목 필터링에 사용하는 PBR 최대값 (기본값: 1.0)",
+  roe_min: "수익성 종목 필터링에 사용하는 ROE 최소값 % (기본값: 10.0)",
+};
+
 export function StrategyCardList({ onSelectStrategy }: StrategyCardListProps) {
   // TanStack Query로 전략 목록 데이터 로드
   const { data: strategies, isLoading } = useStrategies();
@@ -66,10 +88,11 @@ export function StrategyCardList({ onSelectStrategy }: StrategyCardListProps) {
     description: "",
     params: s.params.map((p) => ({
       key: p.param_key,
-      label: p.param_key,
+      label: PARAM_LABEL[p.param_key] ?? p.param_key,
       // DB param_type("int","float") → 프론트엔드 타입("number") 변환
       type: (p.param_type === "int" || p.param_type === "float" ? "number" : p.param_type) as "slider" | "number" | "select",
       value: Number(p.param_value),
+      description: PARAM_DESCRIPTION[p.param_key],
     })),
     assignedStocks: [] as string[],
     isActive: s.is_active,
