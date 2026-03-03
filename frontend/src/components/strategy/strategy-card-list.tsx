@@ -1,7 +1,7 @@
 "use client";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { useStrategies, useToggleStrategy } from "@/hooks/use-strategy";
+import { useStrategies, useToggleStrategy, useCloneStrategy } from "@/hooks/use-strategy";
 import { useStrategyStore } from "@/stores/strategy-store";
 import { StrategyCard } from "./strategy-card";
 
@@ -27,6 +27,9 @@ export function StrategyCardList({ onSelectStrategy }: StrategyCardListProps) {
   // 전략 활성화/비활성화 API 뮤테이션
   const toggleStrategyMutation = useToggleStrategy();
 
+  // 프리셋 전략 복사 API 뮤테이션
+  const cloneStrategyMutation = useCloneStrategy();
+
   // Zustand 스토어에서 선택 상태 및 액션 가져오기
   const selectedStrategyId = useStrategyStore((s) => s.selectedStrategyId);
   const selectStrategy = useStrategyStore((s) => s.selectStrategy);
@@ -37,12 +40,20 @@ export function StrategyCardList({ onSelectStrategy }: StrategyCardListProps) {
     onSelectStrategy(id);
   }
 
-  /** 전략 활성화 토글 핸들러: 실제 API 호출 */
+  /** 전략 활성화 토글 핸들러: 프리셋 전략은 차단, 나머지는 API 호출 */
   function handleToggleActive(id: string) {
     const numericId = Number(id);
     const strategy = strategies?.find((s) => s.id === numericId);
     if (!strategy) return;
+    // 프리셋 전략은 활성화 토글 차단
+    if (strategy.is_preset) return;
     toggleStrategyMutation.mutate({ id: numericId, is_active: !strategy.is_active });
+  }
+
+  /** 프리셋 전략 복사 핸들러 */
+  function handleClone(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    cloneStrategyMutation.mutate({ id: Number(id) });
   }
 
   // 로딩 중: 카드 모양 Skeleton 3개 표시
@@ -96,6 +107,7 @@ export function StrategyCardList({ onSelectStrategy }: StrategyCardListProps) {
     })),
     assignedStocks: [] as string[],
     isActive: s.is_active,
+    isPreset: s.is_preset,
     totalReturn: 0,
     winRate: 0,
     tradeCount: 0,
@@ -104,13 +116,27 @@ export function StrategyCardList({ onSelectStrategy }: StrategyCardListProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {mapped.map((strategy) => (
-        <StrategyCard
-          key={strategy.id}
-          strategy={strategy}
-          isSelected={selectedStrategyId === strategy.id}
-          onSelect={handleSelect}
-          onToggleActive={handleToggleActive}
-        />
+        <div key={strategy.id} className="relative">
+          <StrategyCard
+            strategy={strategy}
+            isSelected={selectedStrategyId === strategy.id}
+            onSelect={handleSelect}
+            onToggleActive={handleToggleActive}
+          />
+          {/* 프리셋 전략에만 복사 버튼 표시 */}
+          {strategy.isPreset && (
+            <div className="mt-1 flex justify-end">
+              <button
+                type="button"
+                onClick={(e) => handleClone(strategy.id, e)}
+                disabled={cloneStrategyMutation.isPending}
+                className="text-xs text-primary underline-offset-2 hover:underline disabled:opacity-50"
+              >
+                {cloneStrategyMutation.isPending ? "복사 중..." : "내 전략으로 복사"}
+              </button>
+            </div>
+          )}
+        </div>
       ))}
     </div>
   );

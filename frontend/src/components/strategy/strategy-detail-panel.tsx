@@ -9,6 +9,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useStrategyStore } from "@/stores/strategy-store";
+import { useStrategies } from "@/hooks/use-strategy";
 import { StrategyParamForm } from "./strategy-param-form";
 import { StrategyStockMapping } from "./strategy-stock-mapping";
 import type { StrategyDetail } from "@/lib/mock/types";
@@ -43,6 +44,12 @@ export function StrategyDetailPanel({ strategyId }: StrategyDetailPanelProps) {
     strategyId ? state.strategies.find((s) => s.id === strategyId) : undefined
   );
 
+  // API 데이터에서 프리셋 여부 확인 (StrategyDetail 타입에 is_preset 필드 없음)
+  const { data: apiStrategies } = useStrategies();
+  const isPreset = strategyId
+    ? apiStrategies?.find((s) => String(s.id) === strategyId)?.is_preset ?? false
+    : false;
+
   // 선택된 전략이 없으면 안내 메시지 표시
   if (!strategyId || !strategy) {
     return (
@@ -69,11 +76,24 @@ export function StrategyDetailPanel({ strategyId }: StrategyDetailPanelProps) {
         {/* 파라미터 설정 섹션 */}
         <div className="space-y-3">
           <Separator />
-          <h3 className="text-sm font-semibold">파라미터 설정</h3>
-          <StrategyParamForm
-            strategyId={strategy.id}
-            params={strategy.params}
-          />
+          <h3 className="text-sm font-semibold">
+            파라미터 설정
+            {isPreset && (
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                (프리셋 - 파라미터 변경 불가)
+              </span>
+            )}
+          </h3>
+          {isPreset ? (
+            <p className="text-sm text-muted-foreground">
+              프리셋 전략의 파라미터는 변경할 수 없습니다. &ldquo;내 전략으로 복사&rdquo; 후 수정하세요.
+            </p>
+          ) : (
+            <StrategyParamForm
+              strategyId={strategy.id}
+              params={strategy.params}
+            />
+          )}
         </div>
 
         {/* 종목 매핑 섹션 */}

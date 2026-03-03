@@ -18,6 +18,7 @@ export interface StrategyAPI {
   strategy_type: string;
   is_active: boolean;
   is_preset: boolean;
+  user_id: number | null;
   params: StrategyParamAPI[];
   created_at: string;
 }
@@ -86,5 +87,17 @@ export function useEvaluateSignal() {
         `/api/v1/strategies/${strategyId}/evaluate/${symbol}`,
         {}
       ),
+  });
+}
+
+/** 프리셋 전략 복사(클론) 훅 */
+export function useCloneStrategy() {
+  const queryClient = useQueryClient();
+  return useMutation<StrategyAPI, Error, { id: number }>({
+    mutationFn: ({ id }) =>
+      apiClient.post<StrategyAPI>(`/api/v1/strategies/${id}/clone`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["strategy"] });
+    },
   });
 }
