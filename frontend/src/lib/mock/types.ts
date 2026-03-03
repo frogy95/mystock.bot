@@ -143,6 +143,7 @@ export interface StrategyDetail {
   params: StrategyParam[];
   assignedStocks: string[]; // symbol 배열
   isActive: boolean;
+  isPreset?: boolean; // 프리셋 여부 (true면 수정 불가)
   totalReturn: number;
   winRate: number;
   tradeCount: number;

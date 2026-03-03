@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useStrategies, useToggleStrategy, useCloneStrategy } from "@/hooks/use-strategy";
 import { useStrategyStore } from "@/stores/strategy-store";
@@ -33,6 +34,7 @@ export function StrategyCardList({ onSelectStrategy }: StrategyCardListProps) {
   // Zustand 스토어에서 선택 상태 및 액션 가져오기
   const selectedStrategyId = useStrategyStore((s) => s.selectedStrategyId);
   const selectStrategy = useStrategyStore((s) => s.selectStrategy);
+  const setStrategies = useStrategyStore((s) => s.setStrategies);
 
   /** 전략 선택 핸들러: 스토어 업데이트 + 부모 콜백 호출 */
   function handleSelect(id: string) {
@@ -55,6 +57,31 @@ export function StrategyCardList({ onSelectStrategy }: StrategyCardListProps) {
     e.stopPropagation();
     cloneStrategyMutation.mutate({ id: Number(id) });
   }
+
+  // StrategyAPI → StrategyDetail 호환 형태로 변환 (API에 없는 필드는 기본값 사용)
+  const mapped = (strategies ?? []).map((s) => ({
+    id: String(s.id),
+    name: s.name,
+    category: mapStrategyTypeToCategory(s.strategy_type),
+    description: "",
+    params: s.params.map((p) => ({
+      key: p.param_key,
+      label: p.param_key,
+      type: p.param_type as "slider" | "number" | "select",
+      value: p.param_value,
+    })),
+    assignedStocks: [] as string[],
+    isActive: s.is_active,
+    isPreset: s.is_preset,
+    totalReturn: 0,
+    winRate: 0,
+    tradeCount: 0,
+  }));
+
+  // API 데이터가 바뀔 때마다 Zustand 스토어에 sync (상세 패널이 스토어 데이터를 사용)
+  // Rules of Hooks: useEffect는 조건부 return 이전에 호출해야 함
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setStrategies(mapped); }, [strategies]);
 
   // 로딩 중: 카드 모양 Skeleton 3개 표시
   if (isLoading) {
@@ -92,26 +119,6 @@ export function StrategyCardList({ onSelectStrategy }: StrategyCardListProps) {
       </p>
     );
   }
-
-  // StrategyAPI → StrategyDetail 호환 형태로 변환 (API에 없는 필드는 기본값 사용)
-  const mapped = strategies.map((s) => ({
-    id: String(s.id),
-    name: s.name,
-    category: mapStrategyTypeToCategory(s.strategy_type),
-    description: "",
-    params: s.params.map((p) => ({
-      key: p.param_key,
-      label: p.param_key,
-      type: p.param_type as "slider" | "number" | "select",
-      value: p.param_value,
-    })),
-    assignedStocks: [] as string[],
-    isActive: s.is_active,
-    isPreset: s.is_preset,
-    totalReturn: 0,
-    winRate: 0,
-    tradeCount: 0,
-  }));
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
