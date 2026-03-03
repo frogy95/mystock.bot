@@ -123,10 +123,14 @@ Sprint 14에서 구축한 JWT 멀티유저 인증 기반 위에 데이터 격리
 
 ## 검증 결과
 
+- [pytest 보고서](sprint15/pytest-report.md) (2026-03-03, 자동 검증)
+  - 41 passed, 0 failed
+  - Sprint 15 신규 테스트 8개 포함 (전략 격리 6개 + 백테스트 격리 2개) 전부 통과
 - [코드 리뷰 보고서](sprint15/code-review-report.md) (2026-03-03, 자동 코드 리뷰)
   - Critical 이슈: 0건
   - High 이슈: 1건 (clone 후 불필요한 DB 재조회 — 성능 경미, 기능 정상)
   - Medium 이슈: 3건 (추후 개선 권장)
+  - MED-3 (데모 유저 분기) 재확인 완료: `run_backtest_api` 62번 줄에서 데모 유저 즉시 차단 — 안전
 
 ## 사용자 수동 검증 항목
 

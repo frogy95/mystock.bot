@@ -1629,7 +1629,7 @@ curl -s -H "Authorization: Bearer $DEMO_TOKEN" \
 
 **자동 검증 완료 (sprint-close 시점에 실행됨):**
 
-- ✅ pytest 40개 PASSED (신규 7개 포함) — `docker compose exec backend pytest -v`
+- ✅ pytest 41개 PASSED (신규 8개 포함) — `docker compose exec backend pytest -v` (2026-03-03 sprint-close 재검증, 41 passed / 0 failed)
 - ✅ 데모 모드 전략 조회 — 전략 3개, 모두 `user_id=None`, `is_preset=True` 확인
 
 **수동 필요 — DB 마이그레이션 (되돌릴 수 없으므로 사용자가 타이밍 결정):**
@@ -1649,6 +1649,6 @@ curl -s -H "Authorization: Bearer $DEMO_TOKEN" \
 
 - ✅ 프론트엔드: 프리셋 전략 카드에서 토글 비활성화 표시 (Playwright 자동 검증, 2026-03-03)
 - ✅ 프론트엔드: "내 전략으로 복사" 버튼 카드 하단에 표시 확인 (Playwright 자동 검증, 2026-03-03) — 클릭 시 API 검증은 curl로 완료
-- ⬜ 프론트엔드: 복사된 전략 파라미터 수정 가능 확인 (실사용자 로그인 후 수동 확인 필요)
+- ✅ 프론트엔드: 복사된 전략 파라미터 수정 가능 확인 (Playwright + DB 저장 검증, 2026-03-03)
 - ✅ 브라우저 콘솔 에러 없음 (Playwright: 0 errors, 2026-03-03)
 
