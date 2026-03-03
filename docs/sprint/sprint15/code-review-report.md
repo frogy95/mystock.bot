@@ -1,21 +1,32 @@
 # Sprint 15 코드 리뷰 보고서
 
-- **PR**: [#23 feat: Sprint 15 완료 - 사용자별 전략/백테스트 데이터 격리](https://github.com/frogy95/mystock.bot/pull/23)
-- **리뷰 일시**: 2026-03-03
+- **PR**: [#23 feat: Sprint 15 완료 - 사용자별 데이터 격리 + 복사된 전략 관리 기능 보완](https://github.com/frogy95/mystock.bot/pull/23)
+- **리뷰 일시**: 2026-03-03 (1차), 2026-03-03 (2차 추가)
 - **리뷰어**: Sprint-Close Agent (자동 코드 리뷰)
-- **리뷰 대상 커밋**: 3182b4f, 28e3afd, 39f42d9, c29138a, d735483
+- **리뷰 대상 커밋 (1차)**: 3182b4f, 28e3afd, 39f42d9, c29138a, d735483
+- **리뷰 대상 커밋 (2차)**: 8a7b166, 0c3f6ee
 
 ---
 
 ## 요약
 
-Sprint 15는 멀티유저 데이터 격리를 위한 핵심 보안 계층 구현입니다.
+Sprint 15는 두 단계로 구성됩니다.
+- **1차**: 멀티유저 데이터 격리를 위한 핵심 보안 계층 구현
+- **2차**: 복사된 전략 관리 기능 보완 (이름 변경, 삭제, 파라미터 설명)
+
 전반적으로 설계가 명확하고 구현이 일관적입니다.
 
+**1차 리뷰 결과 (격리 기능)**
 - **Critical 이슈**: 0건
 - **High 이슈**: 1건
 - **Medium 이슈**: 3건
 - **Low/정보 이슈**: 4건
+
+**2차 리뷰 결과 (관리 기능 보완)**
+- **Critical 이슈**: 0건
+- **High 이슈**: 0건
+- **Medium 이슈**: 2건
+- **Low/정보 이슈**: 2건
 
 ---
 
@@ -145,8 +156,68 @@ return useMutation<StrategyAPI, Error, { id: number }>({
 
 ---
 
+---
+
+## 2차 코드 리뷰: 복사된 전략 관리 기능 보완 (커밋 8a7b166, 0c3f6ee)
+
+### 2차 Medium 이슈
+
+#### [MED-4] `window.confirm` 사용 — 접근성 및 일관성 문제
+
+**파일**: `frontend/src/components/strategy/strategy-detail-panel.tsx`
+
+```tsx
+if (!window.confirm("이 전략을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) return;
+```
+
+브라우저 기본 `window.confirm` 다이얼로그는 UI 일관성이 떨어지고 키보드 접근성이 제한됩니다. 프로젝트에서 이미 사용 중인 shadcn/ui `AlertDialog` 컴포넌트로 교체하면 UI가 일관되고 접근성도 향상됩니다.
+
+**영향**: UX/접근성 (경미). 기능 동작에는 문제 없음.
+
+#### [MED-5] `handleSaveName`의 `onBlur` 이벤트 — 취소 버튼 클릭 시 저장 요청 발생
+
+**파일**: `frontend/src/components/strategy/strategy-detail-panel.tsx`
+
+```tsx
+<Input
+  onBlur={handleSaveName}  // 취소 버튼 클릭 시에도 blur가 먼저 발생
+/>
+```
+
+인라인 편집 모드에서 "취소" 버튼 클릭 시 Input의 `onBlur`가 먼저 트리거되어 불필요한 이름 변경 API가 호출될 수 있습니다. `onBlur` 대신 명시적 저장 버튼을 추가하거나, `mousedown` 이벤트 방지 패턴을 사용하는 것을 권장합니다.
+
+**영향**: UX 및 불필요한 API 호출 (경미). 기능 동작에는 대체로 문제 없음.
+
+### 2차 Low 이슈
+
+#### [LOW-5] `PARAM_LABEL`/`PARAM_DESCRIPTION` 위치 — 컴포넌트 파일 내 하드코딩
+
+**파일**: `frontend/src/components/strategy/strategy-card-list.tsx`
+
+파라미터 레이블/설명 매핑이 컴포넌트 파일에 직접 포함되어 있습니다. `lib/constants/strategy-params.ts` 같은 별도 상수 파일로 분리하면 재사용성과 유지보수성이 향상됩니다.
+
+**영향**: 코드 구조 (경미). 기능 동작에는 문제 없음.
+
+#### [LOW-6] `useDeleteStrategy` — 삭제 후 선택 상태 초기화 미처리
+
+**파일**: `frontend/src/components/strategy/strategy-detail-panel.tsx`
+
+전략 삭제 성공 후 `onDeleted?.()` 콜백이 호출되지만, `strategy-page.tsx`에서 선택된 전략 ID를 Zustand 스토어에서 명시적으로 초기화하지 않으면 패널이 "전략을 찾을 수 없습니다" 상태로 잠깐 표시될 수 있습니다.
+
+**영향**: UX (경미). 데이터 무결성에는 문제 없음.
+
+### 2차 긍정적 평가 사항
+
+1. **param_type 매핑 수정**: `"int"/"float"` → `"number"` 변환 로직으로 파라미터 폼이 정상 표시됨.
+2. **저장 API 연동 완성**: `handleSaveParams`에서 `apiStrategy.params`의 원본 `param_type`을 사용하여 정확한 타입으로 백엔드에 전달함.
+3. **이름 변경/삭제 권한 일관성**: 백엔드에서 `is_preset=False AND user_id=current_user.id` 이중 조건 확인으로 프리셋 보호 완전히 유지됨.
+4. **FK NULL 처리 완결성**: 삭제 시 WatchlistItem, Holding, Order, BacktestResult 모두 strategy_id를 NULL로 정리하여 무결성 보장.
+
+---
+
 ## 결론
 
-Sprint 15 구현은 **Critical 이슈 없음**으로 머지 적합 판정입니다.
-High 이슈 1건은 성능 관련이며 기능 동작에 영향이 없습니다.
-발견된 Medium/Low 이슈는 다음 스프린트 기술 부채로 기록합니다.
+Sprint 15 전체 구현(1차 + 2차)은 **Critical 이슈 없음**으로 **머지 적합** 판정입니다.
+High 이슈 1건(성능)과 Medium/Low 이슈들은 기능 동작에 영향이 없으며, 다음 스프린트 기술 부채로 기록합니다.
+
+**pytest 45 passed** 확인됨. 머지 진행 가능.
