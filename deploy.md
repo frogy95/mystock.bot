@@ -1441,3 +1441,157 @@ docker compose exec backend python scripts/seed.py
 - ✅ 초대 코드 생성 (`POST /api/v1/admin/invitations`, 2026-03-03)
 - ✅ 새 사용자 회원가입 (`POST /api/v1/auth/register`, 초대코드 검증 포함, 2026-03-03)
 - ✅ 데모 모드 여전히 정상 동작 확인 (2026-03-03)
+
+---
+
+## 17. Sprint 15 완료 검증 (사용자 수행 필요)
+
+Sprint 15에서는 전략(Strategy)과 백테스트 결과(BacktestResult)에 사용자별 데이터 격리가 추가되었습니다.
+- 프리셋 전략(`user_id IS NULL`)은 모든 사용자가 조회 가능하나 수정 불가
+- 사용자는 프리셋을 복사(clone)하여 본인 소유 전략 생성
+- 백테스트 결과는 실행한 사용자만 조회 가능
+
+### 17-1. Docker 재빌드 및 마이그레이션
+
+```bash
+# 프로젝트 루트에서 실행 (코드 변경 반영)
+docker compose up --build -d
+
+# Alembic 마이그레이션 실행 (strategies.user_id, backtest_results.user_id 컬럼 추가)
+docker compose exec backend alembic upgrade head
+
+# 마이그레이션 확인
+docker compose exec postgres psql -U mystock_user -d mystock -c "\d strategies"
+# user_id 컬럼이 표시되어야 함
+docker compose exec postgres psql -U mystock_user -d mystock -c "\d backtest_results"
+# user_id 컬럼이 표시되어야 함
+```
+
+### 17-2. 백엔드 통합 테스트 실행
+
+```bash
+# 컨테이너 내에서 pytest 실행
+docker compose exec backend pytest -v
+
+# 기대 결과: 40 passed (신규 7개 포함)
+# test_strategies.py — 격리/프리셋 보호/clone 6개 신규
+# test_backtest.py — 사용자별 격리 2개 신규
+# 1 failed (test_stocks.py::test_balance_returns_valid_status — KIS API 네트워크 오류, Sprint 15 이전부터 존재)
+```
+
+### 17-3. API 수동 검증
+
+먼저 로그인하여 토큰을 발급받으세요:
+
+```bash
+# 로그인 (이메일 방식)
+TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "frogy95@gmail.com", "password": "설정한_비밀번호"}' \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+```
+
+#### 전략 격리 검증
+
+```bash
+# 1. 전략 목록 조회 → 프리셋만 표시 (신규 사용자 기준)
+curl -s -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/v1/strategies | python3 -m json.tool
+# 기대: user_id가 null인 프리셋 3개
+
+# 2. 프리셋 전략 활성화 시도 → 404 확인 (id=1 은 프리셋)
+curl -s -X PUT -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"is_active": true}' \
+  http://localhost:8000/api/v1/strategies/1/activate
+# 기대: {"detail": "Not found"} 또는 404 응답
+
+# 3. 프리셋 전략 복사 (clone)
+curl -s -X POST -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/v1/strategies/1/clone | python3 -m json.tool
+# 기대: user_id가 본인 id인 새 전략 생성 (name에 "(복사)" 또는 "copy" 포함)
+# 응답에서 복사된 전략의 id를 메모 (예: CLONED_ID=4)
+
+# 4. 복사된 전략 활성화 → 성공 확인
+CLONED_ID=<위에서 메모한 id>
+curl -s -X PUT -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"is_active": true}' \
+  http://localhost:8000/api/v1/strategies/$CLONED_ID/activate
+# 기대: {"is_active": true, ...}
+
+# 5. 복사된 전략 파라미터 수정 → 성공 확인
+curl -s -X PUT -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"params": [{"param_key": "rsi_threshold", "param_value": "30", "param_type": "float"}]}' \
+  http://localhost:8000/api/v1/strategies/$CLONED_ID/params
+# 기대: 200 OK + 업데이트된 파라미터
+```
+
+#### 백테스트 격리 검증
+
+```bash
+# 6. 백테스트 실행 (복사된 전략으로)
+curl -s -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"strategy_id\": $CLONED_ID, \"symbol\": \"005930\", \"start_date\": \"2023-01-01\", \"end_date\": \"2023-12-31\"}" \
+  http://localhost:8000/api/v1/backtest/run | python3 -m json.tool
+# 기대: 백테스트 결과 + user_id 포함
+
+# 7. 백테스트 결과 조회 → 본인 결과만 표시
+curl -s -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/v1/backtest/results | python3 -m json.tool
+# 기대: 방금 실행한 결과만 포함
+```
+
+### 17-4. 프론트엔드 UI 검증
+
+브라우저에서 `http://localhost:3001/strategy` 접속 후:
+
+```
+1. 전략 목록에서 프리셋 전략 카드 클릭
+   → 토글(활성화/비활성화) 스위치가 비활성화(grayed out) 상태임을 확인
+   → 상세 패널에 "파라미터를 수정하려면 전략을 복사하세요" 안내 문구 확인
+
+2. 프리셋 전략 카드에서 "내 전략으로 복사" 버튼 클릭
+   → 복사본이 전략 목록에 추가됨 확인
+   → 복사본 카드의 토글은 정상 동작 확인
+
+3. 복사된 전략 파라미터 수정 후 저장
+   → 네트워크 탭에서 PUT /api/v1/strategies/{id}/params 200 확인
+
+4. 브라우저 개발자도구 콘솔 에러 없음 확인
+```
+
+### 17-5. 데모 모드 정상 동작 확인
+
+```bash
+# 데모 로그인
+DEMO_TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/demo \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# 데모 모드 전략 조회 (더미 데이터 반환 확인)
+curl -s -H "Authorization: Bearer $DEMO_TOKEN" \
+  http://localhost:8000/api/v1/strategies | python3 -m json.tool
+# 기대: user_id: null 인 더미 전략 3개
+```
+
+### Sprint 15 완료 체크리스트
+
+**자동 검증 (테스트):**
+- ✅ 테스트 40개 PASSED (신규 7개 포함) — pytest 자동 실행
+
+**수동 검증 필요 (Docker 실행 후):**
+- ⬜ `docker compose up --build` 성공
+- ⬜ `alembic upgrade head` 성공 (strategies.user_id, backtest_results.user_id 컬럼 추가 확인)
+- ⬜ `GET /api/v1/strategies` → 프리셋 전략 목록 반환 (user_id: null)
+- ⬜ `PUT /api/v1/strategies/1/activate` → 404 응답 (프리셋 토글 차단 확인)
+- ⬜ `POST /api/v1/strategies/1/clone` → 복사본 생성 (user_id: 본인 id)
+- ⬜ `PUT /api/v1/strategies/{cloned_id}/activate` → 200 성공 (복사본 토글 가능)
+- ⬜ `POST /api/v1/backtest/run` → 백테스트 실행 (user_id 포함 저장)
+- ⬜ `GET /api/v1/backtest/results` → 본인 결과만 조회
+- ⬜ 프론트엔드: 프리셋 토글 비활성화 표시 확인
+- ⬜ 프론트엔드: "내 전략으로 복사" 버튼 동작 확인
+- ⬜ 프론트엔드: 복사된 전략 토글 및 파라미터 수정 가능 확인
+- ⬜ 데모 모드 전략 조회 정상 동작 확인
+- ⬜ 브라우저 콘솔 에러 없음
