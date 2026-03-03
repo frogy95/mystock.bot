@@ -3,7 +3,7 @@
 ## 개요
 - **목표:** 한국투자증권 Open API를 활용한 KOSPI/KOSDAQ 퀀트 전략 기반 자동매매 웹 애플리케이션
 - **전체 예상 기간:** 10주 (2026-03-02 ~ 2026-05-10)
-- **현재 진행 단계:** Phase 5 완료 + Sprint 11 완료 (로그인 페이지 + 데모 모드)
+- **현재 진행 단계:** Phase 7 진행 중 + Sprint 14 완료 (JWT 인증 + User 모델 확장)
 - **팀 규모:** 1-2인 소규모 개발팀
 - **MVP 대상 사용자:** 개인 사용자 1인 (개발자 본인)
 
@@ -19,9 +19,9 @@
 
 | 항목 | 상태 |
 |------|------|
-| 전체 진행률 | 100% (Sprint 0~12 완료) |
-| 현재 Phase | Phase 6 완료 + Sprint 13 완료 (MVP 안정화) |
-| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01), Sprint 2 (2026-03-01), Sprint 3 (2026-03-01), Sprint 4 (2026-03-01), Sprint 4.1 (2026-03-01), Sprint 5 (2026-03-01), Sprint 6 (2026-03-01), Sprint 7 (2026-03-01), Sprint 8 (2026-03-01), Sprint 9 (2026-03-02), Sprint 10 (2026-03-02), Sprint 11 (2026-03-03), Sprint 12 (2026-03-03), Sprint 13 (2026-03-03) |
+| 전체 진행률 | Sprint 0~14 완료 |
+| 현재 Phase | Phase 7 진행 중 + Sprint 14 완료 (JWT 인증 + User 모델 확장) |
+| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01), Sprint 2 (2026-03-01), Sprint 3 (2026-03-01), Sprint 4 (2026-03-01), Sprint 4.1 (2026-03-01), Sprint 5 (2026-03-01), Sprint 6 (2026-03-01), Sprint 7 (2026-03-01), Sprint 8 (2026-03-01), Sprint 9 (2026-03-02), Sprint 10 (2026-03-02), Sprint 11 (2026-03-03), Sprint 12 (2026-03-03), Sprint 13 (2026-03-03), Sprint 14 (2026-03-03) |
 | 다음 마일스톤 | M5: MVP 출시 - 모의투자 5일 연속 안정 운영, 실전 전환 준비 |
 | 예상 MVP 완료일 | 2026-05-10 |
 
@@ -719,6 +719,35 @@ Sprint 0~12 전체 코드 리뷰에서 발견된 긴급 버그 및 중요 이슈
 
 ---
 
+## Phase 7: 멀티유저 기반 구축 (Sprint 14~)
+
+### 목표
+단일 유저 환경에서 멀티유저를 지원하는 구조로 전환한다. JWT 인증, 초대 코드 기반 회원가입, 역할 기반 접근 제어(RBAC)를 도입한다.
+
+#### Sprint 14: JWT 인증 + User 모델 확장 ✅ 완료 (2026-03-03)
+- ✅ `requirements.txt`에 `python-jose[cryptography]`, `passlib[bcrypt]` 추가
+- ✅ `config.py`에 JWT 설정 추가 (`JWT_SECRET`, `JWT_ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `REFRESH_TOKEN_EXPIRE_DAYS`, `ADMIN_EMAIL`)
+- ✅ User 모델 확장 (`email`, `password_hash`, `role`, `invited_by`, `is_approved` 필드)
+- ✅ InvitationCode 모델 신규 생성 (초대 코드 기반 회원가입)
+- ✅ `core/auth.py` JWT 기반으로 재작성 (`create_access_token`, `create_refresh_token`, `get_current_user` → User 객체 반환)
+- ✅ `schemas/auth.py` 확장 (`RegisterRequest`, `RefreshRequest`, `TokenResponse.refresh_token`)
+- ✅ 인증 API: `POST /auth/register`, `/auth/login`, `/auth/refresh`, `/auth/demo`
+- ✅ 관리자 API (`api/v1/admin.py`): 초대 코드 CRUD, 사용자 목록/승인/비활성화
+- ✅ 전체 라우터 9개: `current_user: str` → `User` 객체로 변경
+- ✅ Alembic 마이그레이션 (`c3d4e5f6a7b8`)
+- ✅ 프론트엔드 `auth-store.ts`: refreshToken 저장, `setToken` 메서드
+- ✅ 프론트엔드 `client.ts`: 401 시 자동 토큰 갱신 (refresh 플로우)
+- ✅ 로그인 페이지 이메일 방식으로 변경
+- ✅ `scripts/seed.py` 관리자 계정 생성 시 JWT 필드 포함
+
+### 완료 기준 (Definition of Done)
+- JWT access token + refresh token 인증 플로우 동작
+- 초대 코드 기반 회원가입 동작
+- 관리자 API를 통한 사용자 승인/비활성화 동작
+- 모든 API 엔드포인트가 User 객체 기반 인증으로 동작
+
+---
+
 ## 리스크 및 완화 전략
 
 | 리스크 | 영향도 | 발생 확률 | 완화 전략 |
@@ -751,7 +780,7 @@ Sprint 0~12 전체 코드 리뷰에서 발견된 긴급 버그 및 중요 이슈
 
 ### Phase 1-2 발생 예상 기술 부채
 - ⬜ 프론트엔드 Mock 데이터 하드코딩 (Phase 3에서 해소)
-- ⬜ 단일 유저 인증 시스템 (향후 JWT 기반 멀티유저로 전환 필요)
+- ✅ 단일 유저 인증 시스템 → JWT 기반 멀티유저로 전환 완료 (Sprint 14)
 - ⬜ APScheduler 단일 프로세스 스케줄러 (트래픽 증가 시 Celery로 전환)
 
 ### Phase 3-4 발생 예상 기술 부채
@@ -776,8 +805,9 @@ Sprint 0~12 전체 코드 리뷰에서 발견된 긴급 버그 및 중요 이슈
 - ⬜ 모바일 최적화 (PWA)
 
 ### 중기 (MVP 완료 후 3-6개월)
-- ⬜ 멀티유저 지원 (회원가입, 로그인, JWT 인증)
-- ⬜ 사용자별 전략/포트폴리오 격리
+- ✅ JWT 인증 도입 완료 (Sprint 14)
+- ✅ 초대 코드 기반 회원가입 완료 (Sprint 14)
+- ⬜ 사용자별 전략/포트폴리오 격리 (Sprint 15 예정)
 - ⬜ Celery 기반 분산 작업 스케줄링
 - ⬜ 실시간 호가 모니터링 (WebSocket)
 - ⬜ 해외 주식 지원 (미국 주식)
@@ -809,5 +839,6 @@ Sprint 0~12 전체 코드 리뷰에서 발견된 긴급 버그 및 중요 이슈
 | Sprint 11 | 2026-03-02 | Phase 5+ | 로그인 페이지 + 데모 모드 구현 |
 | Sprint 12 | 2026-03-03 | Phase 5+ | KIS API 듀얼 환경 분리 (모의투자/실전투자 키 분리) |
 | Sprint 13 | 2026-03-03 | Phase 6 | MVP 안정화 - 긴급 버그 수정 및 코드 품질 개선 |
+| Sprint 14 | 2026-03-03 | Phase 7 | JWT 인증 + User 모델 확장 (멀티유저 기반 구축) |
 
 > **참고:** 1-2인 소규모 팀 기준으로 각 스프린트는 5 영업일(월-금)로 설정. 주말 및 공휴일은 버퍼로 활용. 예상보다 빠르게 진행되면 Phase 간 간격을 줄이고, 지연 시 Could Have 항목을 다음 Phase로 이동.
