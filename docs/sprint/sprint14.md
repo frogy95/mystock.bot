@@ -56,6 +56,17 @@ ADMIN_EMAIL=admin@mystock.bot
 3. `alembic upgrade head` (User 컬럼 추가, InvitationCode 테이블 생성)
 4. `python scripts/seed.py` (기존 운영 중이면 스킵 - 마이그레이션에서 자동 처리)
 
+## 검증 결과
+
+- [Sprint 14 검증 보고서](sprint14/validation-report.md)
+
+**자동 검증 결과:** 59/59 항목 통과 (100%)
+- Python 파일 문법, JWT 설정, 인증/관리자 API 엔드포인트, User 모델 필드, 라우터 의존성, Alembic 마이그레이션, 프론트엔드 auth-store, client.ts 401 갱신 로직, JWT 보안 토큰 타입, 관리자 보안 로직 전부 통과
+
+**수동 검증 필요:** Docker 환경에서 실제 로그인, 마이그레이션, 회원가입 플로우 확인 필요 (deploy.md 섹션 14 참고)
+
+---
+
 ## 다음 스프린트 (Sprint 15)
 
 - Strategy/BacktestResult 모델에 user_id FK 추가 (데이터 격리)

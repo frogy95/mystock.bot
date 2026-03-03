@@ -1432,6 +1432,10 @@ docker compose exec backend python scripts/seed.py
 
 ### Sprint 14 완료 체크리스트
 
+> **자동 검증 완료 (정적 분석, 2026-03-03)**
+> Python 문법 검증, JWT 설정, 인증/관리자 API 엔드포인트, User 모델 필드, 라우터 의존성, Alembic 마이그레이션, 프론트엔드 auth-store, client.ts 401 갱신 로직 — 59/59 항목 통과
+> 상세 내용: [docs/sprint/sprint14/validation-report.md](docs/sprint/sprint14/validation-report.md)
+
 - ⬜ `alembic upgrade head` 실행 확인
 - ⬜ 관리자 이메일로 로그인 테스트
 - ⬜ 초대 코드 생성 (`POST /api/v1/admin/invitations`)
