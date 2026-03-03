@@ -12,9 +12,12 @@ interface AuthState {
   token: string | null;
   refreshToken: string | null;
   username: string | null;
+  role: string | null;
+  userId: number | null;
   login: (token: string, username: string, refreshToken?: string) => void;
   logout: () => void;
   setToken: (token: string) => void;
+  setRole: (role: string, userId: number) => void;
   isAuthenticated: () => boolean;
   isDemo: () => boolean;
 }
@@ -35,6 +38,8 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       refreshToken: null,
       username: null,
+      role: null,
+      userId: null,
 
       login: (token: string, username: string, refreshToken?: string) => {
         set({ token, username, refreshToken: refreshToken ?? null });
@@ -42,7 +47,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        set({ token: null, username: null, refreshToken: null });
+        set({ token: null, username: null, refreshToken: null, role: null, userId: null });
         deleteCookie("auth-token");
       },
 
@@ -50,6 +55,11 @@ export const useAuthStore = create<AuthState>()(
       setToken: (token: string) => {
         set({ token });
         setCookie("auth-token", token);
+      },
+
+      // role과 userId 저장 (/auth/me 호출 후 저장)
+      setRole: (role: string, userId: number) => {
+        set({ role, userId });
       },
 
       isAuthenticated: () => get().token !== null,
@@ -62,6 +72,8 @@ export const useAuthStore = create<AuthState>()(
         token: state.token,
         refreshToken: state.refreshToken,
         username: state.username,
+        role: state.role,
+        userId: state.userId,
       }),
       onRehydrateStorage: () => (state) => {
         // localStorage에서 복원 후 쿠키도 동기화
