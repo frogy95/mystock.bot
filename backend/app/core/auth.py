@@ -97,6 +97,7 @@ async def get_current_user(
         demo_user = User()
         demo_user.id = DEMO_USER_ID
         demo_user.username = DEMO_USERNAME
+        demo_user.email = None
         demo_user.role = "user"
         demo_user.is_active = True
         demo_user.is_approved = True

@@ -42,7 +42,8 @@ export const useAuthStore = create<AuthState>()(
       userId: null,
 
       login: (token: string, username: string, refreshToken?: string) => {
-        set({ token, username, refreshToken: refreshToken ?? null });
+        // 재로그인 시 이전 role/userId가 잔존하지 않도록 명시적 초기화
+        set({ token, username, refreshToken: refreshToken ?? null, role: null, userId: null });
         setCookie("auth-token", token);
       },
 
