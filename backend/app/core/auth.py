@@ -1,15 +1,15 @@
 """
 JWT 기반 인증 모듈
-python-jose + passlib/bcrypt를 사용하여 JWT 토큰을 발급/검증한다.
+python-jose + bcrypt를 사용하여 JWT 토큰을 발급/검증한다.
 """
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,7 +18,6 @@ from app.core.database import get_db
 from app.models.user import User
 
 _bearer_scheme = HTTPBearer()
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # 데모 유저 상수
 DEMO_USERNAME = "__demo__"
@@ -32,12 +31,12 @@ def is_demo_user(username: str) -> bool:
 
 def hash_password(plain: str) -> str:
     """비밀번호를 bcrypt 해시로 변환한다."""
-    return _pwd_context.hash(plain)
+    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
 
 
 def verify_password(plain: str, hashed: str) -> bool:
     """비밀번호와 해시를 검증한다."""
-    return _pwd_context.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
 def create_access_token(user_id: int, username: str) -> str:
