@@ -35,6 +35,12 @@ logger = logging.getLogger("mystock.bot")
 async def lifespan(app: FastAPI):
     """애플리케이션 시작/종료 이벤트 핸들러"""
     logger.info("mystock.bot API 서버 시작")
+    # KIS 설정 DB 초기 로드
+    try:
+        from app.services.kis_settings_cache import load_kis_settings
+        await load_kis_settings()
+    except Exception as e:
+        logger.warning(f"KIS 설정 DB 초기 로드 실패: {e}")
     # 종목 마스터 데이터 Redis 캐싱
     try:
         await load_stock_master()

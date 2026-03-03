@@ -90,6 +90,17 @@ async def update_settings(
 
     await db.commit()
 
+    # KIS 관련 키 변경 시 설정 캐시 무효화 (새 자격증명으로 즉시 반영)
+    _KIS_KEYS = {
+        "kis_vts_app_key", "kis_vts_app_secret", "kis_vts_account_number",
+        "kis_real_app_key", "kis_real_app_secret", "kis_real_account_number",
+        "kis_hts_id", "kis_mode",
+    }
+    updated_keys = {item.setting_key for item in body.settings}
+    if updated_keys & _KIS_KEYS:
+        from app.services.kis_settings_cache import invalidate_kis_settings
+        await invalidate_kis_settings()
+
     result = await db.execute(
         select(SystemSetting).where(SystemSetting.user_id == user_id)
         .order_by(SystemSetting.setting_key)
