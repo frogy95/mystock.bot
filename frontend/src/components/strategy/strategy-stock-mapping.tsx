@@ -66,6 +66,11 @@ export function StrategyStockMapping({
         </Button>
       </div>
 
+      {/* 안내: 종목 할당은 관심종목 페이지에서 strategy_id를 설정하여 관리됨 */}
+      <p className="text-xs text-muted-foreground">
+        * 종목 할당은 <strong>관심종목</strong> 페이지에서 각 종목에 전략을 지정하는 방식으로 관리됩니다. 아래 목록은 현재 세션에서 임시로 메모할 수 있습니다.
+      </p>
+
       {/* 매핑된 종목 테이블 */}
       {assignedStocks.length > 0 ? (
         /* 모바일에서 가로 스크롤 허용 */

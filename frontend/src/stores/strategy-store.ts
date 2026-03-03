@@ -8,6 +8,8 @@ interface StrategyState {
   strategies: StrategyDetail[];
   selectedStrategyId: string | null;
 
+  // 전략 목록 일괄 교체 (API 데이터 sync용)
+  setStrategies: (strategies: StrategyDetail[]) => void;
   // 선택된 전략 변경
   selectStrategy: (id: string | null) => void;
   // 전략 활성화/비활성화 토글
@@ -23,6 +25,8 @@ interface StrategyState {
 export const useStrategyStore = create<StrategyState>((set) => ({
   strategies: mockStrategies,
   selectedStrategyId: null,
+
+  setStrategies: (strategies) => set({ strategies }),
 
   selectStrategy: (id) => set({ selectedStrategyId: id }),
 

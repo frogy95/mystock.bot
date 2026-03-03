@@ -43,7 +43,7 @@ export function StrategyCard({
   onSelect,
   onToggleActive,
 }: StrategyCardProps) {
-  const { id, name, category, totalReturn, winRate, tradeCount, assignedStocks, isActive } =
+  const { id, name, category, totalReturn, winRate, tradeCount, assignedStocks, isActive, isPreset } =
     strategy;
 
   return (
@@ -107,6 +107,7 @@ export function StrategyCard({
             checked={isActive}
             onCheckedChange={() => onToggleActive(id)}
             onClick={(e) => e.stopPropagation()}
+            disabled={!!isPreset}
             aria-label={`${name} 전략 활성화 토글`}
           />
         </div>

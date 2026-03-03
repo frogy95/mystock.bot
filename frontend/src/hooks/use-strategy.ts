@@ -18,6 +18,7 @@ export interface StrategyAPI {
   strategy_type: string;
   is_active: boolean;
   is_preset: boolean;
+  user_id: number | null;
   params: StrategyParamAPI[];
   created_at: string;
 }
@@ -86,5 +87,41 @@ export function useEvaluateSignal() {
         `/api/v1/strategies/${strategyId}/evaluate/${symbol}`,
         {}
       ),
+  });
+}
+
+/** 프리셋 전략 복사(클론) 훅 */
+export function useCloneStrategy() {
+  const queryClient = useQueryClient();
+  return useMutation<StrategyAPI, Error, { id: number }>({
+    mutationFn: ({ id }) =>
+      apiClient.post<StrategyAPI>(`/api/v1/strategies/${id}/clone`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["strategy"] });
+    },
+  });
+}
+
+/** 전략 이름 변경 훅 */
+export function useRenameStrategy() {
+  const queryClient = useQueryClient();
+  return useMutation<StrategyAPI, Error, { id: number; name: string }>({
+    mutationFn: ({ id, name }) =>
+      apiClient.put<StrategyAPI>(`/api/v1/strategies/${id}/name`, { name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["strategy"] });
+    },
+  });
+}
+
+/** 전략 삭제 훅 */
+export function useDeleteStrategy() {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, { id: number }>({
+    mutationFn: ({ id }) =>
+      apiClient.delete<void>(`/api/v1/strategies/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["strategy"] });
+    },
   });
 }

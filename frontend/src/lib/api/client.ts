@@ -91,6 +91,11 @@ async function request<T>(
     throw new Error(error.detail ?? `HTTP ${response.status}`);
   }
 
+  // 204 No Content: 빈 응답 처리
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return response.json() as Promise<T>;
 }
 

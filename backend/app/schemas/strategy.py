@@ -34,6 +34,7 @@ class StrategyResponse(BaseModel):
     strategy_type: str
     is_active: bool
     is_preset: bool
+    user_id: int | None = None
     params: List[StrategyParamResponse] = []
     created_at: datetime
 
@@ -50,6 +51,12 @@ class StrategyParamBulkUpdate(BaseModel):
     """전략 파라미터 일괄 업데이트 요청 스키마"""
 
     params: List[StrategyParamUpdate]
+
+
+class StrategyRenameRequest(BaseModel):
+    """전략 이름 변경 요청 스키마"""
+
+    name: str
 
 
 class StrategySignalResponse(BaseModel):

@@ -196,6 +196,7 @@ def get_demo_strategies() -> list:
             "strategy_type": "GoldenCrossRSI",
             "is_active": True,
             "is_preset": True,
+            "user_id": None,
             "params": [
                 {"id": 1, "param_key": "shortPeriod", "param_value": "20", "param_type": "float"},
                 {"id": 2, "param_key": "longPeriod", "param_value": "60", "param_type": "float"},
@@ -210,6 +211,7 @@ def get_demo_strategies() -> list:
             "strategy_type": "BollingerReversal",
             "is_active": False,
             "is_preset": True,
+            "user_id": None,
             "params": [
                 {"id": 5, "param_key": "bbPeriod", "param_value": "20", "param_type": "float"},
                 {"id": 6, "param_key": "bbStdDev", "param_value": "2.0", "param_type": "str"},
@@ -223,6 +225,7 @@ def get_demo_strategies() -> list:
             "strategy_type": "ValueMomentum",
             "is_active": True,
             "is_preset": True,
+            "user_id": None,
             "params": [
                 {"id": 8, "param_key": "perRatio", "param_value": "0.7", "param_type": "float"},
                 {"id": 9, "param_key": "momentumPeriod", "param_value": "3m", "param_type": "str"},
