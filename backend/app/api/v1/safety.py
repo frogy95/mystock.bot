@@ -2,15 +2,14 @@
 안전장치 API 엔드포인트
 긴급 전체 매도, 자동매매 제어, 안전장치 상태 조회를 제공한다.
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user, is_demo_user
 from app.core.database import get_db
+from app.core.deps import get_user_id
 from app.services.demo_data import get_demo_safety_status
-from app.models.user import User
 from app.services.safety_guard import (
     emergency_sell_all,
     is_auto_trade_enabled,
@@ -19,17 +18,8 @@ from app.services.safety_guard import (
     check_max_daily_orders,
 )
 from app.services.system_monitor import get_system_status
-from fastapi import HTTPException
 
 router = APIRouter()
-
-
-async def _get_user_id(username: str, db: AsyncSession) -> int:
-    result = await db.execute(select(User).where(User.username == username))
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
-    return user.id
 
 
 class AutoTradeRequest(BaseModel):
@@ -44,7 +34,7 @@ async def get_safety_status(
     """자동매매 상태, 손실 한도, 에러 카운트 등 전체 안전장치 상태를 반환한다."""
     if is_demo_user(current_user):
         return get_demo_safety_status()
-    user_id = await _get_user_id(current_user, db)
+    user_id = await get_user_id(current_user, db)
 
     auto_enabled = await is_auto_trade_enabled(user_id, db)
     loss_ok, loss_msg = await check_daily_loss_limit(user_id, db)
@@ -68,7 +58,7 @@ async def toggle_auto_trade(
     """자동매매를 활성화하거나 비활성화한다."""
     if is_demo_user(current_user):
         raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
-    user_id = await _get_user_id(current_user, db)
+    user_id = await get_user_id(current_user, db)
     await set_auto_trade(user_id, body.enabled, db)
     return {"auto_trade_enabled": body.enabled}
 
@@ -81,6 +71,6 @@ async def trigger_emergency_sell(
     """모든 보유종목을 즉시 시장가로 매도하고 자동매매를 비활성화한다."""
     if is_demo_user(current_user):
         raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
-    user_id = await _get_user_id(current_user, db)
+    user_id = await get_user_id(current_user, db)
     result = await emergency_sell_all(user_id, db)
     return result

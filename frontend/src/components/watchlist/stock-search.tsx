@@ -6,11 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { PriceChangeBadge } from "@/components/common/price-change-badge";
 import { useStockSearch } from "@/hooks/use-watchlist";
+import type { StockSearchItem } from "@/hooks/use-watchlist";
 import { useWatchlistStore } from "@/stores/watchlist-store";
-import { formatKRW } from "@/lib/format";
-import type { StockQuote } from "@/lib/mock/types";
 import { Plus } from "lucide-react";
 
 export function StockSearch() {
@@ -19,8 +17,20 @@ export function StockSearch() {
   const { data: results, isLoading } = useStockSearch(query);
   const { activeGroupId, addItem } = useWatchlistStore();
 
-  const handleSelect = (stock: StockQuote) => {
-    addItem(activeGroupId, stock);
+  const handleSelect = (stock: StockSearchItem) => {
+    // 검색 결과에는 시세 정보 없으므로 기본값으로 추가
+    addItem(activeGroupId, {
+      symbol: stock.symbol,
+      name: stock.name,
+      market: stock.market as "KOSPI" | "KOSDAQ",
+      currentPrice: 0,
+      changeRate: 0,
+      changePrice: 0,
+      volume: 0,
+      high: 0,
+      low: 0,
+      open: 0,
+    });
     setQuery("");
     setOpen(false);
   };
@@ -62,8 +72,7 @@ export function StockSearch() {
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="text-right">
-                      <p className="text-sm font-mono">{formatKRW(stock.currentPrice)}</p>
-                      <PriceChangeBadge changeRate={stock.changeRate} size="sm" />
+                      <p className="text-xs text-muted-foreground">{stock.market}</p>
                     </div>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleSelect(stock); }}>
                       <Plus className="h-4 w-4" />

@@ -9,7 +9,13 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.auth import get_current_user, is_demo_user
-from app.services.demo_data import get_demo_market_index, get_demo_stock_search
+from app.services.demo_data import (
+    get_demo_balance,
+    get_demo_market_index,
+    get_demo_stock_chart,
+    get_demo_stock_quote,
+    get_demo_stock_search,
+)
 from app.schemas.search import StockSearchResult
 from app.schemas.stock import BalanceResponse, StockChartResponse, StockQuoteResponse
 from app.services.kis_client import kis_client
@@ -33,6 +39,8 @@ async def search(
 @router.get("/balance", response_model=BalanceResponse, summary="계좌 잔고 조회")
 async def get_balance(current_user: str = Depends(get_current_user)):
     """계좌 잔고(현금 + 보유종목)를 조회한다. (인증 필요)"""
+    if is_demo_user(current_user):
+        return get_demo_balance()
     if not kis_client.is_available():
         raise HTTPException(status_code=503, detail="KIS API가 설정되지 않았습니다.")
 
@@ -61,6 +69,8 @@ async def get_market_index(current_user: str = Depends(get_current_user)):
 @router.get("/{symbol}/quote", response_model=StockQuoteResponse, summary="현재가 조회")
 async def get_stock_quote(symbol: str, current_user: str = Depends(get_current_user)):
     """주식 심볼의 현재가를 조회한다. (인증 필요)"""
+    if is_demo_user(current_user):
+        return get_demo_stock_quote(symbol)
     if not kis_client.is_available():
         raise HTTPException(status_code=503, detail="KIS API가 설정되지 않았습니다.")
 
@@ -78,6 +88,8 @@ async def get_stock_chart(
     current_user: str = Depends(get_current_user),
 ):
     """주식 심볼의 OHLCV 차트 데이터를 조회한다. (인증 필요)"""
+    if is_demo_user(current_user):
+        return get_demo_stock_chart(symbol, period=period, count=count)
     if not kis_client.is_available():
         raise HTTPException(status_code=503, detail="KIS API가 설정되지 않았습니다.")
 

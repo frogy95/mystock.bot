@@ -67,9 +67,23 @@ async def evaluate_holding_risk(holding: Holding) -> RiskSignal:
             )
             return RiskSignal(action="STOP_LOSS", reason=reason, quantity=qty)
 
-    # 2. 익절 (전량)
+    # 2. 익절
     if holding.take_profit_rate is not None:
         take_profit = float(holding.take_profit_rate)
+        # 전량 익절: 목표가 도달 시 전량 매도 (분할 익절보다 먼저 체크)
+        if change_rate >= take_profit:
+            reason = f"전량 익절 ({change_rate:.2f}% ≥ {take_profit}%)"
+            # 텔레그램 알림 (fire-and-forget 방식)
+            asyncio.create_task(
+                notify_risk_triggered(
+                    stock_code=holding.stock_code,
+                    action="TAKE_PROFIT",
+                    current_price=current,
+                    avg_price=avg,
+                    reason=reason,
+                )
+            )
+            return RiskSignal(action="TAKE_PROFIT", reason=reason, quantity=qty)
         # 분할 익절: 목표가 50% 도달 시 반량 매도
         if change_rate >= take_profit * 0.5 and qty >= 2:
             partial_qty = qty // 2
@@ -85,20 +99,6 @@ async def evaluate_holding_risk(holding: Holding) -> RiskSignal:
                 )
             )
             return RiskSignal(action="PARTIAL_TAKE_PROFIT", reason=reason, quantity=partial_qty)
-        # 전량 익절
-        if change_rate >= take_profit:
-            reason = f"전량 익절 ({change_rate:.2f}% ≥ {take_profit}%)"
-            # 텔레그램 알림 (fire-and-forget 방식)
-            asyncio.create_task(
-                notify_risk_triggered(
-                    stock_code=holding.stock_code,
-                    action="TAKE_PROFIT",
-                    current_price=current,
-                    avg_price=avg,
-                    reason=reason,
-                )
-            )
-            return RiskSignal(action="TAKE_PROFIT", reason=reason, quantity=qty)
 
     return RiskSignal(action="HOLD", reason="조건 미충족", quantity=0)
 

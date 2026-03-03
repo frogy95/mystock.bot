@@ -408,6 +408,59 @@ def get_demo_kis_status() -> dict:
     }
 
 
+def get_demo_balance() -> dict:
+    """잔고 더미 데이터 (BalanceResponse 형식)"""
+    return {
+        "cash": 12500000.0,
+        "stocks": [
+            {"symbol": "005930", "name": "삼성전자", "quantity": 100, "current_price": 74500.0, "profit_loss_rate": 3.47},
+            {"symbol": "000660", "name": "SK하이닉스", "quantity": 30, "current_price": 185500.0, "profit_loss_rate": 4.21},
+            {"symbol": "035720", "name": "카카오", "quantity": 50, "current_price": 48300.0, "profit_loss_rate": -7.12},
+        ],
+    }
+
+
+def get_demo_stock_quote(symbol: str) -> dict:
+    """현재가 더미 데이터 (StockQuoteResponse 형식)"""
+    _prices = {
+        "005930": (74500.0, 500.0, 0.67, 12345678, 75200.0, 73800.0, 74100.0),
+        "000660": (185500.0, 2500.0, 1.37, 3456789, 186500.0, 184000.0, 184500.0),
+        "035720": (48300.0, -700.0, -1.43, 5678901, 49200.0, 48100.0, 48800.0),
+    }
+    price, change, change_rate, volume, high, low, open_ = _prices.get(
+        symbol, (50000.0, 0.0, 0.0, 1000000, 51000.0, 49000.0, 50000.0)
+    )
+    return {
+        "symbol": symbol,
+        "price": price,
+        "change": change,
+        "change_rate": change_rate,
+        "volume": volume,
+        "high": high,
+        "low": low,
+        "open": open_,
+    }
+
+
+def get_demo_stock_chart(symbol: str, period: str = "day", count: int = 30) -> dict:
+    """차트 더미 데이터 (StockChartResponse 형식)"""
+    base_price = {"005930": 74500.0, "000660": 185500.0, "035720": 48300.0}.get(symbol, 50000.0)
+    data = []
+    for i in range(min(count, 30)):
+        d = date.today() - timedelta(days=i)
+        factor = 1 + (i % 5 - 2) * 0.005
+        p = round(base_price * factor)
+        data.append({
+            "date": d.strftime("%Y%m%d"),
+            "open": p - 200,
+            "high": p + 400,
+            "low": p - 400,
+            "close": p,
+            "volume": 1000000 + i * 50000,
+        })
+    return {"symbol": symbol, "period": period, "data": data}
+
+
 def get_demo_stock_search(q: str) -> list:
     """종목 검색 더미 데이터 (StockSearchResult 형식)"""
     stocks = [

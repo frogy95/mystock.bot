@@ -1337,3 +1337,47 @@ docker compose exec backend pytest -v
 - ⬜ `GET /api/v1/stocks/005930/quote` → 실제 시세 데이터 반환 확인 (실전 키 필요)
 - ✅ `/settings` 페이지 → KIS API 폼에 모의투자/실전 키 입력란 구분 확인 (Playwright 자동 검증 완료, 2026-03-03)
 - ⬜ `docker compose exec backend pytest -v` → 14개 PASSED 확인
+
+---
+
+## Sprint 13: MVP 안정화 (2026-03-03)
+
+Sprint 13은 코드 품질 개선 중심으로, 사용자가 직접 수행해야 하는 배포 작업은 없습니다.
+
+### 변경 사항 요약
+
+| 구분 | 파일 | 내용 |
+|------|------|------|
+| 긴급 버그 | `order_executor.py` | 분산 락 경합 조건 수정 |
+| 긴급 버그 | `risk_manager.py` | 전량/분할 익절 순서 수정 |
+| 중요 개선 | `strategies.py` | N+1 쿼리 최적화 |
+| 중요 개선 | `core/deps.py` (신규) | 공통 `get_user_id` 함수 |
+| 중요 개선 | `kis_client.py` | httpx 연결 풀 공유 |
+| 중요 개선 | `stocks.py` + `demo_data.py` | 데모 모드 balance/quote/chart 추가 |
+| 중요 개선 | `safety_guard.py` | 손실 계산 네이밍 수정 |
+| 중요 개선 | 프론트엔드 스토어 | Mock 스토어 2개 삭제 |
+| 중요 개선 | `lib/api/types.ts` (신규) | API 타입 중복 해소 |
+| 중요 개선 | `orders.py` + `use-orders.ts` | 주문 취소 기능 구현 |
+| 권장 개선 | `scheduler.py` | 하드코딩(user_id=1, quantity=1) 제거 |
+
+### 검증
+
+```bash
+# 테스트 실행 (33개 전부 PASSED 확인)
+docker compose exec backend python -m pytest tests/ -v
+# 기대: 33 passed
+
+# 데모 모드 API 검증
+TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/demo | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/v1/stocks/balance
+# 기대: 200 (더미 데이터)
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/v1/stocks/005930/quote
+# 기대: 200 (더미 데이터)
+```
+
+### Sprint 13 완료 체크리스트
+
+- ✅ 테스트 33개 PASSED (자동 검증 완료, 2026-03-03)
+- ✅ 데모 모드 API 9개 엔드포인트 200 확인 (자동 검증 완료, 2026-03-03)
+- ✅ TypeScript 빌드 성공 (`npm run build` 2026-03-03)
+- ⬜ 실제 KIS API 연동 환경에서 주문 취소 기능 수동 확인

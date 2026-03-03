@@ -20,6 +20,7 @@ from app.core.exceptions import (
     handle_validation_error,
 )
 from app.core.middleware import RequestIdMiddleware
+from app.services.kis_client import kis_client
 from app.services.redis_client import close_redis
 from app.services.stock_master import load_stock_master
 from app.services.scheduler import start_scheduler, stop_scheduler
@@ -50,10 +51,11 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"WebSocket 폴링 시작 실패: {e}")
     yield
-    # 종료 시 WebSocket 폴링 + 스케줄러 + Redis 정리
+    # 종료 시 WebSocket 폴링 + 스케줄러 + Redis + httpx 연결 풀 정리
     await ws_manager.stop_polling()
     await stop_scheduler()
     await close_redis()
+    await kis_client.close()
     logger.info("mystock.bot API 서버 종료")
 
 

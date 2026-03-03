@@ -74,28 +74,36 @@ async def get_strategy_performance(
     result = await db.execute(select(Strategy).order_by(Strategy.id))
     strategies = result.scalars().all()
 
+    # 주문 통계를 SQL 집계 쿼리 1번으로 처리 (N+1 → 1)
+    from sqlalchemy import case as sql_case
+    order_result = await db.execute(
+        select(
+            Order.strategy_id,
+            func.count(Order.id).label("trade_count"),
+            func.sum(sql_case((Order.order_type == "buy", 1), else_=0)).label("buy_count"),
+            func.sum(sql_case((Order.order_type == "sell", 1), else_=0)).label("sell_count"),
+        )
+        .where(Order.strategy_id.isnot(None))
+        .group_by(Order.strategy_id)
+    )
+    order_stats = {row.strategy_id: row for row in order_result}
+
+    # 관심종목 적용 수를 SQL 집계 쿼리 1번으로 처리 (N+1 → 1)
+    stock_result = await db.execute(
+        select(WatchlistItem.strategy_id, func.count(WatchlistItem.id).label("count"))
+        .where(WatchlistItem.strategy_id.isnot(None))
+        .group_by(WatchlistItem.strategy_id)
+    )
+    stock_stats = {row.strategy_id: row.count for row in stock_result}
+
     performance_list = []
     for strategy in strategies:
-        # 해당 전략으로 실행된 주문 집계
-        order_result = await db.execute(
-            select(Order).where(Order.strategy_id == strategy.id)
-        )
-        orders = order_result.scalars().all()
-
-        buy_count = sum(1 for o in orders if o.order_type == "buy")
-        sell_count = sum(1 for o in orders if o.order_type == "sell")
-        trade_count = len(orders)
-        # 승률: 매도 주문 수 / 전체 주문 수 (매도 = 수익 실현 가정)
+        stats = order_stats.get(strategy.id)
+        trade_count = stats.trade_count if stats else 0
+        buy_count = stats.buy_count if stats else 0
+        sell_count = stats.sell_count if stats else 0
         win_rate = round((sell_count / trade_count * 100) if trade_count > 0 else 0.0, 2)
-
-        # 적용 종목 수 (관심종목에 전략이 할당된 종목 수)
-        stock_result = await db.execute(
-            select(func.count(WatchlistItem.id)).where(
-                WatchlistItem.strategy_id == strategy.id
-            )
-        )
-        active_stocks = stock_result.scalar() or 0
-
+        active_stocks = stock_stats.get(strategy.id, 0)
         performance_list.append(
             StrategyPerformanceResponse(
                 id=strategy.id,
@@ -123,16 +131,19 @@ async def list_strategies(
     result = await db.execute(select(Strategy).order_by(Strategy.id))
     strategies = result.scalars().all()
 
-    # 각 전략의 파라미터 로드
-    response = []
-    for s in strategies:
-        param_result = await db.execute(
-            select(StrategyParam).where(StrategyParam.strategy_id == s.id)
-        )
-        s.params = param_result.scalars().all()
-        response.append(s)
+    # 모든 전략 파라미터를 쿼리 1번으로 로드 (N+1 → 1)
+    strategy_ids = [s.id for s in strategies]
+    param_result = await db.execute(
+        select(StrategyParam).where(StrategyParam.strategy_id.in_(strategy_ids))
+    )
+    params_by_strategy: dict[int, list] = {}
+    for p in param_result.scalars().all():
+        params_by_strategy.setdefault(p.strategy_id, []).append(p)
 
-    return response
+    for s in strategies:
+        s.params = params_by_strategy.get(s.id, [])
+
+    return strategies
 
 
 @router.get("/{strategy_id}", response_model=StrategyResponse, summary="전략 상세 조회")

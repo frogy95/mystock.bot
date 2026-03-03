@@ -33,7 +33,28 @@ class KISClient:
     def __new__(cls) -> "KISClient":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
+            # 실전/모의 서버별 공유 httpx 클라이언트 (lazy 초기화)
+            cls._instance._real_client: httpx.AsyncClient | None = None
+            cls._instance._vts_client: httpx.AsyncClient | None = None
         return cls._instance
+
+    def _get_http_client(self, base_url: str) -> httpx.AsyncClient:
+        """기본 URL에 맞는 공유 httpx 클라이언트를 반환한다 (lazy 초기화)."""
+        if base_url == _KIS_REAL_BASE:
+            if self._real_client is None or self._real_client.is_closed:
+                self._real_client = httpx.AsyncClient()
+            return self._real_client
+        else:
+            if self._vts_client is None or self._vts_client.is_closed:
+                self._vts_client = httpx.AsyncClient()
+            return self._vts_client
+
+    async def close(self) -> None:
+        """연결 풀을 닫는다. 앱 종료 시 호출."""
+        if self._real_client and not self._real_client.is_closed:
+            await self._real_client.aclose()
+        if self._vts_client and not self._vts_client.is_closed:
+            await self._vts_client.aclose()
 
     def is_available(self) -> bool:
         """KIS API 클라이언트 사용 가능 여부를 반환한다.
@@ -88,18 +109,18 @@ class KISClient:
         if cached and cached["expires_at"] > time.time() + 60:
             return cached["token"]
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                f"{base_url}/oauth2/tokenP",
-                json={
-                    "grant_type": "client_credentials",
-                    "appkey": app_key,
-                    "appsecret": app_secret,
-                },
-                timeout=10,
-            )
-            resp.raise_for_status()
-            data = resp.json()
+        client = self._get_http_client(base_url)
+        resp = await client.post(
+            f"{base_url}/oauth2/tokenP",
+            json={
+                "grant_type": "client_credentials",
+                "appkey": app_key,
+                "appsecret": app_secret,
+            },
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
 
         token = data["access_token"]
         expires_in = int(data.get("expires_in", 86400))
@@ -157,20 +178,20 @@ class KISClient:
 
         async def _fetch() -> dict[str, Any]:
             token = await self._get_access_token("real")
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    f"{_KIS_REAL_BASE}/uapi/domestic-stock/v1/quotations/inquire-price",
-                    headers={
-                        "tr_id": "FHKST01010100",
-                        "appkey": settings.KIS_REAL_APP_KEY,
-                        "appsecret": settings.KIS_REAL_APP_SECRET,
-                        "Authorization": f"Bearer {token}",
-                    },
-                    params={"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": symbol},
-                    timeout=10,
-                )
-                resp.raise_for_status()
-                data = resp.json()
+            client = self._get_http_client(_KIS_REAL_BASE)
+            resp = await client.get(
+                f"{_KIS_REAL_BASE}/uapi/domestic-stock/v1/quotations/inquire-price",
+                headers={
+                    "tr_id": "FHKST01010100",
+                    "appkey": settings.KIS_REAL_APP_KEY,
+                    "appsecret": settings.KIS_REAL_APP_SECRET,
+                    "Authorization": f"Bearer {token}",
+                },
+                params={"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": symbol},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
 
             if data.get("rt_cd") != "0":
                 raise ValueError(f"KIS API 오류: {data.get('msg1')}")
@@ -209,27 +230,27 @@ class KISClient:
         async def _fetch() -> list[dict[str, Any]]:
             today = datetime.date.today().strftime("%Y%m%d")
             token = await self._get_access_token("real")
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    f"{_KIS_REAL_BASE}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice",
-                    headers={
-                        "tr_id": "FHKST03010100",
-                        "appkey": settings.KIS_REAL_APP_KEY,
-                        "appsecret": settings.KIS_REAL_APP_SECRET,
-                        "Authorization": f"Bearer {token}",
-                    },
-                    params={
-                        "FID_COND_MRKT_DIV_CODE": "J",
-                        "FID_INPUT_ISCD": symbol,
-                        "FID_INPUT_DATE_1": "19000101",
-                        "FID_INPUT_DATE_2": today,
-                        "FID_PERIOD_DIV_CODE": period_code,
-                        "FID_ORG_ADJ_PRC": "0",
-                    },
-                    timeout=10,
-                )
-                resp.raise_for_status()
-                data = resp.json()
+            client = self._get_http_client(_KIS_REAL_BASE)
+            resp = await client.get(
+                f"{_KIS_REAL_BASE}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice",
+                headers={
+                    "tr_id": "FHKST03010100",
+                    "appkey": settings.KIS_REAL_APP_KEY,
+                    "appsecret": settings.KIS_REAL_APP_SECRET,
+                    "Authorization": f"Bearer {token}",
+                },
+                params={
+                    "FID_COND_MRKT_DIV_CODE": "J",
+                    "FID_INPUT_ISCD": symbol,
+                    "FID_INPUT_DATE_1": "19000101",
+                    "FID_INPUT_DATE_2": today,
+                    "FID_PERIOD_DIV_CODE": period_code,
+                    "FID_ORG_ADJ_PRC": "0",
+                },
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
 
             if data.get("rt_cd") != "0":
                 raise ValueError(f"KIS API 오류: {data.get('msg1')}")
@@ -270,32 +291,32 @@ class KISClient:
 
         async def _fetch() -> dict[str, Any]:
             token = await self._get_access_token(trade_env)
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    f"{base_url}/uapi/domestic-stock/v1/trading/inquire-balance",
-                    headers={
-                        "tr_id": tr_id,
-                        "appkey": app_key,
-                        "appsecret": app_secret,
-                        "Authorization": f"Bearer {token}",
-                    },
-                    params={
-                        "CANO": cano,
-                        "ACNT_PRDT_CD": acnt_prdt_cd,
-                        "AFHR_FLPR_YN": "N",
-                        "OFL_YN": "",
-                        "INQR_DVSN": "02",
-                        "UNPR_DVSN": "01",
-                        "FUND_STTL_ICLD_YN": "N",
-                        "FNCG_AMT_AUTO_RDPT_YN": "N",
-                        "PRCS_DVSN": "00",
-                        "CTX_AREA_FK100": "",
-                        "CTX_AREA_NK100": "",
-                    },
-                    timeout=10,
-                )
-                resp.raise_for_status()
-                data = resp.json()
+            client = self._get_http_client(base_url)
+            resp = await client.get(
+                f"{base_url}/uapi/domestic-stock/v1/trading/inquire-balance",
+                headers={
+                    "tr_id": tr_id,
+                    "appkey": app_key,
+                    "appsecret": app_secret,
+                    "Authorization": f"Bearer {token}",
+                },
+                params={
+                    "CANO": cano,
+                    "ACNT_PRDT_CD": acnt_prdt_cd,
+                    "AFHR_FLPR_YN": "N",
+                    "OFL_YN": "",
+                    "INQR_DVSN": "02",
+                    "UNPR_DVSN": "01",
+                    "FUND_STTL_ICLD_YN": "N",
+                    "FNCG_AMT_AUTO_RDPT_YN": "N",
+                    "PRCS_DVSN": "00",
+                    "CTX_AREA_FK100": "",
+                    "CTX_AREA_NK100": "",
+                },
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
 
             if data.get("rt_cd") != "0":
                 raise ValueError(f"KIS API 오류: {data.get('msg1')}")
@@ -359,28 +380,28 @@ class KISClient:
 
         async def _fetch() -> dict[str, Any]:
             token = await self._get_access_token(trade_env)
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    f"{base_url}/uapi/domestic-stock/v1/trading/order-cash",
-                    headers={
-                        "tr_id": tr_id,
-                        "appkey": app_key,
-                        "appsecret": app_secret,
-                        "Authorization": f"Bearer {token}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "CANO": cano,
-                        "ACNT_PRDT_CD": acnt_prdt_cd,
-                        "PDNO": symbol,
-                        "ORD_DVSN": ord_dvsn,
-                        "ORD_QTY": str(quantity),
-                        "ORD_UNPR": ord_price,
-                    },
-                    timeout=10,
-                )
-                resp.raise_for_status()
-                data = resp.json()
+            client = self._get_http_client(base_url)
+            resp = await client.post(
+                f"{base_url}/uapi/domestic-stock/v1/trading/order-cash",
+                headers={
+                    "tr_id": tr_id,
+                    "appkey": app_key,
+                    "appsecret": app_secret,
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "CANO": cano,
+                    "ACNT_PRDT_CD": acnt_prdt_cd,
+                    "PDNO": symbol,
+                    "ORD_DVSN": ord_dvsn,
+                    "ORD_QTY": str(quantity),
+                    "ORD_UNPR": ord_price,
+                },
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
 
             if data.get("rt_cd") != "0":
                 raise ValueError(f"KIS 주문 오류: {data.get('msg1')}")
@@ -414,23 +435,23 @@ class KISClient:
 
         async def _fetch() -> dict[str, Any]:
             token = await self._get_access_token("real")
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    f"{_KIS_REAL_BASE}/uapi/domestic-stock/v1/quotations/inquire-index-price",
-                    headers={
-                        "tr_id": "FHPUP02100000",
-                        "appkey": settings.KIS_REAL_APP_KEY,
-                        "appsecret": settings.KIS_REAL_APP_SECRET,
-                        "Authorization": f"Bearer {token}",
-                    },
-                    params={
-                        "FID_COND_MRKT_DIV_CODE": "U",
-                        "FID_INPUT_ISCD": index_code,
-                    },
-                    timeout=10,
-                )
-                resp.raise_for_status()
-                data = resp.json()
+            client = self._get_http_client(_KIS_REAL_BASE)
+            resp = await client.get(
+                f"{_KIS_REAL_BASE}/uapi/domestic-stock/v1/quotations/inquire-index-price",
+                headers={
+                    "tr_id": "FHPUP02100000",
+                    "appkey": settings.KIS_REAL_APP_KEY,
+                    "appsecret": settings.KIS_REAL_APP_SECRET,
+                    "Authorization": f"Bearer {token}",
+                },
+                params={
+                    "FID_COND_MRKT_DIV_CODE": "U",
+                    "FID_INPUT_ISCD": index_code,
+                },
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
 
             if data.get("rt_cd") != "0":
                 raise ValueError(f"KIS API 오류: {data.get('msg1')}")
@@ -467,35 +488,35 @@ class KISClient:
 
         async def _fetch() -> dict[str, Any]:
             token = await self._get_access_token(trade_env)
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(
-                    f"{base_url}/uapi/domestic-stock/v1/trading/inquire-daily-ccld",
-                    headers={
-                        "tr_id": tr_id,
-                        "appkey": app_key,
-                        "appsecret": app_secret,
-                        "Authorization": f"Bearer {token}",
-                    },
-                    params={
-                        "CANO": cano,
-                        "ACNT_PRDT_CD": acnt_prdt_cd,
-                        "INQR_STRT_DT": "19000101",
-                        "INQR_END_DT": "99991231",
-                        "SLL_BUY_DVSN_CD": "00",
-                        "INQR_DVSN": "01",
-                        "PDNO": "",
-                        "CCLD_DVSN": "00",
-                        "ORD_GNO_BRNO": "",
-                        "ODNO": order_no,
-                        "INQR_DVSN_3": "00",
-                        "INQR_DVSN_1": "",
-                        "CTX_AREA_FK100": "",
-                        "CTX_AREA_NK100": "",
-                    },
-                    timeout=10,
-                )
-                resp.raise_for_status()
-                data = resp.json()
+            client = self._get_http_client(base_url)
+            resp = await client.get(
+                f"{base_url}/uapi/domestic-stock/v1/trading/inquire-daily-ccld",
+                headers={
+                    "tr_id": tr_id,
+                    "appkey": app_key,
+                    "appsecret": app_secret,
+                    "Authorization": f"Bearer {token}",
+                },
+                params={
+                    "CANO": cano,
+                    "ACNT_PRDT_CD": acnt_prdt_cd,
+                    "INQR_STRT_DT": "19000101",
+                    "INQR_END_DT": "99991231",
+                    "SLL_BUY_DVSN_CD": "00",
+                    "INQR_DVSN": "01",
+                    "PDNO": "",
+                    "CCLD_DVSN": "00",
+                    "ORD_GNO_BRNO": "",
+                    "ODNO": order_no,
+                    "INQR_DVSN_3": "00",
+                    "INQR_DVSN_1": "",
+                    "CTX_AREA_FK100": "",
+                    "CTX_AREA_NK100": "",
+                },
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
 
             if data.get("rt_cd") != "0":
                 raise ValueError(f"KIS API 오류: {data.get('msg1')}")

@@ -10,8 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user, is_demo_user
 from app.core.database import get_db
+from app.core.deps import get_user_id
 from app.services.demo_data import get_demo_watchlist_groups
-from app.models.user import User
 from app.models.watchlist import WatchlistGroup, WatchlistItem
 from app.schemas.watchlist import (
     WatchlistGroupCreate,
@@ -25,15 +25,6 @@ from app.schemas.watchlist import (
 router = APIRouter()
 
 
-async def _get_user_id(username: str, db: AsyncSession) -> int:
-    """사용자명으로 user_id를 조회한다."""
-    result = await db.execute(select(User).where(User.username == username))
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
-    return user.id
-
-
 @router.get("/groups", response_model=List[WatchlistGroupResponse], summary="관심종목 그룹 전체 조회")
 async def list_groups(
     current_user: str = Depends(get_current_user),
@@ -42,7 +33,7 @@ async def list_groups(
     """사용자의 모든 관심종목 그룹과 항목을 조회한다."""
     if is_demo_user(current_user):
         return get_demo_watchlist_groups()
-    user_id = await _get_user_id(current_user, db)
+    user_id = await get_user_id(current_user, db)
     result = await db.execute(
         select(WatchlistGroup)
         .where(WatchlistGroup.user_id == user_id)
@@ -60,7 +51,7 @@ async def create_group(
     """관심종목 그룹을 생성한다."""
     if is_demo_user(current_user):
         raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
-    user_id = await _get_user_id(current_user, db)
+    user_id = await get_user_id(current_user, db)
     group = WatchlistGroup(user_id=user_id, name=body.name)
     db.add(group)
     await db.commit()
@@ -78,7 +69,7 @@ async def update_group(
     """관심종목 그룹명을 수정한다."""
     if is_demo_user(current_user):
         raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
-    user_id = await _get_user_id(current_user, db)
+    user_id = await get_user_id(current_user, db)
     result = await db.execute(
         select(WatchlistGroup).where(
             WatchlistGroup.id == group_id, WatchlistGroup.user_id == user_id
@@ -102,7 +93,7 @@ async def delete_group(
     """관심종목 그룹과 하위 항목을 모두 삭제한다. (cascade)"""
     if is_demo_user(current_user):
         raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
-    user_id = await _get_user_id(current_user, db)
+    user_id = await get_user_id(current_user, db)
     result = await db.execute(
         select(WatchlistGroup).where(
             WatchlistGroup.id == group_id, WatchlistGroup.user_id == user_id
@@ -125,7 +116,7 @@ async def add_item(
     """관심종목 그룹에 종목을 추가한다."""
     if is_demo_user(current_user):
         raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
-    user_id = await _get_user_id(current_user, db)
+    user_id = await get_user_id(current_user, db)
     # 그룹 소유권 확인
     result = await db.execute(
         select(WatchlistGroup).where(
@@ -156,7 +147,7 @@ async def remove_item(
     """관심종목 그룹에서 종목을 제거한다."""
     if is_demo_user(current_user):
         raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
-    user_id = await _get_user_id(current_user, db)
+    user_id = await get_user_id(current_user, db)
     result = await db.execute(
         select(WatchlistItem)
         .join(WatchlistGroup)
@@ -183,7 +174,7 @@ async def assign_strategy(
     """관심종목에 전략을 할당하거나 해제한다. (strategy_id=null이면 해제)"""
     if is_demo_user(current_user):
         raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
-    user_id = await _get_user_id(current_user, db)
+    user_id = await get_user_id(current_user, db)
     result = await db.execute(
         select(WatchlistItem)
         .join(WatchlistGroup)
