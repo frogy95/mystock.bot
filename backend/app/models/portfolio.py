@@ -1,6 +1,9 @@
 """
 포트폴리오 ORM 모델 모듈
 포트폴리오 스냅샷 정보를 정의한다.
+
+NOTE: PortfolioSnapshot은 현재 코드에서 직접 사용되지 않는다.
+      향후 일일 손실 정확 계산(장 시작가 스냅샷) 기능 구현 시 활용 예정 (Sprint 14+).
 """
 import datetime
 

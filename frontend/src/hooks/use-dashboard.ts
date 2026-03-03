@@ -9,6 +9,7 @@ import type {
   MarketIndex,
 } from "@/lib/mock/types";
 import { apiClient } from "@/lib/api/client";
+import type { OrderAPI } from "@/lib/api/types";
 import type { HoldingAPI } from "./use-portfolio";
 import { useRealtimeQuotes } from "./use-realtime";
 
@@ -22,19 +23,6 @@ interface PortfolioSummaryAPI {
   holdings_count: number;
   daily_profit_loss?: number;
   daily_profit_rate?: number;
-}
-
-/** 백엔드 주문 API 응답 타입 */
-interface OrderAPI {
-  id: number;
-  stock_code: string;
-  order_type: string;
-  status: string;
-  strategy_id: number | null;
-  quantity: number | null;
-  price: number | null;
-  created_at: string;
-  updated_at: string;
 }
 
 /** 백엔드 전략 성과 API 응답 타입 */

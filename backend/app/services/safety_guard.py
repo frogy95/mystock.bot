@@ -88,14 +88,15 @@ async def set_auto_trade(user_id: int, enabled: bool, db: AsyncSession) -> None:
 
 async def check_daily_loss_limit(user_id: int, db: AsyncSession) -> tuple[bool, str]:
     """
-    일일 손실 한도를 초과했는지 확인한다.
+    미실현 평가 손실이 한도를 초과했는지 확인한다.
+    (주의: 진정한 일일 손실이 아닌 전체 보유기간 미실현 손익률 기준)
     Returns: (통과 여부, 메시지)
     """
     limit_pct = float(
         await _get_setting(user_id, "daily_loss_limit_pct", str(_DEFAULT_DAILY_LOSS_LIMIT_PCT), db)
     )
 
-    # 보유종목의 현재 전체 손익률 계산
+    # 보유종목의 현재 전체 미실현 손익률 계산
     result = await db.execute(
         select(Holding).where(Holding.user_id == user_id, Holding.quantity > 0)
     )
@@ -114,11 +115,11 @@ async def check_daily_loss_limit(user_id: int, db: AsyncSession) -> tuple[bool, 
     if total_purchase == 0:
         return True, "매입금액 없음"
 
-    daily_loss_pct = (total_current - total_purchase) / total_purchase * 100
-    if daily_loss_pct <= -limit_pct:
-        return False, f"일일 손실 한도 초과 ({daily_loss_pct:.2f}% ≤ -{limit_pct}%)"
+    unrealized_loss_pct = (total_current - total_purchase) / total_purchase * 100
+    if unrealized_loss_pct <= -limit_pct:
+        return False, f"미실현 평가 손실 한도 초과 ({unrealized_loss_pct:.2f}% ≤ -{limit_pct}%)"
 
-    return True, f"손실률 {daily_loss_pct:.2f}%"
+    return True, f"미실현 손실률 {unrealized_loss_pct:.2f}%"
 
 
 async def check_max_daily_orders(user_id: int, db: AsyncSession) -> tuple[bool, str]:

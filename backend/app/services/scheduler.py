@@ -83,6 +83,17 @@ async def _run_strategy_evaluation() -> None:
                     signal = engine.evaluate_from_ohlcv(chart_data, params)
 
                     if signal.signal_type in ("BUY", "SELL") and signal.confidence >= 0.5:
+                        # 주문 수량: 설정값 조회 (기본 1주)
+                        from app.models.settings import SystemSetting
+                        qty_result = await db.execute(
+                            select(SystemSetting).where(
+                                SystemSetting.user_id == group.user_id,
+                                SystemSetting.setting_key == "order_quantity",
+                            )
+                        )
+                        qty_setting = qty_result.scalar_one_or_none()
+                        order_quantity = int(qty_setting.setting_value) if qty_setting else 1
+
                         # 전략 신호 사전 알림 (fire-and-forget)
                         import asyncio as _asyncio
                         from app.services.telegram_notifier import notify_strategy_signal
@@ -98,7 +109,7 @@ async def _run_strategy_evaluation() -> None:
                             user_id=group.user_id,
                             stock_code=item.stock_code,
                             signal=signal,
-                            quantity=1,  # 기본 1주 (향후 수량 계산 로직 추가)
+                            quantity=order_quantity,
                             strategy_id=strategy.id,
                             db=db,
                         )
@@ -170,36 +181,43 @@ async def _run_daily_summary() -> None:
     from datetime import date
 
     try:
+        from app.models.user import User
         async with AsyncSessionLocal() as db:
-            # 사용자 ID 1 기준 (단일 사용자 시스템)
-            user_id = 1
+            # 전체 사용자 조회 (하드코딩된 user_id=1 제거)
+            user_result = await db.execute(select(User))
+            users = user_result.scalars().all()
 
-            # 포트폴리오 요약 계산
-            summary = await calculate_summary(user_id, db)
-
-            # 오늘 주문 건수 집계
             today = date.today()
             from datetime import datetime
             start = datetime(today.year, today.month, today.day, 0, 0, 0)
             end = datetime(today.year, today.month, today.day, 23, 59, 59)
-            result = await db.execute(
-                select(Order).where(
-                    Order.user_id == user_id,
-                    Order.created_at >= start,
-                    Order.created_at <= end,
-                )
-            )
-            orders = result.scalars().all()
-            buy_count = sum(1 for o in orders if o.order_type == "buy")
-            sell_count = sum(1 for o in orders if o.order_type == "sell")
 
-            await notify_daily_portfolio_summary(
-                total_evaluation=summary["total_evaluation"],
-                total_profit_loss=summary["total_profit_loss"],
-                total_profit_loss_rate=summary["total_profit_loss_rate"],
-                buy_count=buy_count,
-                sell_count=sell_count,
-            )
+            for user in users:
+                try:
+                    # 포트폴리오 요약 계산
+                    summary = await calculate_summary(user.id, db)
+
+                    # 오늘 주문 건수 집계
+                    result = await db.execute(
+                        select(Order).where(
+                            Order.user_id == user.id,
+                            Order.created_at >= start,
+                            Order.created_at <= end,
+                        )
+                    )
+                    orders = result.scalars().all()
+                    buy_count = sum(1 for o in orders if o.order_type == "buy")
+                    sell_count = sum(1 for o in orders if o.order_type == "sell")
+
+                    await notify_daily_portfolio_summary(
+                        total_evaluation=summary["total_evaluation"],
+                        total_profit_loss=summary["total_profit_loss"],
+                        total_profit_loss_rate=summary["total_profit_loss_rate"],
+                        buy_count=buy_count,
+                        sell_count=sell_count,
+                    )
+                except Exception as e:
+                    logger.error(f"사용자 {user.id} 일일 요약 알림 오류: {e}")
 
     except Exception as e:
         logger.error(f"일일 요약 알림 오류: {e}")

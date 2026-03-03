@@ -9,14 +9,16 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_user, is_demo_user
-from app.core.database import get_db
-from app.services.demo_data import get_demo_orders, get_demo_daily_summary
-from app.models.order import Order
-from app.models.user import User
 from datetime import datetime
 from typing import Optional
+
 from fastapi import HTTPException
+
+from app.core.auth import get_current_user, is_demo_user
+from app.core.database import get_db
+from app.core.deps import get_user_id
+from app.services.demo_data import get_demo_orders, get_demo_daily_summary
+from app.models.order import Order
 
 router = APIRouter()
 
@@ -35,14 +37,6 @@ class OrderResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
-
-
-async def _get_user_id(username: str, db: AsyncSession) -> int:
-    result = await db.execute(select(User).where(User.username == username))
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
-    return user.id
 
 
 class DailySummaryResponse(BaseModel):
@@ -78,7 +72,7 @@ async def get_daily_summary(
             )
     else:
         target_date = date_type.today()
-    user_id = await _get_user_id(current_user, db)
+    user_id = await get_user_id(current_user, db)
 
     start = datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0)
     end = datetime(target_date.year, target_date.month, target_date.day, 23, 59, 59)
@@ -110,6 +104,30 @@ async def get_daily_summary(
     )
 
 
+@router.put("/{order_id}/cancel", response_model=OrderResponse, summary="주문 취소")
+async def cancel_order(
+    order_id: int,
+    current_user: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """pending 상태의 주문을 cancelled로 변경한다. 데모 모드에서는 403 반환."""
+    if is_demo_user(current_user):
+        raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
+    user_id = await get_user_id(current_user, db)
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.user_id == user_id)
+    )
+    order = result.scalar_one_or_none()
+    if order is None:
+        raise HTTPException(status_code=404, detail="주문을 찾을 수 없습니다.")
+    if order.status != "pending":
+        raise HTTPException(status_code=400, detail=f"취소할 수 없는 주문 상태입니다: {order.status}")
+    order.status = "cancelled"
+    await db.commit()
+    await db.refresh(order)
+    return order
+
+
 @router.get("", response_model=List[OrderResponse], summary="주문 목록 조회")
 async def list_orders(
     current_user: str = Depends(get_current_user),
@@ -118,7 +136,7 @@ async def list_orders(
     """사용자의 주문 목록을 최신순으로 반환한다."""
     if is_demo_user(current_user):
         return get_demo_orders()
-    user_id = await _get_user_id(current_user, db)
+    user_id = await get_user_id(current_user, db)
     result = await db.execute(
         select(Order)
         .where(Order.user_id == user_id)

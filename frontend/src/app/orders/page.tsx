@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useOrders } from "@/hooks/use-orders";
-import type { OrderAPI } from "@/hooks/use-orders";
+import { useCancelOrder, useOrders } from "@/hooks/use-orders";
+import type { OrderAPI } from "@/lib/api/types";
 import { OrdersFilter } from "@/components/orders/orders-filter";
 import { OrdersTable } from "@/components/orders/orders-table";
 import type { OrderDetail } from "@/lib/mock/types";
@@ -68,6 +68,7 @@ function getFilteredOrders(
 export default function OrdersPage() {
   // 실제 API 훅으로 주문 목록 조회
   const { data: apiOrders, isLoading, isError } = useOrders();
+  const cancelOrder = useCancelOrder();
 
   // 필터 상태를 로컬 상태로 관리
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
@@ -98,8 +99,11 @@ export default function OrdersPage() {
             onSymbolFilterChange={setSymbolFilter}
           />
 
-          {/* 주문 테이블 (취소 API 없으므로 noop 전달) */}
-          <OrdersTable orders={filteredOrders} onCancel={() => {}} />
+          {/* 주문 테이블 */}
+          <OrdersTable
+            orders={filteredOrders}
+            onCancel={(id) => cancelOrder.mutate(Number(id))}
+          />
         </>
       )}
     </div>

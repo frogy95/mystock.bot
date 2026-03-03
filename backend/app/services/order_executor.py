@@ -77,121 +77,121 @@ async def execute_signal(
             logger.info(f"주문 락 획득 실패: {stock_code} - 이미 처리 중")
             return None
 
-    # 중복 주문 방지
-    if await _has_pending_order(user_id, stock_code, order_type, db):
-        logger.info(f"중복 주문 방지: {stock_code} {order_type} 미체결 주문 존재")
-        return None
+        # 중복 주문 방지
+        if await _has_pending_order(user_id, stock_code, order_type, db):
+            logger.info(f"중복 주문 방지: {stock_code} {order_type} 미체결 주문 존재")
+            return None
 
-    # DB에 pending 주문 생성
-    order = Order(
-        user_id=user_id,
-        stock_code=stock_code,
-        order_type=order_type,
-        status="pending",
-        strategy_id=strategy_id,
-        quantity=quantity,
-        price=float(price) if price > 0 else None,
-    )
-    db.add(order)
-    await db.flush()  # id 생성을 위해 flush
+        # DB에 pending 주문 생성
+        order = Order(
+            user_id=user_id,
+            stock_code=stock_code,
+            order_type=order_type,
+            status="pending",
+            strategy_id=strategy_id,
+            quantity=quantity,
+            price=float(price) if price > 0 else None,
+        )
+        db.add(order)
+        await db.flush()  # id 생성을 위해 flush
 
-    try:
-        if not kis_client.is_available():
-            # KIS API 미설정 시 시뮬레이션 모드로 처리
-            order.status = "simulated"
-            log = OrderLog(
-                order_id=order.id,
-                log_type="info",
-                message=f"시뮬레이션 주문: {order_type.upper()} {stock_code} {quantity}주",
-                detail={"signal_reason": signal.reason, "confidence": signal.confidence},
+        try:
+            if not kis_client.is_available():
+                # KIS API 미설정 시 시뮬레이션 모드로 처리
+                order.status = "simulated"
+                log = OrderLog(
+                    order_id=order.id,
+                    log_type="info",
+                    message=f"시뮬레이션 주문: {order_type.upper()} {stock_code} {quantity}주",
+                    detail={"signal_reason": signal.reason, "confidence": signal.confidence},
+                )
+                db.add(log)
+                await db.commit()
+                logger.info(f"시뮬레이션 주문 생성: {stock_code} {order_type}")
+                # 텔레그램 알림 (fire-and-forget 방식)
+                asyncio.create_task(
+                    notify_order_executed(
+                        stock_code=stock_code,
+                        order_type=order_type,
+                        quantity=quantity,
+                        price=float(price),
+                        reason=f"[시뮬레이션] {signal.reason}",
+                    )
+                )
+                # WebSocket 브로드캐스트 (실시간 체결 알림)
+                from app.services.websocket_manager import ws_manager
+                asyncio.create_task(ws_manager.broadcast({
+                    "type": "notification",
+                    "order_type": order_type,
+                    "stock_code": stock_code,
+                    "quantity": quantity,
+                    "price": float(price),
+                    "reason": f"[시뮬레이션] {signal.reason}",
+                }))
+                return order
+
+            # KIS 주문 실행
+            result = await kis_client.place_order(
+                symbol=stock_code,
+                order_type=order_type,
+                quantity=quantity,
+                price=price,
             )
+
+            if result:
+                order.status = "pending"  # KIS에서 체결 대기
+                log = OrderLog(
+                    order_id=order.id,
+                    log_type="info",
+                    message=f"KIS 주문 전송: {order_type.upper()} {stock_code} {quantity}주",
+                    detail={
+                        "order_no": result.get("order_no"),
+                        "signal_reason": signal.reason,
+                        "confidence": signal.confidence,
+                    },
+                )
+                # 텔레그램 알림 (fire-and-forget 방식)
+                asyncio.create_task(
+                    notify_order_executed(
+                        stock_code=stock_code,
+                        order_type=order_type,
+                        quantity=quantity,
+                        price=float(price),
+                        reason=signal.reason,
+                    )
+                )
+                # WebSocket 브로드캐스트 (실시간 체결 알림)
+                from app.services.websocket_manager import ws_manager
+                asyncio.create_task(ws_manager.broadcast({
+                    "type": "notification",
+                    "order_type": order_type,
+                    "stock_code": stock_code,
+                    "quantity": quantity,
+                    "price": float(price),
+                    "reason": signal.reason,
+                }))
+            else:
+                order.status = "failed"
+                log = OrderLog(
+                    order_id=order.id,
+                    log_type="error",
+                    message="KIS 주문 응답 없음",
+                    detail=None,
+                )
+
             db.add(log)
             await db.commit()
-            logger.info(f"시뮬레이션 주문 생성: {stock_code} {order_type}")
-            # 텔레그램 알림 (fire-and-forget 방식)
-            asyncio.create_task(
-                notify_order_executed(
-                    stock_code=stock_code,
-                    order_type=order_type,
-                    quantity=quantity,
-                    price=float(price),
-                    reason=f"[시뮬레이션] {signal.reason}",
-                )
-            )
-            # WebSocket 브로드캐스트 (실시간 체결 알림)
-            from app.services.websocket_manager import ws_manager
-            asyncio.create_task(ws_manager.broadcast({
-                "type": "notification",
-                "order_type": order_type,
-                "stock_code": stock_code,
-                "quantity": quantity,
-                "price": float(price),
-                "reason": f"[시뮬레이션] {signal.reason}",
-            }))
             return order
 
-        # KIS 주문 실행
-        result = await kis_client.place_order(
-            symbol=stock_code,
-            order_type=order_type,
-            quantity=quantity,
-            price=price,
-        )
-
-        if result:
-            order.status = "pending"  # KIS에서 체결 대기
-            log = OrderLog(
-                order_id=order.id,
-                log_type="info",
-                message=f"KIS 주문 전송: {order_type.upper()} {stock_code} {quantity}주",
-                detail={
-                    "order_no": result.get("order_no"),
-                    "signal_reason": signal.reason,
-                    "confidence": signal.confidence,
-                },
-            )
-            # 텔레그램 알림 (fire-and-forget 방식)
-            asyncio.create_task(
-                notify_order_executed(
-                    stock_code=stock_code,
-                    order_type=order_type,
-                    quantity=quantity,
-                    price=float(price),
-                    reason=signal.reason,
-                )
-            )
-            # WebSocket 브로드캐스트 (실시간 체결 알림)
-            from app.services.websocket_manager import ws_manager
-            asyncio.create_task(ws_manager.broadcast({
-                "type": "notification",
-                "order_type": order_type,
-                "stock_code": stock_code,
-                "quantity": quantity,
-                "price": float(price),
-                "reason": signal.reason,
-            }))
-        else:
+        except Exception as e:
             order.status = "failed"
-            log = OrderLog(
+            error_log = OrderLog(
                 order_id=order.id,
                 log_type="error",
-                message="KIS 주문 응답 없음",
+                message=f"주문 실행 오류: {str(e)[:400]}",
                 detail=None,
             )
-
-        db.add(log)
-        await db.commit()
-        return order
-
-    except Exception as e:
-        order.status = "failed"
-        error_log = OrderLog(
-            order_id=order.id,
-            log_type="error",
-            message=f"주문 실행 오류: {str(e)[:400]}",
-            detail=None,
-        )
-        db.add(error_log)
-        await db.commit()
-        logger.error(f"주문 실행 실패 [{stock_code} {order_type}]: {e}")
-        return order
+            db.add(error_log)
+            await db.commit()
+            logger.error(f"주문 실행 실패 [{stock_code} {order_type}]: {e}")
+            return order
