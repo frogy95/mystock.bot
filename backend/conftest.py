@@ -13,7 +13,7 @@ from sqlalchemy.types import JSON
 
 from app.main import app
 from app.core.database import get_db
-from app.core.auth import get_current_user, create_token
+from app.core.auth import get_current_user, create_access_token
 from app.models.base import Base  # noqa: F401 - 모든 모델 임포트 트리거용
 from app.models.user import User
 
@@ -75,7 +75,9 @@ async def client(db_session: AsyncSession):
         yield db_session
 
     async def override_get_current_user():
-        return "testuser"
+        u = User(username="testuser", is_active=True, is_approved=True, role="user")
+        u.id = -1
+        return u
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = override_get_current_user
@@ -96,7 +98,7 @@ async def client_with_user(db_session: AsyncSession):
     - 안전장치, 보유종목 등 User 레코드가 필요한 엔드포인트 테스트용
     """
     # testuser DB 레코드 생성
-    user = User(username="testuser", is_active=True)
+    user = User(username="testuser", is_active=True, is_approved=True, role="user")
     db_session.add(user)
     await db_session.commit()
 
@@ -104,7 +106,9 @@ async def client_with_user(db_session: AsyncSession):
         yield db_session
 
     async def override_get_current_user():
-        return "testuser"
+        u = User(username="testuser", is_active=True, is_approved=True, role="user")
+        u.id = user.id
+        return u
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_current_user] = override_get_current_user
@@ -121,7 +125,7 @@ async def client_with_user(db_session: AsyncSession):
 @pytest.fixture
 def auth_token() -> str:
     """테스트용 Bearer 토큰"""
-    return create_token("testuser")
+    return create_access_token(user_id=-1, username="testuser")
 
 
 @pytest.fixture
