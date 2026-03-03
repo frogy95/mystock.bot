@@ -1,6 +1,7 @@
 /**
  * fetch 기반 API 클라이언트
  * 토큰 관리 및 GET/POST/PUT/DELETE 메서드를 제공한다.
+ * 401 수신 시 refreshToken으로 자동 갱신을 시도한다.
  */
 
 import { useAuthStore } from "@/stores/auth-store";
@@ -25,6 +26,29 @@ function buildHeaders(extra: Record<string, string> = {}): HeadersInit {
   return headers;
 }
 
+/** 리프레시 토큰으로 액세스 토큰을 갱신하고 새 토큰을 반환한다. */
+async function tryRefreshToken(): Promise<string | null> {
+  const { refreshToken, setToken, logout } = useAuthStore.getState();
+  if (!refreshToken) return null;
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) {
+      logout();
+      return null;
+    }
+    const data = await res.json();
+    setToken(data.access_token);
+    return data.access_token;
+  } catch {
+    logout();
+    return null;
+  }
+}
+
 async function request<T>(
   method: string,
   path: string,
@@ -36,13 +60,33 @@ async function request<T>(
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
-  if (!response.ok) {
-    // 401: 자동 로그아웃 + /login 리다이렉트 (로그인 페이지 제외)
-    if (response.status === 401 && typeof window !== "undefined" && window.location.pathname !== "/login") {
-      useAuthStore.getState().logout();
-      window.location.href = "/login";
-      throw new Error("인증이 만료되었습니다.");
+  // 401: 리프레시 시도 후 재요청
+  if (response.status === 401 && typeof window !== "undefined") {
+    if (window.location.pathname === "/login") {
+      const error = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(error.detail ?? `HTTP ${response.status}`);
     }
+
+    const newToken = await tryRefreshToken();
+    if (newToken) {
+      // 갱신 성공 → 원래 요청 재시도
+      const retryResponse = await fetch(`${API_BASE_URL}${path}`, {
+        method,
+        headers: buildHeaders(),
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
+      if (retryResponse.ok) {
+        return retryResponse.json() as Promise<T>;
+      }
+    }
+
+    // 갱신 실패 → 로그아웃 + 리다이렉트
+    useAuthStore.getState().logout();
+    window.location.href = "/login";
+    throw new Error("인증이 만료되었습니다.");
+  }
+
+  if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: response.statusText }));
     throw new Error(error.detail ?? `HTTP ${response.status}`);
   }

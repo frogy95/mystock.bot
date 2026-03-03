@@ -9,6 +9,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.auth import get_current_user, is_demo_user
+from app.models.user import User
 from app.services.demo_data import (
     get_demo_balance,
     get_demo_market_index,
@@ -27,19 +28,19 @@ router = APIRouter()
 @router.get("/search", response_model=List[StockSearchResult], summary="종목 검색")
 async def search(
     q: str = Query(..., min_length=1, description="검색어 (종목코드 또는 종목명)"),
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """종목코드 또는 종목명으로 KRX 종목을 검색한다. (Redis 캐시 기반)"""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         return get_demo_stock_search(q)
     results = await search_stocks(q)
     return results
 
 
 @router.get("/balance", response_model=BalanceResponse, summary="계좌 잔고 조회")
-async def get_balance(current_user: str = Depends(get_current_user)):
+async def get_balance(current_user: User = Depends(get_current_user)):
     """계좌 잔고(현금 + 보유종목)를 조회한다. (인증 필요)"""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         return get_demo_balance()
     if not kis_client.is_available():
         raise HTTPException(status_code=503, detail="KIS API가 설정되지 않았습니다.")
@@ -51,9 +52,9 @@ async def get_balance(current_user: str = Depends(get_current_user)):
 
 
 @router.get("/market-index", summary="시장 지수 조회")
-async def get_market_index(current_user: str = Depends(get_current_user)):
+async def get_market_index(current_user: User = Depends(get_current_user)):
     """KOSPI, KOSDAQ 지수 현재가를 반환한다. KIS 미설정 시 빈 배열 반환."""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         return get_demo_market_index()
     if not kis_client.is_available():
         return []
@@ -67,9 +68,9 @@ async def get_market_index(current_user: str = Depends(get_current_user)):
 
 
 @router.get("/{symbol}/quote", response_model=StockQuoteResponse, summary="현재가 조회")
-async def get_stock_quote(symbol: str, current_user: str = Depends(get_current_user)):
+async def get_stock_quote(symbol: str, current_user: User = Depends(get_current_user)):
     """주식 심볼의 현재가를 조회한다. (인증 필요)"""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         return get_demo_stock_quote(symbol)
     if not kis_client.is_available():
         raise HTTPException(status_code=503, detail="KIS API가 설정되지 않았습니다.")
@@ -85,10 +86,10 @@ async def get_stock_chart(
     symbol: str,
     period: str = Query(default="day", description="조회 주기 (day/week/month)"),
     count: int = Query(default=30, ge=1, le=200, description="조회 건수"),
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """주식 심볼의 OHLCV 차트 데이터를 조회한다. (인증 필요)"""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         return get_demo_stock_chart(symbol, period=period, count=count)
     if not kis_client.is_available():
         raise HTTPException(status_code=503, detail="KIS API가 설정되지 않았습니다.")

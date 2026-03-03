@@ -10,9 +10,11 @@ const DEMO_USERNAME = "__demo__";
 
 interface AuthState {
   token: string | null;
+  refreshToken: string | null;
   username: string | null;
-  login: (token: string, username: string) => void;
+  login: (token: string, username: string, refreshToken?: string) => void;
   logout: () => void;
+  setToken: (token: string) => void;
   isAuthenticated: () => boolean;
   isDemo: () => boolean;
 }
@@ -31,16 +33,23 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       token: null,
+      refreshToken: null,
       username: null,
 
-      login: (token: string, username: string) => {
-        set({ token, username });
+      login: (token: string, username: string, refreshToken?: string) => {
+        set({ token, username, refreshToken: refreshToken ?? null });
         setCookie("auth-token", token);
       },
 
       logout: () => {
-        set({ token: null, username: null });
+        set({ token: null, username: null, refreshToken: null });
         deleteCookie("auth-token");
+      },
+
+      // 액세스 토큰만 갱신 (리프레시 후 호출)
+      setToken: (token: string) => {
+        set({ token });
+        setCookie("auth-token", token);
       },
 
       isAuthenticated: () => get().token !== null,
@@ -51,6 +60,7 @@ export const useAuthStore = create<AuthState>()(
       name: "auth-storage",
       partialize: (state) => ({
         token: state.token,
+        refreshToken: state.refreshToken,
         username: state.username,
       }),
       onRehydrateStorage: () => (state) => {

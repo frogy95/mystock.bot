@@ -24,13 +24,14 @@ const FEATURES = [
 
 interface TokenResponse {
   access_token: string;
+  refresh_token?: string;
   token_type: string;
 }
 
 export default function LoginPage() {
   const router = useRouter();
   const login = useAuthStore((state) => state.login);
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -41,10 +42,12 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const data = await apiClient.post<TokenResponse>("/api/v1/auth/login", {
-        username,
+        email,
         password,
       });
-      login(data.access_token, username);
+      // JWT 페이로드에서 username 추출 (또는 email을 username으로 사용)
+      const username = email.split("@")[0];
+      login(data.access_token, username, data.refresh_token);
       router.replace("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "로그인에 실패했습니다.");
@@ -110,13 +113,14 @@ export default function LoginPage() {
           <CardContent className="space-y-4">
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="username">아이디</Label>
+                <Label htmlFor="email">이메일</Label>
                 <Input
-                  id="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="아이디 입력"
-                  autoComplete="username"
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="이메일 입력"
+                  autoComplete="email"
                   disabled={loading}
                 />
               </div>

@@ -43,9 +43,16 @@ class Settings(BaseSettings):
     KIS_HTS_ID: str = ""  # eFriend Plus (HTS) 로그인 ID
     KIS_ENVIRONMENT: str = "vts"  # vts: 모의투자, real: 실전투자
 
-    # 단일 유저 인증 설정
+    # 단일 유저 인증 설정 (레거시 - 초기 관리자 계정 생성용)
     ADMIN_USERNAME: str = "admin"
     ADMIN_PASSWORD: str = "change-me-in-production"
+    ADMIN_EMAIL: str = "admin@mystock.bot"
+
+    # JWT 설정
+    JWT_SECRET: str = "change-me-in-production-jwt"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # 1시간
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30    # 30일
 
     # 텔레그램 봇 설정
     TELEGRAM_BOT_TOKEN: str = ""

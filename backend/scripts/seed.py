@@ -16,7 +16,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
 from app.core.config import settings
-from app.models.user import User
+from app.core.auth import hash_password
+from app.models.user import User, ROLE_ADMIN
 from app.models.strategy import Strategy, StrategyParam
 from app.models.settings import SystemSetting
 
@@ -28,8 +29,15 @@ async def seed() -> None:
     async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     async with async_session() as session:
-        # 1. 기본 관리자 유저 생성
-        admin = User(username="admin")
+        # 1. 기본 관리자 유저 생성 (Sprint 14: JWT 인증 필드 포함)
+        admin = User(
+            username=settings.ADMIN_USERNAME,
+            email=settings.ADMIN_EMAIL,
+            password_hash=hash_password(settings.ADMIN_PASSWORD),
+            role=ROLE_ADMIN,
+            is_approved=True,
+            is_active=True,
+        )
         session.add(admin)
         await session.flush()
         print(f"유저 생성: {admin.username} (id={admin.id})")

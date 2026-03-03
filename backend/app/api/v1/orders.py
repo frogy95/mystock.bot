@@ -2,23 +2,19 @@
 주문 API 엔드포인트
 주문 목록 조회를 제공한다.
 """
-from typing import List
+from typing import List, Optional
+from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from datetime import datetime
-from typing import Optional
-
-from fastapi import HTTPException
-
 from app.core.auth import get_current_user, is_demo_user
 from app.core.database import get_db
-from app.core.deps import get_user_id
 from app.services.demo_data import get_demo_orders, get_demo_daily_summary
 from app.models.order import Order
+from app.models.user import User
 
 router = APIRouter()
 
@@ -53,11 +49,11 @@ class DailySummaryResponse(BaseModel):
 @router.get("/daily-summary", response_model=DailySummaryResponse, summary="일일 매매 요약 조회")
 async def get_daily_summary(
     date: Optional[str] = None,
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """특정 날짜의 매매 요약(매수/매도 건수 및 금액)을 반환한다. date 미입력 시 오늘 날짜."""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         return get_demo_daily_summary()
     from datetime import date as date_type
 
@@ -72,7 +68,6 @@ async def get_daily_summary(
             )
     else:
         target_date = date_type.today()
-    user_id = await get_user_id(current_user, db)
 
     start = datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0)
     end = datetime(target_date.year, target_date.month, target_date.day, 23, 59, 59)
@@ -80,7 +75,7 @@ async def get_daily_summary(
     result = await db.execute(
         select(Order)
         .where(
-            Order.user_id == user_id,
+            Order.user_id == current_user.id,
             Order.created_at >= start,
             Order.created_at <= end,
         )
@@ -107,15 +102,14 @@ async def get_daily_summary(
 @router.put("/{order_id}/cancel", response_model=OrderResponse, summary="주문 취소")
 async def cancel_order(
     order_id: int,
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """pending 상태의 주문을 cancelled로 변경한다. 데모 모드에서는 403 반환."""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
-    user_id = await get_user_id(current_user, db)
     result = await db.execute(
-        select(Order).where(Order.id == order_id, Order.user_id == user_id)
+        select(Order).where(Order.id == order_id, Order.user_id == current_user.id)
     )
     order = result.scalar_one_or_none()
     if order is None:
@@ -130,16 +124,15 @@ async def cancel_order(
 
 @router.get("", response_model=List[OrderResponse], summary="주문 목록 조회")
 async def list_orders(
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """사용자의 주문 목록을 최신순으로 반환한다."""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         return get_demo_orders()
-    user_id = await get_user_id(current_user, db)
     result = await db.execute(
         select(Order)
-        .where(Order.user_id == user_id)
+        .where(Order.user_id == current_user.id)
         .order_by(Order.created_at.desc())
         .limit(200)
     )

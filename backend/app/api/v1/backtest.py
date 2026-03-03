@@ -13,6 +13,7 @@ from app.core.auth import get_current_user, is_demo_user
 from app.services.demo_data import get_demo_backtest_results, get_demo_backtest_result
 from app.core.database import get_db
 from app.models.backtest import BacktestResult
+from app.models.user import User
 from app.schemas.backtest import BacktestRunRequest, BacktestResultResponse, EquityPoint
 from app.services.backtest_engine import BacktestConfig, run_backtest
 from app.services.backtest_metrics import calculate_metrics
@@ -52,13 +53,13 @@ def _to_response(record: BacktestResult) -> BacktestResultResponse:
 async def run_backtest_api(
     request: BacktestRunRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """
     백테스팅을 실행하고 결과를 DB에 저장한다.
     KIS API 차트 데이터를 조회하여 전략 신호를 생성한 후 포트폴리오를 시뮬레이션한다.
     """
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
     try:
         config = BacktestConfig(
@@ -109,10 +110,10 @@ async def run_backtest_api(
 @router.get("/results", response_model=list[BacktestResultResponse], summary="백테스팅 결과 목록")
 async def list_results(
     db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """최근 백테스팅 결과 목록을 반환한다 (최대 20건, 최신순)."""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         return get_demo_backtest_results()
     result = await db.execute(
         select(BacktestResult)
@@ -127,10 +128,10 @@ async def list_results(
 async def get_result(
     result_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """특정 백테스팅 결과를 반환한다."""
-    if is_demo_user(current_user):
+    if is_demo_user(current_user.username):
         record = get_demo_backtest_result(result_id)
         if record is None:
             raise HTTPException(status_code=404, detail="백테스팅 결과를 찾을 수 없습니다.")
