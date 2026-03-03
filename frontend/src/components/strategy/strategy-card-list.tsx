@@ -67,8 +67,9 @@ export function StrategyCardList({ onSelectStrategy }: StrategyCardListProps) {
     params: s.params.map((p) => ({
       key: p.param_key,
       label: p.param_key,
-      type: p.param_type as "slider" | "number" | "select",
-      value: p.param_value,
+      // DB param_type("int","float") → 프론트엔드 타입("number") 변환
+      type: (p.param_type === "int" || p.param_type === "float" ? "number" : p.param_type) as "slider" | "number" | "select",
+      value: Number(p.param_value),
     })),
     assignedStocks: [] as string[],
     isActive: s.is_active,

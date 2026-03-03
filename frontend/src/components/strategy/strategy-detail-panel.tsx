@@ -7,9 +7,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useStrategyStore } from "@/stores/strategy-store";
-import { useStrategies } from "@/hooks/use-strategy";
+import { useStrategies, useUpdateStrategyParams } from "@/hooks/use-strategy";
 import { StrategyParamForm } from "./strategy-param-form";
 import { StrategyStockMapping } from "./strategy-stock-mapping";
 import type { StrategyDetail } from "@/lib/mock/types";
@@ -44,11 +45,31 @@ export function StrategyDetailPanel({ strategyId }: StrategyDetailPanelProps) {
     strategyId ? state.strategies.find((s) => s.id === strategyId) : undefined
   );
 
-  // API 데이터에서 프리셋 여부 확인 (StrategyDetail 타입에 is_preset 필드 없음)
+  // API 데이터에서 프리셋 여부 및 원본 파라미터 타입 조회
   const { data: apiStrategies } = useStrategies();
-  const isPreset = strategyId
-    ? apiStrategies?.find((s) => String(s.id) === strategyId)?.is_preset ?? false
-    : false;
+  const apiStrategy = strategyId
+    ? apiStrategies?.find((s) => String(s.id) === strategyId)
+    : undefined;
+  const isPreset = apiStrategy?.is_preset ?? false;
+
+  // 파라미터 저장 뮤테이션
+  const updateParamsMutation = useUpdateStrategyParams();
+
+  /** 파라미터 저장 핸들러: 스토어 현재값 + API 원본 param_type으로 백엔드 저장 */
+  function handleSaveParams() {
+    if (!strategy || !strategyId || !apiStrategy) return;
+    updateParamsMutation.mutate({
+      id: Number(strategyId),
+      params: strategy.params.map((p) => {
+        const apiParam = apiStrategy.params.find((ap) => ap.param_key === p.key);
+        return {
+          param_key: p.key,
+          param_value: String(p.value),
+          param_type: apiParam?.param_type ?? "string",
+        };
+      }),
+    });
+  }
 
   // 선택된 전략이 없으면 안내 메시지 표시
   if (!strategyId || !strategy) {
@@ -89,10 +110,21 @@ export function StrategyDetailPanel({ strategyId }: StrategyDetailPanelProps) {
               프리셋 전략의 파라미터는 변경할 수 없습니다. &ldquo;내 전략으로 복사&rdquo; 후 수정하세요.
             </p>
           ) : (
-            <StrategyParamForm
-              strategyId={strategy.id}
-              params={strategy.params}
-            />
+            <>
+              <StrategyParamForm
+                strategyId={strategy.id}
+                params={strategy.params}
+              />
+              <div className="pt-2 flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={handleSaveParams}
+                  disabled={updateParamsMutation.isPending}
+                >
+                  {updateParamsMutation.isPending ? "저장 중..." : "파라미터 저장"}
+                </Button>
+              </div>
+            </>
           )}
         </div>
 
