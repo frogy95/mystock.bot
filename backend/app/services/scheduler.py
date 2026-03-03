@@ -169,6 +169,41 @@ async def _run_risk_monitoring() -> None:
         logger.error(f"손절/익절 모니터링 스케줄 오류: {e}")
 
 
+async def _run_holdings_sync() -> None:
+    """
+    KIS 잔고를 조회하여 DB holdings 테이블을 주기적으로 동기화한다.
+    장중(09:00~15:30) 매 30분마다 실행된다.
+    """
+    from app.core.config import settings as env
+    from app.core.database import AsyncSessionLocal
+    from app.models.user import User
+    from app.services.holding_service import sync_with_kis
+    from app.services.kis_client import kis_client
+    from sqlalchemy import select
+
+    if not kis_client.is_available():
+        logger.debug("KIS API 미설정. 잔고 동기화 스킵.")
+        return
+
+    now = datetime.now()
+    if not (9 <= now.hour < 15 or (now.hour == 15 and now.minute <= 30)):
+        return
+
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(User).where(User.username == env.ADMIN_USERNAME)
+            )
+            user = result.scalar_one_or_none()
+            if user is None:
+                logger.warning("잔고 동기화: admin 사용자를 찾을 수 없음.")
+                return
+            holdings = await sync_with_kis(user.id, db)
+            logger.info("KIS 잔고 자동 동기화 완료 (보유종목 %d개)", len(holdings))
+    except Exception as e:
+        logger.error(f"KIS 잔고 동기화 스케줄 오류: {e}")
+
+
 async def _run_daily_summary() -> None:
     """
     장 마감 후 포트폴리오 일일 요약 알림을 전송한다. (평일 16:00 KST)
@@ -252,6 +287,19 @@ def get_scheduler() -> AsyncIOScheduler:
                 timezone="Asia/Seoul",
             ),
             id="risk_monitoring",
+            replace_existing=True,
+        )
+
+        # 장중 매 30분마다 KIS 잔고 동기화 (09:00~15:30)
+        _scheduler.add_job(
+            _run_holdings_sync,
+            CronTrigger(
+                day_of_week="mon-fri",
+                hour="9-15",
+                minute="*/30",
+                timezone="Asia/Seoul",
+            ),
+            id="holdings_sync",
             replace_existing=True,
         )
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import {
   Table,
   TableBody,
@@ -10,18 +11,48 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { PriceChangeBadge } from "@/components/common/price-change-badge";
 import { TableRowSkeleton } from "@/components/common/loading-skeleton";
-import { useHoldings } from "@/hooks/use-dashboard";
+import { useHoldings, useKisStatus } from "@/hooks/use-dashboard";
+import { useSyncHoldings } from "@/hooks/use-holdings-mutations";
 import { formatKRW } from "@/lib/format";
+import { RefreshCw } from "lucide-react";
 
 export function HoldingsTable() {
   const { data: holdings, isLoading } = useHoldings();
+  const { data: kisStatus } = useKisStatus();
+  const { mutate: syncHoldings, isPending: isSyncing } = useSyncHoldings();
+  const autoSyncTriggered = useRef(false);
+
+  // 보유종목이 비어있고 KIS 연결 상태이면 최초 1회 자동 동기화
+  useEffect(() => {
+    if (
+      !autoSyncTriggered.current &&
+      !isLoading &&
+      holdings?.length === 0 &&
+      kisStatus?.available
+    ) {
+      autoSyncTriggered.current = true;
+      syncHoldings();
+    }
+  }, [isLoading, holdings, kisStatus, syncHoldings]);
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg">보유종목</CardTitle>
+        {kisStatus?.available && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => syncHoldings()}
+            disabled={isSyncing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${isSyncing ? "animate-spin" : ""}`} />
+            {isSyncing ? "동기화 중..." : "KIS 동기화"}
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
         <Table>
@@ -37,7 +68,7 @@ export function HoldingsTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
+            {isLoading || isSyncing ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRowSkeleton key={i} columns={7} />
               ))
@@ -79,7 +110,9 @@ export function HoldingsTable() {
             ) : (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground h-24">
-                  보유종목이 없습니다.
+                  {kisStatus?.available
+                    ? "보유종목이 없습니다."
+                    : "KIS API가 연결되지 않았습니다. 설정에서 API 키를 입력해주세요."}
                 </TableCell>
               </TableRow>
             )}

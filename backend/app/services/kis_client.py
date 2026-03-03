@@ -60,32 +60,34 @@ class KISClient:
         """KIS API 클라이언트 사용 가능 여부를 반환한다.
         시세 API용 실전 키와 주문/잔고용 키(환경에 따라)가 모두 설정되어야 한다.
         """
-        from app.core.config import settings
-        is_virtual = settings.KIS_ENVIRONMENT == "vts"
+        from app.services.kis_settings_cache import get_kis_settings
+        cfg = get_kis_settings()
+        is_virtual = cfg.environment == "vts"
 
         # 시세 API용 실전 키는 항상 필요
-        real_keys_ok = bool(settings.KIS_REAL_APP_KEY and settings.KIS_REAL_APP_SECRET)
+        real_keys_ok = bool(cfg.real_app_key and cfg.real_app_secret)
 
         # 주문/잔고용 키: 환경에 따라 확인
         if is_virtual:
             trade_keys_ok = bool(
-                settings.KIS_VTS_APP_KEY
-                and settings.KIS_VTS_APP_SECRET
-                and settings.KIS_VTS_ACCOUNT_NUMBER
+                cfg.vts_app_key
+                and cfg.vts_app_secret
+                and cfg.vts_account_number
             )
         else:
             trade_keys_ok = bool(
-                settings.KIS_REAL_APP_KEY
-                and settings.KIS_REAL_APP_SECRET
-                and settings.KIS_REAL_ACCOUNT_NUMBER
+                cfg.real_app_key
+                and cfg.real_app_secret
+                and cfg.real_account_number
             )
 
         return real_keys_ok and trade_keys_ok
 
     def is_quote_available(self) -> bool:
         """시세 조회 가능 여부 (실전 키만 필요)."""
-        from app.core.config import settings
-        return bool(settings.KIS_REAL_APP_KEY and settings.KIS_REAL_APP_SECRET)
+        from app.services.kis_settings_cache import get_kis_settings
+        cfg = get_kis_settings()
+        return bool(cfg.real_app_key and cfg.real_app_secret)
 
     async def _get_access_token(self, env: str = "real") -> str:
         """지정된 환경의 KIS OAuth 액세스 토큰을 발급/캐싱한다.
@@ -93,15 +95,16 @@ class KISClient:
         토큰은 앱 키별로 분리 캐싱된다.
         """
         import time
-        from app.core.config import settings
+        from app.services.kis_settings_cache import get_kis_settings
+        cfg = get_kis_settings()
 
         if env == "vts":
-            app_key = settings.KIS_VTS_APP_KEY
-            app_secret = settings.KIS_VTS_APP_SECRET
+            app_key = cfg.vts_app_key
+            app_secret = cfg.vts_app_secret
             base_url = _KIS_VTS_BASE
         else:
-            app_key = settings.KIS_REAL_APP_KEY
-            app_secret = settings.KIS_REAL_APP_SECRET
+            app_key = cfg.real_app_key
+            app_secret = cfg.real_app_secret
             base_url = _KIS_REAL_BASE
 
         cache_key = app_key
@@ -130,35 +133,36 @@ class KISClient:
 
     def _get_trade_env(self) -> str:
         """주문/잔고 API에 사용할 환경 코드를 반환한다."""
-        from app.core.config import settings
-        return "vts" if settings.KIS_ENVIRONMENT == "vts" else "real"
+        from app.services.kis_settings_cache import get_kis_settings
+        return "vts" if get_kis_settings().environment == "vts" else "real"
 
     def _get_trade_credentials(self) -> tuple[str, str, str, str, str, str]:
         """주문/잔고 API용 자격증명과 서버 URL, TR-ID 접두사를 반환한다.
         Returns: (app_key, app_secret, cano, acnt_prdt_cd, base_url, tr_prefix)
         """
-        from app.core.config import settings
-        is_virtual = settings.KIS_ENVIRONMENT == "vts"
+        from app.services.kis_settings_cache import get_kis_settings
+        cfg = get_kis_settings()
+        is_virtual = cfg.environment == "vts"
 
         if is_virtual:
-            account_no = settings.KIS_VTS_ACCOUNT_NUMBER
+            account_no = cfg.vts_account_number
             cano = account_no[:8] if len(account_no) >= 8 else account_no
             acnt_prdt_cd = account_no[8:] if len(account_no) > 8 else "01"
             return (
-                settings.KIS_VTS_APP_KEY,
-                settings.KIS_VTS_APP_SECRET,
+                cfg.vts_app_key,
+                cfg.vts_app_secret,
                 cano,
                 acnt_prdt_cd,
                 _KIS_VTS_BASE,
                 "V",  # 모의: VTTC...
             )
         else:
-            account_no = settings.KIS_REAL_ACCOUNT_NUMBER
+            account_no = cfg.real_account_number
             cano = account_no[:8] if len(account_no) >= 8 else account_no
             acnt_prdt_cd = account_no[8:] if len(account_no) > 8 else "01"
             return (
-                settings.KIS_REAL_APP_KEY,
-                settings.KIS_REAL_APP_SECRET,
+                cfg.real_app_key,
+                cfg.real_app_secret,
                 cano,
                 acnt_prdt_cd,
                 _KIS_REAL_BASE,
@@ -172,19 +176,20 @@ class KISClient:
         if not self.is_quote_available():
             return None
 
-        from app.core.config import settings
+        from app.services.kis_settings_cache import get_kis_settings
         limiter = get_rate_limiter(is_virtual=False)  # 시세 = 항상 실전 Rate Limiter
         await limiter.acquire()
 
         async def _fetch() -> dict[str, Any]:
+            cfg = get_kis_settings()
             token = await self._get_access_token("real")
             client = self._get_http_client(_KIS_REAL_BASE)
             resp = await client.get(
                 f"{_KIS_REAL_BASE}/uapi/domestic-stock/v1/quotations/inquire-price",
                 headers={
                     "tr_id": "FHKST01010100",
-                    "appkey": settings.KIS_REAL_APP_KEY,
-                    "appsecret": settings.KIS_REAL_APP_SECRET,
+                    "appkey": cfg.real_app_key,
+                    "appsecret": cfg.real_app_secret,
                     "Authorization": f"Bearer {token}",
                 },
                 params={"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": symbol},
@@ -220,7 +225,7 @@ class KISClient:
         if not self.is_quote_available():
             return None
 
-        from app.core.config import settings
+        from app.services.kis_settings_cache import get_kis_settings
         import datetime
         _PERIOD_MAP = {"day": "D", "week": "W", "month": "M"}
         period_code = _PERIOD_MAP.get(period, "D")
@@ -228,6 +233,7 @@ class KISClient:
         await limiter.acquire()
 
         async def _fetch() -> list[dict[str, Any]]:
+            cfg = get_kis_settings()
             today = datetime.date.today().strftime("%Y%m%d")
             token = await self._get_access_token("real")
             client = self._get_http_client(_KIS_REAL_BASE)
@@ -235,8 +241,8 @@ class KISClient:
                 f"{_KIS_REAL_BASE}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice",
                 headers={
                     "tr_id": "FHKST03010100",
-                    "appkey": settings.KIS_REAL_APP_KEY,
-                    "appsecret": settings.KIS_REAL_APP_SECRET,
+                    "appkey": cfg.real_app_key,
+                    "appsecret": cfg.real_app_secret,
                     "Authorization": f"Bearer {token}",
                 },
                 params={
@@ -429,19 +435,20 @@ class KISClient:
         if not self.is_quote_available():
             return None
 
-        from app.core.config import settings
+        from app.services.kis_settings_cache import get_kis_settings
         limiter = get_rate_limiter(is_virtual=False)  # 시세 = 항상 실전 Rate Limiter
         await limiter.acquire()
 
         async def _fetch() -> dict[str, Any]:
+            cfg = get_kis_settings()
             token = await self._get_access_token("real")
             client = self._get_http_client(_KIS_REAL_BASE)
             resp = await client.get(
                 f"{_KIS_REAL_BASE}/uapi/domestic-stock/v1/quotations/inquire-index-price",
                 headers={
                     "tr_id": "FHPUP02100000",
-                    "appkey": settings.KIS_REAL_APP_KEY,
-                    "appsecret": settings.KIS_REAL_APP_SECRET,
+                    "appkey": cfg.real_app_key,
+                    "appsecret": cfg.real_app_secret,
                     "Authorization": f"Bearer {token}",
                 },
                 params={
