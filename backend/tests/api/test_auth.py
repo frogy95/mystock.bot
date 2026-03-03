@@ -7,12 +7,12 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_login_success(client):
-    """로그인 성공 시 토큰 반환 확인"""
+    """로그인 성공 시 토큰 반환 확인 (email 기반 로그인)"""
     response = await client.post(
         "/api/v1/auth/login",
-        json={"username": "admin", "password": "change-me-in-production"},
+        json={"email": "admin@example.com", "password": "change-me-in-production"},
     )
-    # 환경변수에 따라 다를 수 있으므로 200 또는 401 모두 허용
+    # DB에 해당 계정이 없으면 401, 있으면 200
     assert response.status_code in (200, 401)
 
 
@@ -21,7 +21,7 @@ async def test_login_invalid_credentials_returns_401(client):
     """잘못된 인증 정보로 로그인 시 401 반환"""
     response = await client.post(
         "/api/v1/auth/login",
-        json={"username": "wrong", "password": "wrong"},
+        json={"email": "wrong@example.com", "password": "wrong"},
     )
     assert response.status_code == 401
 

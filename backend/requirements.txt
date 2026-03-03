@@ -17,7 +17,8 @@ vectorbt>=0.26.0
 python-telegram-bot>=22.0
 python-json-logger>=2.0.0
 python-jose[cryptography]>=3.3.0
-passlib[bcrypt]>=1.7.4
+bcrypt>=4.0.0
+email-validator>=2.0.0
 
 # 테스트 의존성
 pytest>=8.0.0

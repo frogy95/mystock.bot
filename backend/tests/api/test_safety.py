@@ -43,7 +43,7 @@ async def test_toggle_auto_trade_disable(client_with_user):
 
 
 @pytest.mark.asyncio
-async def test_safety_status_no_user_returns_404(client):
-    """사용자 미존재 시 404 반환 (DB에 사용자 없음)"""
+async def test_safety_status_with_auth_returns_200(client):
+    """인증된 유저는 safety status를 조회할 수 있다 (Sprint 14: User 객체 직접 반환)"""
     response = await client.get("/api/v1/safety/status")
-    assert response.status_code == 404
+    assert response.status_code == 200
