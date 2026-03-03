@@ -20,6 +20,8 @@ class BacktestResult(Base):
 
     # 기본 키
     id: Mapped[int] = mapped_column(primary_key=True)
+    # 소유 사용자 FK - 사용자별 결과 격리
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     # 전략 외래 키 (nullable: 커스텀 백테스트는 전략 없이도 실행 가능)
     strategy_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("strategies.id"), nullable=True

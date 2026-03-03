@@ -2,6 +2,8 @@
 전략 ORM 모델 모듈
 매매 전략과 전략 파라미터 정보를 정의한다.
 """
+from typing import Optional
+
 from sqlalchemy import String, Boolean, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -23,6 +25,8 @@ class Strategy(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     # 프리셋 여부 - 시스템 기본 제공 전략인지 여부
     is_preset: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # 소유 사용자 FK - NULL이면 시스템 프리셋, 값이 있으면 사용자 소유
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
 
 
 class StrategyParam(Base):
