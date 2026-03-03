@@ -6,10 +6,10 @@ GET    /api/v1/admin/users
 PUT    /api/v1/admin/users/{id}/approve
 PUT    /api/v1/admin/users/{id}/deactivate
 """
+import bcrypt
 import pytest
 
-from app.models.invitation import InvitationCode
-from app.models.user import ROLE_ADMIN, ROLE_USER, User
+from app.models.user import ROLE_USER, User
 
 
 @pytest.mark.asyncio
@@ -54,7 +54,6 @@ async def test_admin_can_list_users(client_with_admin):
 @pytest.mark.asyncio
 async def test_admin_can_approve_user(client_with_admin, db_session):
     """관리자가 일반 사용자 승인"""
-    import bcrypt
     pw_hash = bcrypt.hashpw(b"testpass", bcrypt.gensalt()).decode()
     new_user = User(
         username="pending_user",
@@ -73,6 +72,10 @@ async def test_admin_can_approve_user(client_with_admin, db_session):
     )
     assert response.status_code == 200
     assert response.json()["is_approved"] is True
+
+    # DB 상태 교차 검증
+    await db_session.refresh(new_user)
+    assert new_user.is_approved is True
 
 
 @pytest.mark.asyncio
