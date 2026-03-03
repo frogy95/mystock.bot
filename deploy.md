@@ -1578,20 +1578,23 @@ curl -s -H "Authorization: Bearer $DEMO_TOKEN" \
 
 ### Sprint 15 완료 체크리스트
 
-**자동 검증 (테스트):**
-- ✅ 테스트 40개 PASSED (신규 7개 포함) — pytest 자동 실행
+**자동 검증 완료 (sprint-close 시점에 실행됨):**
+- ✅ pytest 40개 PASSED (신규 7개 포함) — `docker compose exec backend pytest -v`
+- ✅ 데모 모드 전략 조회 — 전략 3개, 모두 `user_id=None`, `is_preset=True` 확인
 
-**수동 검증 필요 (Docker 실행 후):**
-- ⬜ `docker compose up --build` 성공
-- ⬜ `alembic upgrade head` 성공 (strategies.user_id, backtest_results.user_id 컬럼 추가 확인)
+**수동 필요 — DB 마이그레이션 (되돌릴 수 없으므로 사용자가 타이밍 결정):**
+- ⬜ `docker compose up --build` 성공 (핫리로드 환경에서는 불필요할 수 있음)
+- ⬜ `alembic upgrade head` 성공 → strategies/backtest_results 테이블에 user_id 컬럼 추가 확인
+
+**수동 필요 — 실제 API 검증 (alembic 실행 후 가능):**
 - ⬜ `GET /api/v1/strategies` → 프리셋 전략 목록 반환 (user_id: null)
-- ⬜ `PUT /api/v1/strategies/1/activate` → 404 응답 (프리셋 토글 차단 확인)
+- ⬜ `PUT /api/v1/strategies/1/activate` → 404 응답 (프리셋 토글 차단)
 - ⬜ `POST /api/v1/strategies/1/clone` → 복사본 생성 (user_id: 본인 id)
 - ⬜ `PUT /api/v1/strategies/{cloned_id}/activate` → 200 성공 (복사본 토글 가능)
-- ⬜ `POST /api/v1/backtest/run` → 백테스트 실행 (user_id 포함 저장)
 - ⬜ `GET /api/v1/backtest/results` → 본인 결과만 조회
-- ⬜ 프론트엔드: 프리셋 토글 비활성화 표시 확인
-- ⬜ 프론트엔드: "내 전략으로 복사" 버튼 동작 확인
-- ⬜ 프론트엔드: 복사된 전략 토글 및 파라미터 수정 가능 확인
-- ⬜ 데모 모드 전략 조회 정상 동작 확인
+
+**수동 필요 — 브라우저 UI 시각 확인 (자동화 불가):**
+- ⬜ 프론트엔드: 프리셋 전략 카드에서 토글 비활성화 표시
+- ⬜ 프론트엔드: "내 전략으로 복사" 버튼 클릭 → 복사본 목록 추가
+- ⬜ 프론트엔드: 복사된 전략 파라미터 수정 가능 확인
 - ⬜ 브라우저 콘솔 에러 없음
