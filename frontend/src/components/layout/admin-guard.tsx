@@ -24,7 +24,9 @@ export function AdminGuard({ children }: AdminGuardProps) {
     }
   }, [role, token, router]);
 
-  if (!token || (role !== null && role !== "admin")) {
+  // role이 null이면 아직 /auth/me 로딩 중 — 렌더링 보류
+  // role이 admin이 아니면 접근 차단
+  if (!token || role === null || role !== "admin") {
     return null;
   }
 

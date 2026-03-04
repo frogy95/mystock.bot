@@ -44,15 +44,23 @@ export function InvitationTab() {
 
   // 코드 텍스트 클립보드 복사
   const handleCopyCode = async (code: string) => {
-    await navigator.clipboard.writeText(code);
-    toast.success("코드가 복사되었습니다.");
+    try {
+      await navigator.clipboard.writeText(code);
+      toast.success("코드가 복사되었습니다.");
+    } catch {
+      toast.error("클립보드 복사에 실패했습니다.");
+    }
   };
 
   // 회원가입 링크 클립보드 복사
   const handleCopyLink = async (code: string) => {
     const link = `${window.location.origin}/register?code=${code}`;
-    await navigator.clipboard.writeText(link);
-    toast.success("초대 링크가 복사되었습니다.");
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success("초대 링크가 복사되었습니다.");
+    } catch {
+      toast.error("클립보드 복사에 실패했습니다.");
+    }
   };
 
   // 초대코드 생성 핸들러

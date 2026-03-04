@@ -73,7 +73,7 @@ export function UserTab() {
                           size="sm"
                           variant="outline"
                           onClick={() => approveMutation.mutate({ id: user.id })}
-                          disabled={approveMutation.isPending}
+                          disabled={approveMutation.isPending && approveMutation.variables?.id === user.id}
                         >
                           승인
                         </Button>
@@ -84,7 +84,7 @@ export function UserTab() {
                           size="sm"
                           variant="destructive"
                           onClick={() => deactivateMutation.mutate({ id: user.id })}
-                          disabled={deactivateMutation.isPending}
+                          disabled={deactivateMutation.isPending && deactivateMutation.variables?.id === user.id}
                         >
                           비활성화
                         </Button>
