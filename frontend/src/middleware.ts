@@ -9,7 +9,9 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("auth-token")?.value;
 
-  if (!token && pathname !== "/login") {
+  // /login, /register는 인증 없이 접근 가능한 공개 경로
+  const publicPaths = ["/login", "/register"];
+  if (!token && !publicPaths.includes(pathname)) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     return NextResponse.redirect(loginUrl);
