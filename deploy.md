@@ -1778,16 +1778,16 @@ docker compose exec backend alembic upgrade head
 
 **수동 검증 필요 — Docker 빌드 (타이밍 사용자 결정):**
 
-- ⬜ `docker compose up --build` 성공 확인
-- ⬜ `alembic upgrade head` 최신 마이그레이션 적용 확인 (Sprint 14/15 마이그레이션이 적용된 경우 불필요)
+- ✅ `docker compose up --build` 성공 확인
+- ✅ `alembic upgrade head` 최신 마이그레이션 적용 확인 (이미 최신 상태)
 
-**수동 검증 필요 — 브라우저 UI 확인:**
+**Playwright E2E 검증 완료 (2026-03-05):**
 
-- ⬜ TC-1: 관리자 로그인 후 /admin 대시보드 렌더링 확인
-- ⬜ TC-2: 초대코드 생성 및 링크 복사 동작 확인
-- ⬜ TC-3: 비관리자 /admin 접속 시 /dashboard 리다이렉트 확인
-- ⬜ TC-4: /register?code=xxx 접속 시 초대코드 자동 주입 확인
-- ⬜ TC-5: 사이드바 관리자 메뉴 조건부 표시 확인
-- ⬜ TC-6: 사용자 승인/비활성화 기능 동작 확인
-- ⬜ TC-7: 회원가입 플로우 End-to-End 확인
+- ✅ TC-1: 관리자 로그인 후 /admin 대시보드 렌더링 확인
+- ✅ TC-2: 초대코드 생성 및 링크 복사 동작 확인
+- ✅ TC-3: 비관리자 /admin 접속 시 /dashboard 리다이렉트 확인 (버그 수정: 데모 로그인 시 setRole 누락 수정)
+- ✅ TC-4: /register?code=xxx 접속 시 초대코드 자동 주입 확인 (안내 문구 추가)
+- ✅ TC-5: 사이드바 관리자 메뉴 조건부 표시 확인
+- ✅ TC-6: 사용자 승인/비활성화 기능 동작 확인
+- ✅ TC-7: 회원가입 플로우 End-to-End 확인
 

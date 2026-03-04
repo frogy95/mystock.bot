@@ -19,12 +19,13 @@ function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
+  const codeFromUrl = searchParams.get("code") ?? "";
   const [form, setForm] = useState({
     username: "",
     email: "",
     password: "",
     passwordConfirm: "",
-    invitationCode: searchParams.get("code") ?? "",
+    invitationCode: codeFromUrl,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -137,6 +138,11 @@ function RegisterForm() {
                 disabled={loading}
                 required
               />
+              {codeFromUrl && (
+                <p className="text-xs text-muted-foreground">
+                  초대링크에서 자동으로 입력되었습니다.
+                </p>
+              )}
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "처리 중..." : "회원가입"}
