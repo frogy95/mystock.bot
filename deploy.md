@@ -1652,3 +1652,142 @@ curl -s -H "Authorization: Bearer $DEMO_TOKEN" \
 - ✅ 프론트엔드: 복사된 전략 파라미터 수정 가능 확인 (Playwright + DB 저장 검증, 2026-03-03)
 - ✅ 브라우저 콘솔 에러 없음 (Playwright: 0 errors, 2026-03-03)
 
+---
+
+## 18. Sprint 16 완료 검증
+
+Sprint 16에서는 관리자 대시보드 UI 및 초대코드 기반 회원가입 플로우가 완성되었습니다.
+
+### 18-1. 신규 구현 항목
+
+- `frontend/src/app/admin/page.tsx` — 관리자 대시보드 페이지 (초대코드 탭 + 사용자 관리 탭)
+- `frontend/src/app/register/page.tsx` — 초대코드 기반 회원가입 페이지 (`?code=` URL 파라미터 자동 주입)
+- `frontend/src/hooks/use-admin.ts` — 관리자 API TanStack Query 훅 (useInvitations, useCreateInvitation, useAdminUsers, useApproveUser, useDeactivateUser)
+- `frontend/src/components/admin/invitation-tab.tsx` — 초대코드 발급/목록/복사 탭 컴포넌트
+- `frontend/src/components/admin/users-tab.tsx` — 사용자 목록/승인/비활성화 탭 컴포넌트
+- `frontend/src/components/layout/admin-guard.tsx` — role=admin 전용 라우트 보호 컴포넌트
+- `frontend/src/stores/auth-store.ts` — role, userId 필드 추가
+- `frontend/src/components/layout/app-sidebar.tsx` — role=admin 조건부 관리자 메뉴 추가
+- `backend/app/api/v1/auth.py` — GET /auth/me 엔드포인트 추가
+- `backend/tests/api/test_admin.py` — 관리자 API 통합 테스트 6개
+
+### 18-2. 자동 검증 완료 (sprint-close 시점 실행됨)
+
+**백엔드 pytest (2026-03-04):**
+
+- ✅ `docker compose exec backend pytest -v` → **51 passed / 0 failed** (1 warning)
+  - `tests/api/test_admin.py` — 6개 전체 통과
+    - `test_non_admin_cannot_list_invitations` PASSED
+    - `test_admin_can_list_invitations` PASSED
+    - `test_admin_can_create_invitation` PASSED
+    - `test_admin_can_list_users` PASSED
+    - `test_admin_can_approve_user` PASSED
+    - `test_admin_cannot_deactivate_self` PASSED
+  - 기존 45개 회귀 없음
+
+**프론트엔드 TypeScript 빌드 (2026-03-04):**
+
+- ✅ `npx tsc --noEmit` → 에러 없음
+
+### 18-3. 수동 검증 필요 항목
+
+아래 항목은 Docker 서비스 기동 후 사용자가 직접 브라우저에서 확인해야 합니다.
+
+#### 사전 조건
+
+```bash
+# Docker 서비스 기동 (새 코드 반영을 위해 재빌드 필요)
+docker compose up --build -d
+
+# DB 마이그레이션 (Sprint 14/15에서 이미 적용된 경우 불필요)
+docker compose exec backend alembic upgrade head
+```
+
+#### TC-1: 관리자 로그인 후 /admin 접속
+
+```
+1. http://localhost:3001/login 접속
+2. 이메일: frogy95@gmail.com, 비밀번호: 관리자 비밀번호 입력
+3. 로그인 후 /dashboard 리다이렉트 확인
+4. http://localhost:3001/admin 접속
+5. 관리자 대시보드 렌더링 확인 (초대코드 탭, 사용자 탭 표시)
+6. 브라우저 콘솔 에러 없음 확인
+```
+
+#### TC-2: 초대코드 생성 및 복사
+
+```
+1. /admin 페이지 → 초대코드 탭 이동
+2. 유효기간 선택 (예: 7일)
+3. "초대코드 생성" 버튼 클릭
+4. 테이블에 새 행 추가 확인 (상태: 유효)
+5. "링크 복사" 버튼 클릭 → 클립보드에 복사되었다는 토스트 확인
+6. 복사된 URL 형식: http://localhost:3001/register?code=<코드>
+```
+
+#### TC-3: 비관리자 /admin 접속 차단
+
+```
+1. 데모 모드로 로그인 (일반 유저)
+2. http://localhost:3001/admin 접속
+3. /dashboard로 자동 리다이렉트 확인 (AdminGuard 동작)
+```
+
+#### TC-4: 회원가입 페이지 URL 파라미터 자동 주입
+
+```
+1. http://localhost:3001/register?code=test123 접속
+2. 초대코드 입력란에 "test123" 자동 입력 확인
+3. "초대링크에서 자동으로 입력되었습니다." 안내 문구 표시 확인
+4. 브라우저 콘솔 에러 없음 확인
+```
+
+#### TC-5: 사이드바 관리자 메뉴 조건부 표시
+
+```
+1. 관리자 로그인 후 → 사이드바에 "관리자" 메뉴 표시 확인 (Shield 아이콘)
+2. 일반 유저/데모 로그인 후 → 사이드바에 "관리자" 메뉴 없음 확인
+```
+
+#### TC-6: 사용자 승인 기능
+
+```
+1. /admin → 사용자 관리 탭 이동
+2. 미승인 사용자가 있는 경우 "승인" 버튼 클릭
+3. 상태 Badge가 "대기" → "승인됨"으로 변경 확인
+4. 자기 자신 "비활성화" 버튼 비활성화(disabled) 상태 확인
+```
+
+#### TC-7: 회원가입 플로우 End-to-End
+
+```
+1. /admin에서 초대코드 생성 후 링크 복사
+2. 복사된 링크로 /register 접속
+3. 이메일, 비밀번호, 비밀번호 확인 입력 (초대코드는 자동 입력됨)
+4. "회원가입" 버튼 클릭
+5. 성공 토스트: "회원가입이 완료되었습니다. 관리자 승인 후 로그인 가능합니다."
+6. /login 페이지로 자동 이동 확인
+```
+
+### Sprint 16 완료 체크리스트
+
+**자동 검증 완료 (2026-03-04, sprint-close 실행):**
+
+- ✅ pytest 51개 PASSED (신규 6개 포함) — `docker compose exec backend pytest -v`
+- ✅ TypeScript 빌드 에러 없음 — `npx tsc --noEmit`
+
+**수동 검증 필요 — Docker 빌드 (타이밍 사용자 결정):**
+
+- ⬜ `docker compose up --build` 성공 확인
+- ⬜ `alembic upgrade head` 최신 마이그레이션 적용 확인 (Sprint 14/15 마이그레이션이 적용된 경우 불필요)
+
+**수동 검증 필요 — 브라우저 UI 확인:**
+
+- ⬜ TC-1: 관리자 로그인 후 /admin 대시보드 렌더링 확인
+- ⬜ TC-2: 초대코드 생성 및 링크 복사 동작 확인
+- ⬜ TC-3: 비관리자 /admin 접속 시 /dashboard 리다이렉트 확인
+- ⬜ TC-4: /register?code=xxx 접속 시 초대코드 자동 주입 확인
+- ⬜ TC-5: 사이드바 관리자 메뉴 조건부 표시 확인
+- ⬜ TC-6: 사용자 승인/비활성화 기능 동작 확인
+- ⬜ TC-7: 회원가입 플로우 End-to-End 확인
+

@@ -15,7 +15,7 @@ from app.main import app
 from app.core.database import get_db
 from app.core.auth import get_current_user, create_access_token
 from app.models.base import Base  # noqa: F401 - 모든 모델 임포트 트리거용
-from app.models.user import User
+from app.models.user import ROLE_ADMIN, User
 
 
 # SQLite에서 PostgreSQL JSONB를 JSON(TEXT)으로 렌더링
@@ -132,3 +132,47 @@ def auth_token() -> str:
 def auth_headers(auth_token: str) -> dict:
     """테스트 요청에 사용할 Authorization 헤더"""
     return {"Authorization": f"Bearer {auth_token}"}
+
+
+@pytest_asyncio.fixture(scope="function")
+async def admin_user(db_session: AsyncSession) -> User:
+    """테스트용 관리자 사용자 픽스처"""
+    import bcrypt
+    pw_hash = bcrypt.hashpw(b"adminpass", bcrypt.gensalt()).decode()
+    user = User(
+        username="admin_test",
+        email="admin_test@example.com",
+        password_hash=pw_hash,
+        role=ROLE_ADMIN,
+        is_approved=True,
+        is_active=True,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture(scope="function")
+async def client_with_admin(db_session: AsyncSession, admin_user: User) -> AsyncClient:
+    """
+    관리자 사용자가 주입된 테스트 클라이언트 픽스처
+    - DB 의존성: 테스트 DB로 오버라이드
+    - 인증 의존성: admin_user로 오버라이드 (role=admin)
+    """
+    async def override_get_db():
+        yield db_session
+
+    async def override_get_current_user():
+        return admin_user
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()

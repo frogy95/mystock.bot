@@ -31,6 +31,7 @@ interface TokenResponse {
 export default function LoginPage() {
   const router = useRouter();
   const login = useAuthStore((state) => state.login);
+  const setRole = useAuthStore((state) => state.setRole);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +49,19 @@ export default function LoginPage() {
       // JWT 페이로드에서 username 추출 (또는 email을 username으로 사용)
       const username = email.split("@")[0];
       login(data.access_token, username, data.refresh_token);
+      // /auth/me 호출로 role과 userId를 저장한다
+      try {
+        const me = await apiClient.get<{
+          id: number;
+          username: string;
+          email: string | null;
+          role: string;
+          is_approved: boolean;
+        }>("/api/v1/auth/me");
+        setRole(me.role, me.id);
+      } catch {
+        // me 호출 실패해도 로그인 자체는 유지한다
+      }
       router.replace("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "로그인에 실패했습니다.");

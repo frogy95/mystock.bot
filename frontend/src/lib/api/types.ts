@@ -10,3 +10,28 @@ export interface OrderAPI {
   created_at: string;
   updated_at: string;
 }
+
+// ===== 관리자 API 타입 =====
+
+export interface AdminInvitation {
+  id: number;
+  code: string;
+  created_by: number;
+  used_by: number | null;
+  expires_at: string;
+  is_used: boolean;
+}
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  email: string | null;
+  role: string;
+  is_approved: boolean;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface CreateInvitationRequest {
+  expires_days: number;
+}

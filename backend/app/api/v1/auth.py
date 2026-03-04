@@ -6,6 +6,7 @@ import secrets
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +15,7 @@ from app.core.auth import (
     create_demo_token,
     create_refresh_token,
     decode_token,
+    get_current_user,
     hash_password,
     verify_password,
 )
@@ -23,6 +25,24 @@ from app.models.user import ROLE_ADMIN, ROLE_USER, User
 from app.schemas.auth import LoginRequest, RefreshRequest, RegisterRequest, TokenResponse
 
 router = APIRouter()
+
+
+class MeResponse(BaseModel):
+    """현재 사용자 정보 응답"""
+
+    id: int
+    username: str
+    email: str | None
+    role: str
+    is_approved: bool
+
+    model_config = {"from_attributes": True}
+
+
+@router.get("/me", response_model=MeResponse, summary="현재 사용자 정보")
+async def get_me(current_user: User = Depends(get_current_user)):
+    """현재 로그인한 사용자의 정보를 반환한다."""
+    return current_user
 
 
 @router.post("/register", response_model=TokenResponse, summary="회원가입")
