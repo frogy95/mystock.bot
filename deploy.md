@@ -1906,3 +1906,49 @@ docker compose -f docker-compose.prod.yml ps
 - ⬜ `docker compose exec backend pytest -v` → 테스트 통과 확인
 - ⬜ 프론트엔드 프로덕션 빌드 에러 없음 확인 (`next build`)
 
+---
+
+## 프로덕션 배포 - v0.17.0 (2026-03-05)
+
+### 포함 스프린트
+- Sprint 17: MVP 프로덕션 배포 준비 (Docker prod, Nginx, CI/CD 파이프라인)
+- Sprint 17 후속: 설정 간소화, CI/CD 워크플로우, 문서 업데이트
+
+### PR
+- [release: v0.17.0 프로덕션 배포 (#27)](https://github.com/frogy95/mystock.bot/pull/27)
+
+### 자동 배포 (GitHub Actions)
+- ✅ main merge 시 `ci.yml` CI 체크 자동 실행
+- ✅ main merge 시 `deploy.yml` — GHCR 이미지 push + Lightsail SSH 배포 자동 실행
+
+### 자동 검증 완료 항목 (Sprint 17 후속)
+- ✅ develop 브랜치 커밋 정상 상태 확인 (e2a16e2)
+- ✅ main과 develop 차이 요약 확인 (14파일, +701/-116)
+- ✅ GitHub Actions 워크플로우 파일 존재 확인 (ci.yml, deploy.yml)
+- ✅ deploy.md 최신 상태 확인
+
+### 수동 검증 필요 항목 (v0.17.0 배포 후)
+
+#### GitHub Actions 모니터링
+- ⬜ CI 워크플로우 통과 확인: https://github.com/frogy95/mystock.bot/actions
+- ⬜ 배포 워크플로우 완료 확인 (deploy.yml — GHCR push + Lightsail 배포)
+
+#### 서버 접속 확인
+- ⬜ 헬스체크: `curl https://{도메인}/api/v1/health` → 200 응답 확인
+- ⬜ 프론트엔드 메인 페이지 접속 확인
+- ⬜ 관리자 로그인 동작 확인
+
+#### DB 마이그레이션 (스키마 변경이 있는 경우)
+```bash
+ssh {LIGHTSAIL_USER}@{LIGHTSAIL_HOST}
+cd /opt/mystock-bot
+docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
+```
+
+### 롤백 방법 (문제 발생 시)
+```bash
+# Lightsail SSH 접속 후
+docker pull ghcr.io/frogy95/mystock-bot-backend:v0.16.0
+docker compose -f docker-compose.prod.yml up -d
+```
+
