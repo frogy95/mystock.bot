@@ -4,7 +4,7 @@ Sprint 13 Task 2: 전량/분할 익절 순서 검증
 """
 import pytest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from app.services.risk_manager import evaluate_holding_risk
 
@@ -32,7 +32,8 @@ async def test_full_take_profit_triggered_before_partial():
     holding = _make_holding(avg_price=10000, current_price=11000, quantity=10,
                             take_profit_rate=10.0)
 
-    with patch("app.services.risk_manager.asyncio.create_task"):
+    with patch("app.services.risk_manager.asyncio.create_task"), \
+         patch("app.services.risk_manager.notify_risk_triggered", new=MagicMock()):
         signal = await evaluate_holding_risk(holding)
 
     assert signal.action == "TAKE_PROFIT"
@@ -48,7 +49,8 @@ async def test_partial_take_profit_at_half_target():
     holding = _make_holding(avg_price=10000, current_price=10500, quantity=10,
                             take_profit_rate=10.0)
 
-    with patch("app.services.risk_manager.asyncio.create_task"):
+    with patch("app.services.risk_manager.asyncio.create_task"), \
+         patch("app.services.risk_manager.notify_risk_triggered", new=MagicMock()):
         signal = await evaluate_holding_risk(holding)
 
     assert signal.action == "PARTIAL_TAKE_PROFIT"
@@ -64,7 +66,8 @@ async def test_stop_loss_triggered():
     holding = _make_holding(avg_price=10000, current_price=9400, quantity=5,
                             stop_loss_rate=5.0)
 
-    with patch("app.services.risk_manager.asyncio.create_task"):
+    with patch("app.services.risk_manager.asyncio.create_task"), \
+         patch("app.services.risk_manager.notify_risk_triggered", new=MagicMock()):
         signal = await evaluate_holding_risk(holding)
 
     assert signal.action == "STOP_LOSS"
