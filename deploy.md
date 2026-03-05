@@ -1798,26 +1798,23 @@ CI/CD 파이프라인 기반의 단계별 배포 가이드입니다. `deploy.yml
 
 ### Phase 1: Lightsail 사전 준비 (1회)
 
-- ⬜ **인스턴스 생성**
+- ✅ **인스턴스 생성**
   - OS: Ubuntu 22.04 LTS
   - 플랜: $20/월 이상 (RAM 4GB+)
   - 방화벽: 80 포트(HTTP), 22 포트(SSH) 인바운드 허용
-
-- ⬜ **Docker 설치**
+- ✅ **Docker 설치**
   ```bash
   curl -fsSL https://get.docker.com | sh
   sudo usermod -aG docker $USER
   newgrp docker
   ```
-
-- ⬜ **저장소 클론**
+- ✅ **저장소 클론**
   ```bash
   git clone https://github.com/frogy95/mystock.bot.git /opt/mystock-bot
   cd /opt/mystock-bot
   git checkout main
   ```
-
-- ⬜ **`.env` 파일 생성 및 설정**
+- ✅ `**.env` 파일 생성 및 설정**
   ```bash
   cp .env.example .env
   # 아래 항목 편집
@@ -1830,8 +1827,7 @@ CI/CD 파이프라인 기반의 단계별 배포 가이드입니다. `deploy.yml
   - `CORS_ORIGINS=http://{서버IP}` (또는 실제 도메인)
   - `POSTGRES_HOST=postgres`, `REDIS_HOST=redis`
   - `NEXT_PUBLIC_API_URL=http://{서버IP}`
-
-  > ℹ️ KIS API 키 및 텔레그램 설정은 앱 실행 후 관리자 페이지(설정 > 연동)에서 입력합니다.
+    > ℹ️ KIS API 키 및 텔레그램 설정은 앱 실행 후 관리자 페이지(설정 > 연동)에서 입력합니다.
 
 ---
 
@@ -1839,14 +1835,14 @@ CI/CD 파이프라인 기반의 단계별 배포 가이드입니다. `deploy.yml
 
 - ⬜ **GitHub Secrets 설정** (저장소 Settings > Secrets and variables > Actions)
 
-  | Secret 이름 | 설명 |
-  |-------------|------|
-  | `LIGHTSAIL_SSH_KEY` | Lightsail 인스턴스 SSH 개인키 (PEM 전체 내용) |
-  | `LIGHTSAIL_HOST` | Lightsail 퍼블릭 IP |
-  | `LIGHTSAIL_USER` | SSH 접속 사용자명 (보통 `ubuntu`) |
-  | `POSTGRES_PASSWORD` | Phase 1에서 설정한 DB 비밀번호 |
-  | `JWT_SECRET` | Phase 1에서 생성한 JWT 시크릿 |
-  | `SECRET_KEY` | Phase 1에서 생성한 앱 시크릿 |
+  | Secret 이름             | 설명                                 |
+  | --------------------- | ---------------------------------- |
+  | `LIGHTSAIL_SSH_KEY`   | Lightsail 인스턴스 SSH 개인키 (PEM 전체 내용) |
+  | `LIGHTSAIL_HOST`      | Lightsail 퍼블릭 IP                   |
+  | `LIGHTSAIL_USER`      | SSH 접속 사용자명 (보통 `ubuntu`)          |
+  | `POSTGRES_PASSWORD`   | Phase 1에서 설정한 DB 비밀번호              |
+  | `JWT_SECRET`          | Phase 1에서 생성한 JWT 시크릿              |
+  | `SECRET_KEY`          | Phase 1에서 생성한 앱 시크릿                |
   | `NEXT_PUBLIC_API_URL` | 프론트엔드 API URL (예: `http://{서버IP}`) |
 
   자세한 Secrets 설명은 `docs/ci-policy.md` 참조.
@@ -1856,7 +1852,7 @@ CI/CD 파이프라인 기반의 단계별 배포 가이드입니다. `deploy.yml
 ### Phase 3: 배포 실행
 
 - ⬜ `develop` → `main` PR 생성 및 머지
-- ⬜ **GitHub Actions 모니터링**: https://github.com/frogy95/mystock.bot/actions
+- ⬜ **GitHub Actions 모니터링**: [https://github.com/frogy95/mystock.bot/actions](https://github.com/frogy95/mystock.bot/actions)
   - `ci.yml` CI 워크플로우 통과 확인
   - `deploy.yml` 완료 확인 (GHCR 이미지 push + Lightsail SSH 배포)
 
@@ -1871,7 +1867,6 @@ CI/CD 파이프라인 기반의 단계별 배포 가이드입니다. `deploy.yml
   docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
   ```
   ⚠️ 되돌릴 수 없으므로 반드시 수동으로 실행합니다.
-
 - ⬜ **헬스체크**: `curl http://{서버IP}/api/v1/health` → 200 응답 확인
 - ⬜ 프론트엔드 메인 페이지 접속 확인
 - ⬜ 관리자 로그인 동작 확인
@@ -1894,13 +1889,15 @@ docker compose -f docker-compose.prod.yml up -d
 
 배포 후 최소 5거래일간 아래 항목을 모니터링합니다:
 
-| 항목 | 확인 방법 | 주기 |
-|------|-----------|------|
-| 컨테이너 재시작 여부 | `docker compose -f docker-compose.prod.yml ps` | 매일 |
-| 백엔드 로그 오류 | `docker compose -f docker-compose.prod.yml logs backend --tail 100` | 매일 |
-| DB 용량 | `docker system df` | 주 1회 |
-| 헬스체크 | `curl http://서버IP/api/v1/health` | 매일 |
-| KIS 토큰 갱신 | 백엔드 로그에서 `KIS 토큰 갱신` 메시지 확인 | 매일 |
+
+| 항목          | 확인 방법                                                               | 주기   |
+| ----------- | ------------------------------------------------------------------- | ---- |
+| 컨테이너 재시작 여부 | `docker compose -f docker-compose.prod.yml ps`                      | 매일   |
+| 백엔드 로그 오류   | `docker compose -f docker-compose.prod.yml logs backend --tail 100` | 매일   |
+| DB 용량       | `docker system df`                                                  | 주 1회 |
+| 헬스체크        | `curl http://서버IP/api/v1/health`                                    | 매일   |
+| KIS 토큰 갱신   | 백엔드 로그에서 `KIS 토큰 갱신` 메시지 확인                                         | 매일   |
+
 
 ---
 
@@ -1909,13 +1906,16 @@ docker compose -f docker-compose.prod.yml up -d
 ### v0.17.0 (2026-03-05)
 
 #### 포함 스프린트
+
 - Sprint 17: MVP 프로덕션 배포 준비 (Docker prod, Nginx, CI/CD 파이프라인)
 - Sprint 17 후속: 설정 간소화, CI/CD 워크플로우, 문서 업데이트
 
 #### PR
+
 - [release: v0.17.0 프로덕션 배포 (#27)](https://github.com/frogy95/mystock.bot/pull/27)
 
 #### 자동 검증 완료 항목
+
 - ✅ docker-compose.prod.yml 문법 검증: `docker compose -f docker-compose.prod.yml config`
 - ✅ Dockerfile.prod 파일 생성 확인 (백엔드/프론트엔드)
 - ✅ CORS 환경변수화 코드 반영 (`settings.CORS_ORIGINS` 적용)
@@ -1927,6 +1927,7 @@ docker compose -f docker-compose.prod.yml up -d
 - ✅ main merge 시 `deploy.yml` — GHCR 이미지 push + Lightsail SSH 배포 자동 실행
 
 #### 수동 검증 필요 항목
+
 - ⬜ `docker compose -f docker-compose.prod.yml up --build` 로컬 정상 기동 확인
 - ⬜ `curl http://localhost/api/v1/health` → Nginx 경유 200 응답 확인
 - ⬜ postgres/redis 포트 외부 접근 불가 확인 (`curl localhost:5432` 실패 확인)
