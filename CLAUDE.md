@@ -45,9 +45,11 @@ sprint{n}  →  PR to develop  →  로컬 Docker 스테이징 검증  →  PR t
   - ✅ **자동 실행**: `docker compose exec backend pytest -v` — 백엔드 통합 테스트
   - ✅ **자동 실행**: API 동작 검증 (curl/httpx) — Docker 컨테이너가 실행 중인 경우 sprint-close agent가 직접 실행
   - ✅ **자동 실행**: 데모 모드 API 검증 — 마찬가지로 서버 실행 중이면 자동 실행
+  - ✅ **자동 실행**: Playwright UI 검증 — 페이지 렌더링, 버튼 동작, 폼 제출 등 자동화 가능한 UI 시나리오는 서버 실행 중이면 sprint-close agent가 직접 실행
   - ❌ **수동 필요**: `docker compose up --build` — 새 코드 반영을 위한 Docker 재빌드 (타이밍을 사용자가 결정)
   - ❌ **수동 필요**: `alembic upgrade head` — prod DB 스키마 변경 (되돌릴 수 없으므로 사용자가 직접 실행)
-  - ❌ **수동 필요**: 브라우저 UI 시각적 확인 (프론트엔드 렌더링, 버튼 동작 등)
+  - ❌ **수동 필요**: 실제 KIS API 실거래 확인 (실제 자금이 사용되므로 사용자가 직접 확인)
+  - ❌ **수동 필요**: UI 디자인/시각적 품질 주관적 판단 (색상, 레이아웃 미적 요소 등 Playwright로 측정 불가한 항목)
   - sprint-close agent는 자동 실행 항목을 실행하고 결과를 deploy.md에 기록해야 합니다.
   - deploy.md에는 "자동 검증 완료" 항목과 "수동 검증 필요" 항목을 명확히 구분하여 기재합니다.
 

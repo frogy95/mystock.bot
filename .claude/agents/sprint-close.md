@@ -48,14 +48,23 @@ color: green
 
 ### 5단계: 자동 검증 실행
 
-CLAUDE.md의 검증 원칙에 따라 자동 실행 항목만 수행합니다:
+CLAUDE.md의 검증 원칙에 따라 서버가 실행 중인 경우 다음을 자동 실행합니다:
 - `docker compose exec backend pytest -v` — 백엔드 통합 테스트 (Docker 실행 중인 경우)
 - API 엔드포인트 검증 (curl/httpx) — Docker 컨테이너가 실행 중인 경우 직접 실행
 - 데모 모드 API 검증 — 서버 실행 중이면 자동 실행
+- **Playwright UI 검증** — 서버 실행 중이면 페이지 렌더링, 버튼 동작, 폼 제출 등 UI 시나리오를 자동 실행하고 스크린샷을 저장
+
+Playwright UI 검증 기준:
+- 서버가 응답하는지 (`http://localhost:3000` 또는 설정된 URL)
+- 주요 페이지가 렌더링되는지 (로그인, 대시보드, 설정 등 해당 스프린트 관련 페이지)
+- 스프린트에서 추가/수정한 UI 시나리오 (버튼 클릭, 폼 입력, API 연동 결과 표시 등)
+- 검증 실패 시 스크린샷과 에러 메시지를 `docs/sprint/sprint{N}/` 폴더에 저장
 
 다음 항목은 **자동 실행하지 않습니다** (수동 필요):
 - `docker compose up --build` — 새 코드 반영을 위한 Docker 재빌드 (타이밍을 사용자가 결정)
-- 브라우저 UI 시각적 확인 (프론트엔드 렌더링, 버튼 동작 등)
+- `alembic upgrade head` — prod DB 스키마 변경 (되돌릴 수 없으므로 사용자가 직접 실행)
+- 실제 KIS API 실거래 확인 (실제 자금이 사용되므로 사용자가 직접 확인)
+- UI 디자인/시각적 품질 주관적 판단 (색상, 레이아웃 미적 요소 등 Playwright로 측정 불가한 항목)
 
 CLAUDE.md의 문서 구조 규칙에 따라:
 - 스크린샷은 `docs/sprint/sprint{N}/` 폴더에 저장합니다.
