@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     # 보안 및 환경 설정
     SECRET_KEY: str = "change-me-in-production"
     DEBUG: bool = False
+    # CORS 허용 origin 목록 (콤마 구분, 기본값 * → 개발용)
+    CORS_ORIGINS: str = "*"
 
     # 한국투자증권 (KIS) API 설정
     # 모의투자 전용 키 (주문/잔고에 사용, KIS_ENVIRONMENT=vts 시)

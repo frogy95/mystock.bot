@@ -1791,3 +1791,118 @@ docker compose exec backend alembic upgrade head
 - ✅ TC-6: 사용자 승인/비활성화 기능 동작 확인
 - ✅ TC-7: 회원가입 플로우 End-to-End 확인
 
+---
+
+## Sprint 17: 프로덕션 배포 절차 (AWS EC2)
+
+Sprint 17에서 프로덕션 Docker 환경이 준비되었습니다. 아래 절차를 따라 EC2에 배포합니다.
+
+### 사전 준비 — EC2 인스턴스 설정
+
+1. **EC2 인스턴스 생성**
+   - OS: Ubuntu 22.04 LTS (권장)
+   - 인스턴스 타입: t3.medium 이상 (RAM 4GB+)
+   - 보안 그룹: 80 포트(HTTP) 인바운드 허용, 22 포트(SSH) 허용
+   - EBS: 20GB 이상
+
+2. **Docker 설치**
+   ```bash
+   curl -fsSL https://get.docker.com | sh
+   sudo usermod -aG docker $USER
+   newgrp docker
+   ```
+
+3. **저장소 클론**
+   ```bash
+   git clone https://github.com/frogy95/mystock.bot.git
+   cd mystock.bot
+   git checkout main
+   ```
+
+### .env 파일 설정 체크리스트
+
+⬜ `.env.example`을 복사하여 `.env` 생성
+```bash
+cp .env.example .env
+```
+
+⬜ **보안 필수 변경 항목:**
+```bash
+# 시크릿 키 생성 후 입력
+python3 -c "import secrets; print(secrets.token_hex(32))"
+```
+- `SECRET_KEY=<위 명령으로 생성한 값>`
+- `JWT_SECRET=<위 명령으로 다시 생성한 값>`
+- `POSTGRES_PASSWORD=<안전한 비밀번호, 특수문자 포함 12자 이상>`
+- `ADMIN_PASSWORD=<안전한 비밀번호>`
+
+⬜ **운영 환경 설정:**
+- `DEBUG=false`
+- `CORS_ORIGINS=https://yourdomain.com` (실제 도메인으로 변경)
+
+⬜ **서비스 연동:**
+- `POSTGRES_HOST=postgres`
+- `REDIS_HOST=redis`
+- `NEXT_PUBLIC_API_URL=http://yourdomain.com` (또는 서버 IP)
+
+⬜ KIS API 키 입력 (KIS_VTS_APP_KEY 등)
+⬜ 텔레그램 봇 토큰 입력
+
+### 프로덕션 빌드 및 기동
+
+```bash
+# 프로덕션 이미지 빌드 및 컨테이너 기동
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+### DB 마이그레이션 (최초 1회)
+
+```bash
+docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
+```
+
+⚠️ **주의:** 이 작업은 되돌릴 수 없으므로 반드시 수동으로 실행합니다.
+
+### 헬스체크 확인
+
+```bash
+# Nginx 경유 API 헬스체크 (200 응답 확인)
+curl http://localhost/api/v1/health
+
+# 컨테이너 상태 확인
+docker compose -f docker-compose.prod.yml ps
+```
+
+**예상 응답:**
+```json
+{"status": "healthy", "timestamp": "...", "version": "0.1.0", "checks": {...}}
+```
+
+### 모의투자 5일 안정 운영 가이드
+
+배포 후 최소 5거래일간 아래 항목을 모니터링합니다:
+
+| 항목 | 확인 방법 | 주기 |
+|------|-----------|------|
+| 컨테이너 재시작 여부 | `docker compose -f docker-compose.prod.yml ps` | 매일 |
+| 백엔드 로그 오류 | `docker compose -f docker-compose.prod.yml logs backend --tail 100` | 매일 |
+| DB 용량 | `docker system df` | 주 1회 |
+| 헬스체크 | `curl http://서버IP/api/v1/health` | 매일 |
+| KIS 토큰 갱신 | 백엔드 로그에서 `KIS 토큰 갱신` 메시지 확인 | 매일 |
+
+### 자동 검증 완료 항목 (Sprint 17)
+
+- ✅ docker-compose.prod.yml 문법 검증: `docker compose -f docker-compose.prod.yml config`
+- ✅ Dockerfile.prod 파일 생성 확인 (백엔드/프론트엔드)
+- ✅ CORS 환경변수화 코드 반영 (`settings.CORS_ORIGINS` 적용)
+- ✅ 헬스체크 503 반환 코드 반영 (`JSONResponse` with `status_code=503`)
+- ✅ gunicorn 의존성 추가 (`backend/requirements.txt`)
+
+### 수동 검증 필요 항목 (Sprint 17)
+
+- ⬜ `docker compose -f docker-compose.prod.yml up --build` 로컬 정상 기동 확인
+- ⬜ `curl http://localhost/api/v1/health` → Nginx 경유 200 응답 확인
+- ⬜ postgres/redis 포트 외부 접근 불가 확인 (`curl localhost:5432` 실패 확인)
+- ⬜ `docker compose exec backend pytest -v` → 테스트 통과 확인
+- ⬜ 프론트엔드 프로덕션 빌드 에러 없음 확인 (`next build`)
+

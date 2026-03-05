@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 
 import app.core.logging as _logging_setup  # 로깅 설정 초기화
 from app.api.v1 import router as v1_router
+from app.core.config import settings
 from app.core.exceptions import (
     AppError,
     handle_app_error,
@@ -35,6 +36,14 @@ logger = logging.getLogger("mystock.bot")
 async def lifespan(app: FastAPI):
     """애플리케이션 시작/종료 이벤트 핸들러"""
     logger.info("mystock.bot API 서버 시작")
+    # 프로덕션 환경에서 기본 시크릿 키 사용 시 경고
+    if not settings.DEBUG:
+        _defaults = {"change-me-in-production", "change-me-in-production-jwt"}
+        if settings.SECRET_KEY in _defaults or settings.JWT_SECRET in _defaults:
+            logger.warning(
+                "⚠️ 프로덕션 환경에서 기본 시크릿 키가 사용 중입니다. "
+                "SECRET_KEY와 JWT_SECRET을 안전한 값으로 변경하세요."
+            )
     # KIS 설정 DB 초기 로드
     try:
         from app.services.kis_settings_cache import load_kis_settings
@@ -72,10 +81,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS 미들웨어 설정 (개발용: 모든 origin 허용)
+# CORS 미들웨어 설정 (CORS_ORIGINS 환경변수로 제어)
+_cors_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
