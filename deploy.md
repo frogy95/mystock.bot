@@ -1793,17 +1793,17 @@ docker compose exec backend alembic upgrade head
 
 ---
 
-## Sprint 17: 프로덕션 배포 절차 (AWS EC2)
+## Sprint 17: 프로덕션 배포 절차 (AWS Lightsail)
 
-Sprint 17에서 프로덕션 Docker 환경이 준비되었습니다. 아래 절차를 따라 EC2에 배포합니다.
+Sprint 17에서 프로덕션 Docker 환경이 준비되었습니다. 아래 절차를 따라 Lightsail에 배포합니다.
 
-### 사전 준비 — EC2 인스턴스 설정
+### 사전 준비 — Lightsail 인스턴스 설정
 
-1. **EC2 인스턴스 생성**
+1. **Lightsail 인스턴스 생성**
    - OS: Ubuntu 22.04 LTS (권장)
-   - 인스턴스 타입: t3.medium 이상 (RAM 4GB+)
-   - 보안 그룹: 80 포트(HTTP) 인바운드 허용, 22 포트(SSH) 허용
-   - EBS: 20GB 이상
+   - 플랜: $20/월 이상 (RAM 4GB+)
+   - 방화벽: 80 포트(HTTP) 인바운드 허용, 22 포트(SSH) 허용
+   - 스토리지: 80GB (기본 포함)
 
 2. **Docker 설치**
    ```bash

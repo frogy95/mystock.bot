@@ -869,7 +869,7 @@ Sprint 0~12 전체 코드 리뷰에서 발견된 긴급 버그 및 중요 이슈
 
 ## Phase 9: MVP 프로덕션 배포 준비 (Sprint 17)
 ### 목표
-Docker 프로덕션 환경을 구성하고 EC2 배포를 위한 인프라를 준비한다.
+Docker 프로덕션 환경을 구성하고 Lightsail 배포를 위한 인프라를 준비한다.
 
 #### Sprint 17: MVP 프로덕션 배포 준비 ✅ 완료 (2026-03-05)
 - ✅ `.dockerignore` 추가 (빌드 컨텍스트 최적화)
@@ -879,7 +879,7 @@ Docker 프로덕션 환경을 구성하고 EC2 배포를 위한 인프라를 준
 - ✅ Nginx 리버스 프록시 추가 (80 포트, /api/* → backend, / → frontend)
 - ✅ CORS_ORIGINS 환경변수화, DEBUG=False 시 시크릿 키 경고, 헬스체크 503 반환
 - ✅ `gunicorn>=22.0.0` 의존성 추가
-- ✅ deploy.md: EC2 프로덕션 배포 절차, 체크리스트, 5일 안정 운영 가이드 추가
+- ✅ deploy.md: Lightsail 프로덕션 배포 절차, 체크리스트, 5일 안정 운영 가이드 추가
 - ✅ 빌드/테스트 버그 3건 수정 (.dockerignore tests 제외, Dockerfile.prod npm ci, test 패치)
 
 ---

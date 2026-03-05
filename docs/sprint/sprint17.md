@@ -1,6 +1,6 @@
 # Sprint 17: MVP 프로덕션 배포 준비
 
-**Goal:** Docker 프로덕션 환경을 구성하고 EC2 배포를 위한 인프라를 준비한다.
+**Goal:** Docker 프로덕션 환경을 구성하고 Lightsail 배포를 위한 인프라를 준비한다.
 
 **Architecture:** 개발용 `docker-compose.yml`과 분리된 `docker-compose.prod.yml`을 작성하고, 멀티스테이지 Dockerfile로 이미지를 경량화한다. Nginx를 리버스 프록시로 추가하여 80 포트 단일 진입점을 구성한다.
 
@@ -19,14 +19,14 @@
 
 ## 목표
 
-개발 환경에서 검증된 애플리케이션을 프로덕션 EC2 인스턴스에 배포할 수 있도록 Docker 프로덕션 설정 일체를 구성한다.
+개발 환경에서 검증된 애플리케이션을 프로덕션 Lightsail 인스턴스에 배포할 수 있도록 Docker 프로덕션 설정 일체를 구성한다.
 
 ### 핵심 목표
 1. 프로덕션 Dockerfile 작성 (backend/frontend 멀티스테이지, 비-root 실행)
 2. `docker-compose.prod.yml` 작성 (외부 포트 최소화, restart 정책, 로그 rotation)
 3. Nginx 리버스 프록시 구성 (80 포트, /api/* → backend, / → frontend)
 4. 보안 설정 강화 (DEBUG=False 경고, CORS 환경변수화, 헬스체크 503)
-5. EC2 배포 절차 문서화 (`deploy.md`)
+5. Lightsail 배포 절차 문서화 (`deploy.md`)
 
 ## 구현 범위
 
@@ -37,7 +37,7 @@
 - `frontend/Dockerfile.prod` — 멀티스테이지 빌드, standalone 출력 복사
 - `docker-compose.prod.yml` — postgres/redis 외부 포트 미노출, `restart: unless-stopped`, 로그 rotation
 - `docker/nginx/nginx.conf` — 리버스 프록시 설정
-- `deploy.md` — EC2 배포 절차, 체크리스트, 5일 안정 운영 가이드
+- `deploy.md` — Lightsail 배포 절차, 체크리스트, 5일 안정 운영 가이드
 
 ### 제외 항목 (Out of Scope)
 - HTTPS/TLS 인증서 설정 (별도 스프린트 또는 수동 적용)
@@ -82,7 +82,7 @@ frontend/Dockerfile.prod
 - ✅ Nginx 리버스 프록시 추가 (80 포트, /api/* → backend, / → frontend)
 - ✅ CORS_ORIGINS 환경변수화, DEBUG=False 시 시크릿 키 경고, 헬스체크 503 반환
 - ✅ `gunicorn>=22.0.0` 의존성 추가
-- ✅ deploy.md: EC2 프로덕션 배포 절차, 체크리스트, 5일 안정 운영 가이드 추가
+- ✅ deploy.md: Lightsail 프로덕션 배포 절차, 체크리스트, 5일 안정 운영 가이드 추가
 - ✅ 빌드/테스트 버그 3건 수정 (.dockerignore tests 제외, Dockerfile.prod npm ci, test 패치)
 - ✅ pytest 통과 (기존 테스트 회귀 없음)
 
@@ -99,7 +99,7 @@ frontend/Dockerfile.prod
 | `backend/requirements.txt` | 수정 | gunicorn>=22.0.0 추가 |
 | `backend/app/core/config.py` | 수정 | CORS_ORIGINS 환경변수화, SECRET_KEY 경고 |
 | `backend/app/api/v1/health.py` | 수정 | unhealthy 시 503 반환 |
-| `deploy.md` | 수정 | EC2 배포 절차, 체크리스트 추가 |
+| `deploy.md` | 수정 | Lightsail 배포 절차, 체크리스트 추가 |
 
 ## 버그 수정 내역 (Sprint 17 후속)
 
@@ -114,7 +114,7 @@ frontend/Dockerfile.prod
 배포 후 사용자가 직접 확인해야 하는 항목 (deploy.md 참조):
 
 - ⬜ `docker compose -f docker-compose.prod.yml up --build -d` 실행
-- ⬜ `http://<EC2-IP>` 접속하여 프론트엔드 로딩 확인
-- ⬜ `http://<EC2-IP>/api/v1/health` 200 응답 확인
+- ⬜ `http://<Lightsail-IP>` 접속하여 프론트엔드 로딩 확인
+- ⬜ `http://<Lightsail-IP>/api/v1/health` 200 응답 확인
 - ⬜ 관리자 로그인 및 기능 동작 확인
 - ⬜ 5일 안정 운영 모니터링 (CPU, 메모리, 디스크)
