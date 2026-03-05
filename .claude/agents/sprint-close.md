@@ -48,10 +48,14 @@ color: green
 
 ### 5단계: 자동 검증 실행
 
-`deploy.md`에서 자동으로 수행 가능한 검증 항목을 파악하고 실행합니다:
-- Playwright MCP를 사용하여 UI 검증 항목을 테스트합니다.
-- API 엔드포인트 검증 (curl 등)
-- 기타 자동화 가능한 테스트
+CLAUDE.md의 검증 원칙에 따라 자동 실행 항목만 수행합니다:
+- `docker compose exec backend pytest -v` — 백엔드 통합 테스트 (Docker 실행 중인 경우)
+- API 엔드포인트 검증 (curl/httpx) — Docker 컨테이너가 실행 중인 경우 직접 실행
+- 데모 모드 API 검증 — 서버 실행 중이면 자동 실행
+
+다음 항목은 **자동 실행하지 않습니다** (수동 필요):
+- `docker compose up --build` — 새 코드 반영을 위한 Docker 재빌드 (타이밍을 사용자가 결정)
+- 브라우저 UI 시각적 확인 (프론트엔드 렌더링, 버튼 동작 등)
 
 CLAUDE.md의 문서 구조 규칙에 따라:
 - 스크린샷은 `docs/sprint/sprint{N}/` 폴더에 저장합니다.

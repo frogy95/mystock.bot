@@ -31,8 +31,8 @@ Registry: `ghcr.io/frogy95/mystock-bot`
 
 | 브랜치 | Image Tag |
 |--------|-----------|
-| `develop` merge | `ghcr.io/frogy95/mystock-bot-backend:dev-{commit SHA}` |
-| `main` merge | `ghcr.io/frogy95/mystock-bot-backend:latest` + `:v{version}` |
+| `develop` merge | 이미지 빌드 없음 — 로컬 Docker로만 검증 |
+| `main` merge | `ghcr.io/frogy95/mystock-bot-backend:latest` + `:{commit SHA}` |
 | `hotfix` | `ghcr.io/frogy95/mystock-bot-backend:{MAJOR.MINOR.PATCH}` |
 
 > 버전은 Semantic Versioning (`MAJOR.MINOR.PATCH`) 기준
@@ -81,7 +81,7 @@ docker compose up --build
 1. Docker 이미지 빌드 (backend + frontend)
 2. GHCR(`ghcr.io/frogy95/mystock-bot`)에 이미지 push
 3. AWS Lightsail 서버에 SSH 접속
-4. `docker compose pull && docker compose up -d` 실행
+4. `docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d` 실행
 
 ---
 
@@ -113,10 +113,11 @@ docker compose up --build
 
 ```bash
 # Lightsail 서버 SSH 접속 후
-docker compose down
+cd /opt/mystock-bot
+docker compose -f docker-compose.prod.yml down
 docker pull ghcr.io/frogy95/mystock-bot-backend:v{이전_버전}
 docker pull ghcr.io/frogy95/mystock-bot-frontend:v{이전_버전}
-docker compose up -d
+docker compose -f docker-compose.prod.yml up -d
 ```
 
 ### DB 마이그레이션 롤백
