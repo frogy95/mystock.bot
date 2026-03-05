@@ -23,7 +23,7 @@
 | 영역 | 기술 |
 |------|------|
 | **Backend** | FastAPI (Python 3.12), SQLAlchemy, Alembic, APScheduler |
-| **퀀트 라이브러리** | pandas-ta, VectorBT, python-kis (PyKIS 2.x) |
+| **퀀트 라이브러리** | pandas-ta, VectorBT, httpx (KIS REST API 직접 호출) |
 | **Frontend** | Next.js 16 (App Router), TypeScript, TailwindCSS v4, shadcn/ui |
 | **차트** | Lightweight Charts (TradingView), Recharts |
 | **상태 관리** | TanStack Query, Zustand |
@@ -103,16 +103,16 @@ mystock.bot/
 cp .env.example .env
 ```
 
-`.env` 파일에서 필수 값을 설정합니다:
+`.env` 파일에서 인프라 변수를 설정합니다:
 
 ```env
 POSTGRES_PASSWORD=your_secure_password
-KIS_APP_KEY=your_app_key
-KIS_APP_SECRET=your_app_secret
-KIS_ACCOUNT_NO=12345678-01
-TELEGRAM_BOT_TOKEN=your_bot_token   # 선택
-TELEGRAM_CHAT_ID=your_chat_id       # 선택
+JWT_SECRET=your_jwt_secret_key
+SECRET_KEY=your_fastapi_secret_key
 ```
+
+> **KIS API 키, 텔레그램 토큰 등 서비스 설정은 앱 실행 후 설정 페이지(`/settings`)에서 입력합니다.**
+> `.env`에는 DB/Redis/JWT 등 인프라 변수만 관리합니다. 자세한 환경변수 목록은 `.env.example` 참조.
 
 ### 2. 서비스 실행
 
@@ -146,6 +146,8 @@ docker compose exec backend python scripts/seed.py
 
 | 경로 | 페이지 | 설명 |
 |------|--------|------|
+| `/login` | 로그인 | 이메일/비밀번호 로그인, 데모 모드 진입 |
+| `/register` | 회원가입 | 초대 코드 기반 회원가입 |
 | `/` | 대시보드 | 포트폴리오 요약, 수익률 차트, 실시간 신호 |
 | `/dashboard` | 상세 대시보드 | 종합 현황 및 분석 |
 | `/strategy` | 전략 관리 | 전략 목록, 활성화/비활성화, 파라미터 설정 |
@@ -153,6 +155,7 @@ docker compose exec backend python scripts/seed.py
 | `/orders` | 주문 내역 | 체결 내역, 미체결 주문 조회 |
 | `/backtest` | 백테스팅 | 전략 성과 분석 (CAGR, MDD, 샤프비율) |
 | `/settings` | 설정 | API 키, 안전장치, 알림 설정 |
+| `/admin` | 관리자 | 초대 코드 발급, 사용자 승인/비활성화 (admin 전용) |
 
 ---
 

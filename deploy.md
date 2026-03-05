@@ -25,12 +25,10 @@
 3. **[앱 관리] → [앱 생성]** 클릭
 4. 앱 이름 입력 후 생성
 5. 생성된 앱의 **App Key**와 **App Secret** 메모
-6. `.env` 파일에 입력:
-  ```
-   KIS_APP_KEY=발급받은_App_Key
-   KIS_APP_SECRET=발급받은_App_Secret
-   KIS_ACCOUNT_NUMBER=계좌번호 (하이픈 포함, 예: 50123456-01)
-  ```
+6. 앱 실행 후 **설정 페이지(`/settings`)에서 KIS API 키 입력**
+
+> **참고:** Sprint 12 이후 KIS API 키는 `.env`가 아닌 DB(`system_settings`)에서 관리합니다.
+> 앱을 실행하고 설정 페이지에서 모의투자/실전투자 키를 각각 입력하세요.
 
 ### 1-4. 모의투자 신청 (개발 환경용)
 
@@ -274,15 +272,11 @@ docker compose logs --tail=20 frontend
 
 Sprint 2에서는 KIS API 클라이언트, 단일 유저 인증, 프론트엔드 레이아웃이 추가되었습니다.
 
-### 6-1. ADMIN_PASSWORD 설정
+### 6-1. ADMIN_PASSWORD 설정 (Sprint 14 이후 폐기됨)
 
-`.env` 파일에서 관리자 비밀번호를 변경합니다:
-
-```bash
-# .env 파일 편집
-# ADMIN_USERNAME=admin          ← 원하는 유저명으로 변경 가능
-# ADMIN_PASSWORD=your_admin_password_here  ← 반드시 안전한 비밀번호로 변경
-```
+> **⚠️ 이 섹션은 Sprint 2 당시 기준입니다.**
+> Sprint 14에서 JWT 인증으로 전환되어 `ADMIN_USERNAME` / `ADMIN_PASSWORD` 환경변수는 더 이상 사용되지 않습니다.
+> 현재는 `scripts/seed.py`로 관리자 계정을 생성하며, 이메일 + 비밀번호 방식으로 로그인합니다.
 
 ### 6-2. Docker 빌드 및 서비스 기동
 
@@ -298,15 +292,17 @@ docker compose up --build -d
 curl http://localhost:8000/api/v1/health
 
 # 2. 로그인 → 토큰 발급
+# ⚠️ Sprint 2 당시 형식 (username 기반). Sprint 14 이후 email 방식으로 변경됨
+# 현재 형식: {"email": "frogy95@gmail.com", "password": "비밀번호"}
 curl -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "설정한_비밀번호"}'
-# 응답: {"access_token": "...", "token_type": "bearer"}
+  -d '{"email": "frogy95@gmail.com", "password": "설정한_비밀번호"}'
+# 응답: {"access_token": "...", "refresh_token": "...", "token_type": "bearer"}
 
 # 3. 토큰을 TOKEN 변수에 저장
 TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "설정한_비밀번호"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+  -d '{"email": "frogy95@gmail.com", "password": "설정한_비밀번호"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
 
 # 4. 인증 없이 보호 엔드포인트 접근 → 401 확인
 curl -i http://localhost:8000/api/v1/settings/kis-status
@@ -329,15 +325,13 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/v1/settings/kis
 
 ### 6-5. KIS API 연동 (선택 - API 키가 있는 경우)
 
-KIS API 키가 있다면 `.env`에 입력 후 기동:
+> **⚠️ Sprint 13 이후 KIS API 키는 `.env`가 아닌 설정 페이지(`/settings`)에서 DB로 관리합니다.**
+> 아래 `.env` 방식은 Sprint 2 당시 기준이며, 현재 코드에서는 적용되지 않습니다.
+> 앱 기동 후 `/settings` 페이지에서 KIS 모의/실전 키를 각각 입력하세요.
+
+KIS API 키가 있다면 앱 기동 후 설정 페이지에서 입력:
 
 ```bash
-# .env 설정
-KIS_APP_KEY=실제_앱키
-KIS_APP_SECRET=실제_앱시크릿
-KIS_ACCOUNT_NUMBER=계좌번호  # 예: 50123456-01
-KIS_ENVIRONMENT=vts  # 모의투자
-
 # 재기동
 docker compose up -d backend
 
@@ -1302,7 +1296,10 @@ Sprint 12에서는 KIS 듀얼 키 구조가 도입되었습니다.
 - 시세 API(현재가/차트/지수)는 **항상 실전 키**를 사용
 - 주문/잔고 API는 `KIS_ENVIRONMENT` 설정에 따라 모의투자 또는 실전 키를 사용
 
-### 15-1. .env 파일 마이그레이션 (필수)
+### 16-1. .env 파일 마이그레이션 (Sprint 12 기준 — 현재는 DB 관리)
+
+> **⚠️ Sprint 13 이후 KIS API 키는 DB(`system_settings`)에서 관리합니다.**
+> 아래 마이그레이션 가이드는 Sprint 12 당시 `.env` 방식 기준입니다. 현재 설치 시에는 설정 페이지에서 입력하세요.
 
 기존 단일 키 구조를 새로운 듀얼 키 구조로 변경합니다.
 
@@ -1336,7 +1333,7 @@ KIS_ENVIRONMENT=vts  # vts: 모의투자, real: 실전투자
 > 모의투자 모드(`KIS_ENVIRONMENT=vts`)에서도 `KIS_REAL_APP_KEY / KIS_REAL_APP_SECRET`을
 > 반드시 입력해야 시세 조회가 가능합니다.
 
-### 15-2. KIS Developers에서 앱 2개 생성
+### 16-2. KIS Developers에서 앱 2개 생성
 
 1. [KIS Developers](https://apiportal.koreainvestment.com) 접속 → HTS ID로 로그인
 2. **[앱 관리] → [앱 생성]** 에서 **2개** 앱 생성:
@@ -1455,8 +1452,8 @@ ADMIN_EMAIL=admin@mystock.bot
 # 1. 환경변수 추가 후 컨테이너 재시작
 docker compose up -d --build backend
 
-# 2. 의존성 설치 확인 (python-jose, passlib)
-docker compose exec backend pip list | grep -E "jose|passlib"
+# 2. 의존성 설치 확인 (python-jose, bcrypt — passlib은 PR #22에서 bcrypt로 대체됨)
+docker compose exec backend pip list | grep -E "jose|bcrypt"
 
 # 3. Alembic 마이그레이션 실행
 docker compose exec backend alembic upgrade head

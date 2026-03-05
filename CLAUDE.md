@@ -23,6 +23,7 @@ sprint{n}  →  PR to develop  →  로컬 Docker 스테이징 검증  →  PR t
 - `sprint{n}`: 스프린트 단위 개발 브랜치
 - `develop`: 스테이징 통합 브랜치 (로컬 Docker로 검증)
 - `main`: 프로덕션 브랜치 (GitHub Actions → AWS Lightsail 자동 배포)
+- `hotfix/*`: 긴급 운영 패치 (main + develop 동시 반영)
 
 자세한 CI/CD 정책은 `docs/ci-policy.md` 참조.
 

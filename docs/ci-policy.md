@@ -95,6 +95,8 @@ docker compose up --build
 | 로컬 개발 | `.env` 파일 | Git 미추적 (`.gitignore`) |
 | 프로덕션 | GitHub Secrets | Actions에서 주입 |
 
+> **프로덕션 .env 파일 관리:** Lightsail 서버의 `/opt/mystock-bot/.env`는 서버에 수동으로 생성합니다. GitHub Secrets와 별도로 관리되며, 배포 시 자동으로 덮어쓰지 않습니다. 최초 서버 설정 시 `.env.example`을 복사하여 작성하세요.
+
 ### GitHub Secrets 목록 (프로덕션 필수)
 
 | Secret 이름 | 설명 |
