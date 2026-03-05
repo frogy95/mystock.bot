@@ -174,7 +174,6 @@ async def _run_holdings_sync() -> None:
     KIS 잔고를 조회하여 DB holdings 테이블을 주기적으로 동기화한다.
     장중(09:00~15:30) 매 30분마다 실행된다.
     """
-    from app.core.config import settings as env
     from app.core.database import AsyncSessionLocal
     from app.models.user import User
     from app.services.holding_service import sync_with_kis
@@ -192,7 +191,7 @@ async def _run_holdings_sync() -> None:
     try:
         async with AsyncSessionLocal() as db:
             result = await db.execute(
-                select(User).where(User.username == env.ADMIN_USERNAME)
+                select(User).where(User.role == "admin")
             )
             user = result.scalar_one_or_none()
             if user is None:

@@ -118,7 +118,9 @@ EOF
 4. **롤백 방법** (문제 발생 시):
    ```bash
    # Lightsail SSH 접속 후
+   cd /opt/mystock-bot
    docker pull ghcr.io/frogy95/mystock-bot-backend:v{이전_버전}
+   docker pull ghcr.io/frogy95/mystock-bot-frontend:v{이전_버전}
    docker compose -f docker-compose.prod.yml up -d
    ```
 

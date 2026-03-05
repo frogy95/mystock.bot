@@ -27,13 +27,16 @@ v1.0.0, v1.1.0 ...
 
 ### Docker 이미지 태깅 규칙
 
-Registry: `ghcr.io/frogy95/mystock-bot`
+| 이미지 | Registry |
+|--------|---------|
+| 백엔드 | `ghcr.io/frogy95/mystock-bot-backend` |
+| 프론트엔드 | `ghcr.io/frogy95/mystock-bot-frontend` |
 
 | 브랜치 | Image Tag |
 |--------|-----------|
 | `develop` merge | 이미지 빌드 없음 — 로컬 Docker로만 검증 |
-| `main` merge | `ghcr.io/frogy95/mystock-bot-backend:latest` + `:{commit SHA}` |
-| `hotfix` | `ghcr.io/frogy95/mystock-bot-backend:{MAJOR.MINOR.PATCH}` |
+| `main` merge | `backend:latest`, `backend:{commit SHA}`, `frontend:latest`, `frontend:{commit SHA}` |
+| `hotfix` | `backend:{MAJOR.MINOR.PATCH}`, `frontend:{MAJOR.MINOR.PATCH}` |
 
 > 버전은 Semantic Versioning (`MAJOR.MINOR.PATCH`) 기준
 
@@ -56,7 +59,7 @@ PR이 `develop` 또는 `main`으로 올라오면 GitHub Actions가 자동으로 
 
 1. **pytest 통과** — `backend/tests/` 전체 테스트 통과 필수
 2. **Docker 이미지 빌드 성공** — `backend/` 멀티스테이지 빌드 확인
-3. **(선택) TypeScript 빌드 체크** — `frontend/` Next.js 빌드 오류 없음 확인
+3. **TypeScript 빌드 체크** — Docker 빌드 job에서 프론트엔드 이미지 빌드 시 `next build`가 실행되어 TypeScript/빌드 오류가 자동으로 감지됨
 
 PR merge는 위 조건이 모두 통과된 후에만 가능합니다 (Branch Protection Rule).
 
@@ -102,6 +105,7 @@ docker compose up --build
 | `POSTGRES_PASSWORD` | DB 비밀번호 |
 | `JWT_SECRET` | JWT 서명 키 |
 | `SECRET_KEY` | FastAPI 시크릿 키 |
+| `NEXT_PUBLIC_API_URL` | 프론트엔드에서 사용하는 백엔드 API URL (프론트엔드 Docker 빌드 시 ARG로 주입) |
 
 > KIS API 키, 텔레그램 토큰 등 서비스 설정은 앱 설정 페이지(DB)에서 관리합니다.
 
