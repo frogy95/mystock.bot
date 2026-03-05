@@ -1793,88 +1793,105 @@ docker compose exec backend alembic upgrade head
 
 ---
 
-## Sprint 17: 프로덕션 배포 절차 (AWS Lightsail)
+## 프로덕션 배포 가이드 (AWS Lightsail)
 
-Sprint 17에서 프로덕션 Docker 환경이 준비되었습니다. 아래 절차를 따라 Lightsail에 배포합니다.
+CI/CD 파이프라인 기반의 단계별 배포 가이드입니다. `deploy.yml` 워크플로우가 GHCR에 이미지를 push한 후 Lightsail에 자동 배포합니다.
 
-### 사전 준비 — Lightsail 인스턴스 설정
+---
 
-1. **Lightsail 인스턴스 생성**
-   - OS: Ubuntu 22.04 LTS (권장)
-   - 플랜: $20/월 이상 (RAM 4GB+)
-   - 방화벽: 80 포트(HTTP) 인바운드 허용, 22 포트(SSH) 허용
-   - 스토리지: 80GB (기본 포함)
+### Phase 1: Lightsail 사전 준비 (1회)
 
-2. **Docker 설치**
-   ```bash
-   curl -fsSL https://get.docker.com | sh
-   sudo usermod -aG docker $USER
-   newgrp docker
-   ```
+- ⬜ **인스턴스 생성**
+  - OS: Ubuntu 22.04 LTS
+  - 플랜: $20/월 이상 (RAM 4GB+)
+  - 방화벽: 80 포트(HTTP), 22 포트(SSH) 인바운드 허용
 
-3. **저장소 클론**
-   ```bash
-   git clone https://github.com/frogy95/mystock.bot.git /opt/mystock-bot
-   cd /opt/mystock-bot
-   git checkout main
-   ```
+- ⬜ **Docker 설치**
+  ```bash
+  curl -fsSL https://get.docker.com | sh
+  sudo usermod -aG docker $USER
+  newgrp docker
+  ```
 
-### .env 파일 설정 체크리스트
+- ⬜ **저장소 클론**
+  ```bash
+  git clone https://github.com/frogy95/mystock.bot.git /opt/mystock-bot
+  cd /opt/mystock-bot
+  git checkout main
+  ```
 
-⬜ `.env.example`을 복사하여 `.env` 생성
+- ⬜ **`.env` 파일 생성 및 설정**
+  ```bash
+  cp .env.example .env
+  # 아래 항목 편집
+  python3 -c "import secrets; print(secrets.token_hex(32))"  # SECRET_KEY, JWT_SECRET 생성용
+  ```
+  필수 설정값:
+  - `SECRET_KEY`, `JWT_SECRET` — 위 명령으로 각각 생성
+  - `POSTGRES_PASSWORD` — 특수문자 포함 12자 이상
+  - `DEBUG=false`
+  - `CORS_ORIGINS=http://{서버IP}` (또는 실제 도메인)
+  - `POSTGRES_HOST=postgres`, `REDIS_HOST=redis`
+  - `NEXT_PUBLIC_API_URL=http://{서버IP}`
+
+  > ℹ️ KIS API 키 및 텔레그램 설정은 앱 실행 후 관리자 페이지(설정 > 연동)에서 입력합니다.
+
+---
+
+### Phase 2: GitHub 사전 준비 (1회)
+
+- ⬜ **GitHub Secrets 설정** (저장소 Settings > Secrets and variables > Actions)
+
+  | Secret 이름 | 설명 |
+  |-------------|------|
+  | `LIGHTSAIL_SSH_KEY` | Lightsail 인스턴스 SSH 개인키 (PEM 전체 내용) |
+  | `LIGHTSAIL_HOST` | Lightsail 퍼블릭 IP |
+  | `LIGHTSAIL_USER` | SSH 접속 사용자명 (보통 `ubuntu`) |
+  | `POSTGRES_PASSWORD` | Phase 1에서 설정한 DB 비밀번호 |
+  | `JWT_SECRET` | Phase 1에서 생성한 JWT 시크릿 |
+  | `SECRET_KEY` | Phase 1에서 생성한 앱 시크릿 |
+  | `NEXT_PUBLIC_API_URL` | 프론트엔드 API URL (예: `http://{서버IP}`) |
+
+  자세한 Secrets 설명은 `docs/ci-policy.md` 참조.
+
+---
+
+### Phase 3: 배포 실행
+
+- ⬜ `develop` → `main` PR 생성 및 머지
+- ⬜ **GitHub Actions 모니터링**: https://github.com/frogy95/mystock.bot/actions
+  - `ci.yml` CI 워크플로우 통과 확인
+  - `deploy.yml` 완료 확인 (GHCR 이미지 push + Lightsail SSH 배포)
+
+---
+
+### Phase 4: 배포 후 확인
+
+- ⬜ **DB 마이그레이션** (최초 1회 또는 스키마 변경 시)
+  ```bash
+  ssh {LIGHTSAIL_USER}@{LIGHTSAIL_HOST}
+  cd /opt/mystock-bot
+  docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
+  ```
+  ⚠️ 되돌릴 수 없으므로 반드시 수동으로 실행합니다.
+
+- ⬜ **헬스체크**: `curl http://{서버IP}/api/v1/health` → 200 응답 확인
+- ⬜ 프론트엔드 메인 페이지 접속 확인
+- ⬜ 관리자 로그인 동작 확인
+
+---
+
+### 롤백 방법 (문제 발생 시)
+
 ```bash
-cp .env.example .env
+# Lightsail SSH 접속 후
+cd /opt/mystock-bot
+docker pull ghcr.io/frogy95/mystock-bot-backend:v0.16.0
+docker pull ghcr.io/frogy95/mystock-bot-frontend:v0.16.0
+docker compose -f docker-compose.prod.yml up -d
 ```
 
-⬜ **보안 필수 변경 항목:**
-```bash
-# 시크릿 키 생성 후 입력
-python3 -c "import secrets; print(secrets.token_hex(32))"
-```
-- `SECRET_KEY=<위 명령으로 생성한 값>`
-- `JWT_SECRET=<위 명령으로 다시 생성한 값>`
-- `POSTGRES_PASSWORD=<안전한 비밀번호, 특수문자 포함 12자 이상>`
-
-⬜ **운영 환경 설정:**
-- `DEBUG=false`
-- `CORS_ORIGINS=https://yourdomain.com` (실제 도메인으로 변경)
-
-⬜ **서비스 연동:**
-- `POSTGRES_HOST=postgres`
-- `REDIS_HOST=redis`
-- `NEXT_PUBLIC_API_URL=http://yourdomain.com` (또는 서버 IP)
-
-> ℹ️ KIS API 키 및 텔레그램 설정은 앱 실행 후 관리자 페이지(설정 > 연동)에서 DB에 직접 입력합니다.
-
-### 프로덕션 빌드 및 기동
-
-```bash
-# 프로덕션 이미지 빌드 및 컨테이너 기동
-docker compose -f docker-compose.prod.yml up -d --build
-```
-
-### DB 마이그레이션 (최초 1회)
-
-```bash
-docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
-```
-
-⚠️ **주의:** 이 작업은 되돌릴 수 없으므로 반드시 수동으로 실행합니다.
-
-### 헬스체크 확인
-
-```bash
-# Nginx 경유 API 헬스체크 (200 응답 확인)
-curl http://localhost/api/v1/health
-
-# 컨테이너 상태 확인
-docker compose -f docker-compose.prod.yml ps
-```
-
-**예상 응답:**
-```json
-{"status": "healthy", "timestamp": "...", "version": "0.1.0", "checks": {...}}
-```
+---
 
 ### 모의투자 5일 안정 운영 가이드
 
@@ -1888,67 +1905,33 @@ docker compose -f docker-compose.prod.yml ps
 | 헬스체크 | `curl http://서버IP/api/v1/health` | 매일 |
 | KIS 토큰 갱신 | 백엔드 로그에서 `KIS 토큰 갱신` 메시지 확인 | 매일 |
 
-### 자동 검증 완료 항목 (Sprint 17)
+---
 
+## 배포 이력
+
+### v0.17.0 (2026-03-05)
+
+#### 포함 스프린트
+- Sprint 17: MVP 프로덕션 배포 준비 (Docker prod, Nginx, CI/CD 파이프라인)
+- Sprint 17 후속: 설정 간소화, CI/CD 워크플로우, 문서 업데이트
+
+#### PR
+- [release: v0.17.0 프로덕션 배포 (#27)](https://github.com/frogy95/mystock.bot/pull/27)
+
+#### 자동 검증 완료 항목
 - ✅ docker-compose.prod.yml 문법 검증: `docker compose -f docker-compose.prod.yml config`
 - ✅ Dockerfile.prod 파일 생성 확인 (백엔드/프론트엔드)
 - ✅ CORS 환경변수화 코드 반영 (`settings.CORS_ORIGINS` 적용)
 - ✅ 헬스체크 503 반환 코드 반영 (`JSONResponse` with `status_code=503`)
 - ✅ gunicorn 의존성 추가 (`backend/requirements.txt`)
-
-### 수동 검증 필요 항목 (Sprint 17)
-
-- ⬜ `docker compose -f docker-compose.prod.yml up --build` 로컬 정상 기동 확인
-- ⬜ `curl http://localhost/api/v1/health` → Nginx 경유 200 응답 확인
-- ⬜ postgres/redis 포트 외부 접근 불가 확인 (`curl localhost:5432` 실패 확인)
-- ⬜ `docker compose exec backend pytest -v` → 테스트 통과 확인
-- ⬜ 프론트엔드 프로덕션 빌드 에러 없음 확인 (`next build`)
-
----
-
-## 프로덕션 배포 - v0.17.0 (2026-03-05)
-
-### 포함 스프린트
-- Sprint 17: MVP 프로덕션 배포 준비 (Docker prod, Nginx, CI/CD 파이프라인)
-- Sprint 17 후속: 설정 간소화, CI/CD 워크플로우, 문서 업데이트
-
-### PR
-- [release: v0.17.0 프로덕션 배포 (#27)](https://github.com/frogy95/mystock.bot/pull/27)
-
-### 자동 배포 (GitHub Actions)
+- ✅ develop 브랜치 커밋 정상 상태 확인 (e2a16e2)
+- ✅ GitHub Actions 워크플로우 파일 존재 확인 (ci.yml, deploy.yml)
 - ✅ main merge 시 `ci.yml` CI 체크 자동 실행
 - ✅ main merge 시 `deploy.yml` — GHCR 이미지 push + Lightsail SSH 배포 자동 실행
 
-### 자동 검증 완료 항목 (Sprint 17 후속)
-- ✅ develop 브랜치 커밋 정상 상태 확인 (e2a16e2)
-- ✅ main과 develop 차이 요약 확인 (14파일, +701/-116)
-- ✅ GitHub Actions 워크플로우 파일 존재 확인 (ci.yml, deploy.yml)
-- ✅ deploy.md 최신 상태 확인
-
-### 수동 검증 필요 항목 (v0.17.0 배포 후)
-
-#### GitHub Actions 모니터링
-- ⬜ CI 워크플로우 통과 확인: https://github.com/frogy95/mystock.bot/actions
-- ⬜ 배포 워크플로우 완료 확인 (deploy.yml — GHCR push + Lightsail 배포)
-
-#### 서버 접속 확인
-- ⬜ 헬스체크: `curl https://{도메인}/api/v1/health` → 200 응답 확인
-- ⬜ 프론트엔드 메인 페이지 접속 확인
-- ⬜ 관리자 로그인 동작 확인
-
-#### DB 마이그레이션 (스키마 변경이 있는 경우)
-```bash
-ssh {LIGHTSAIL_USER}@{LIGHTSAIL_HOST}
-cd /opt/mystock-bot
-docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
-```
-
-### 롤백 방법 (문제 발생 시)
-```bash
-# Lightsail SSH 접속 후
-cd /opt/mystock-bot
-docker pull ghcr.io/frogy95/mystock-bot-backend:v0.16.0
-docker pull ghcr.io/frogy95/mystock-bot-frontend:v0.16.0
-docker compose -f docker-compose.prod.yml up -d
-```
+#### 수동 검증 필요 항목
+- ⬜ `docker compose -f docker-compose.prod.yml up --build` 로컬 정상 기동 확인
+- ⬜ `curl http://localhost/api/v1/health` → Nginx 경유 200 응답 확인
+- ⬜ postgres/redis 포트 외부 접근 불가 확인 (`curl localhost:5432` 실패 확인)
+- ⬜ Phase 3~4 배포 가이드 실행 및 서버 정상 동작 확인
 
