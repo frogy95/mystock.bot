@@ -25,12 +25,10 @@
 3. **[앱 관리] → [앱 생성]** 클릭
 4. 앱 이름 입력 후 생성
 5. 생성된 앱의 **App Key**와 **App Secret** 메모
-6. `.env` 파일에 입력:
-  ```
-   KIS_APP_KEY=발급받은_App_Key
-   KIS_APP_SECRET=발급받은_App_Secret
-   KIS_ACCOUNT_NUMBER=계좌번호 (하이픈 포함, 예: 50123456-01)
-  ```
+6. 앱 실행 후 **설정 페이지(`/settings`)에서 KIS API 키 입력**
+
+> **참고:** Sprint 12 이후 KIS API 키는 `.env`가 아닌 DB(`system_settings`)에서 관리합니다.
+> 앱을 실행하고 설정 페이지에서 모의투자/실전투자 키를 각각 입력하세요.
 
 ### 1-4. 모의투자 신청 (개발 환경용)
 
@@ -274,15 +272,11 @@ docker compose logs --tail=20 frontend
 
 Sprint 2에서는 KIS API 클라이언트, 단일 유저 인증, 프론트엔드 레이아웃이 추가되었습니다.
 
-### 6-1. ADMIN_PASSWORD 설정
+### 6-1. ADMIN_PASSWORD 설정 (Sprint 14 이후 폐기됨)
 
-`.env` 파일에서 관리자 비밀번호를 변경합니다:
-
-```bash
-# .env 파일 편집
-# ADMIN_USERNAME=admin          ← 원하는 유저명으로 변경 가능
-# ADMIN_PASSWORD=your_admin_password_here  ← 반드시 안전한 비밀번호로 변경
-```
+> **⚠️ 이 섹션은 Sprint 2 당시 기준입니다.**
+> Sprint 14에서 JWT 인증으로 전환되어 `ADMIN_USERNAME` / `ADMIN_PASSWORD` 환경변수는 더 이상 사용되지 않습니다.
+> 현재는 `scripts/seed.py`로 관리자 계정을 생성하며, 이메일 + 비밀번호 방식으로 로그인합니다.
 
 ### 6-2. Docker 빌드 및 서비스 기동
 
@@ -298,15 +292,17 @@ docker compose up --build -d
 curl http://localhost:8000/api/v1/health
 
 # 2. 로그인 → 토큰 발급
+# ⚠️ Sprint 2 당시 형식 (username 기반). Sprint 14 이후 email 방식으로 변경됨
+# 현재 형식: {"email": "frogy95@gmail.com", "password": "비밀번호"}
 curl -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "설정한_비밀번호"}'
-# 응답: {"access_token": "...", "token_type": "bearer"}
+  -d '{"email": "frogy95@gmail.com", "password": "설정한_비밀번호"}'
+# 응답: {"access_token": "...", "refresh_token": "...", "token_type": "bearer"}
 
 # 3. 토큰을 TOKEN 변수에 저장
 TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "설정한_비밀번호"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+  -d '{"email": "frogy95@gmail.com", "password": "설정한_비밀번호"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
 
 # 4. 인증 없이 보호 엔드포인트 접근 → 401 확인
 curl -i http://localhost:8000/api/v1/settings/kis-status
@@ -329,15 +325,13 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/v1/settings/kis
 
 ### 6-5. KIS API 연동 (선택 - API 키가 있는 경우)
 
-KIS API 키가 있다면 `.env`에 입력 후 기동:
+> **⚠️ Sprint 13 이후 KIS API 키는 `.env`가 아닌 설정 페이지(`/settings`)에서 DB로 관리합니다.**
+> 아래 `.env` 방식은 Sprint 2 당시 기준이며, 현재 코드에서는 적용되지 않습니다.
+> 앱 기동 후 `/settings` 페이지에서 KIS 모의/실전 키를 각각 입력하세요.
+
+KIS API 키가 있다면 앱 기동 후 설정 페이지에서 입력:
 
 ```bash
-# .env 설정
-KIS_APP_KEY=실제_앱키
-KIS_APP_SECRET=실제_앱시크릿
-KIS_ACCOUNT_NUMBER=계좌번호  # 예: 50123456-01
-KIS_ENVIRONMENT=vts  # 모의투자
-
 # 재기동
 docker compose up -d backend
 
@@ -1302,7 +1296,10 @@ Sprint 12에서는 KIS 듀얼 키 구조가 도입되었습니다.
 - 시세 API(현재가/차트/지수)는 **항상 실전 키**를 사용
 - 주문/잔고 API는 `KIS_ENVIRONMENT` 설정에 따라 모의투자 또는 실전 키를 사용
 
-### 15-1. .env 파일 마이그레이션 (필수)
+### 16-1. .env 파일 마이그레이션 (Sprint 12 기준 — 현재는 DB 관리)
+
+> **⚠️ Sprint 13 이후 KIS API 키는 DB(`system_settings`)에서 관리합니다.**
+> 아래 마이그레이션 가이드는 Sprint 12 당시 `.env` 방식 기준입니다. 현재 설치 시에는 설정 페이지에서 입력하세요.
 
 기존 단일 키 구조를 새로운 듀얼 키 구조로 변경합니다.
 
@@ -1336,7 +1333,7 @@ KIS_ENVIRONMENT=vts  # vts: 모의투자, real: 실전투자
 > 모의투자 모드(`KIS_ENVIRONMENT=vts`)에서도 `KIS_REAL_APP_KEY / KIS_REAL_APP_SECRET`을
 > 반드시 입력해야 시세 조회가 가능합니다.
 
-### 15-2. KIS Developers에서 앱 2개 생성
+### 16-2. KIS Developers에서 앱 2개 생성
 
 1. [KIS Developers](https://apiportal.koreainvestment.com) 접속 → HTS ID로 로그인
 2. **[앱 관리] → [앱 생성]** 에서 **2개** 앱 생성:
@@ -1455,8 +1452,8 @@ ADMIN_EMAIL=admin@mystock.bot
 # 1. 환경변수 추가 후 컨테이너 재시작
 docker compose up -d --build backend
 
-# 2. 의존성 설치 확인 (python-jose, passlib)
-docker compose exec backend pip list | grep -E "jose|passlib"
+# 2. 의존성 설치 확인 (python-jose, bcrypt — passlib은 PR #22에서 bcrypt로 대체됨)
+docker compose exec backend pip list | grep -E "jose|bcrypt"
 
 # 3. Alembic 마이그레이션 실행
 docker compose exec backend alembic upgrade head
@@ -1793,116 +1790,146 @@ docker compose exec backend alembic upgrade head
 
 ---
 
-## Sprint 17: 프로덕션 배포 절차 (AWS EC2)
+## 프로덕션 배포 가이드 (AWS Lightsail)
 
-Sprint 17에서 프로덕션 Docker 환경이 준비되었습니다. 아래 절차를 따라 EC2에 배포합니다.
+CI/CD 파이프라인 기반의 단계별 배포 가이드입니다. `deploy.yml` 워크플로우가 GHCR에 이미지를 push한 후 Lightsail에 자동 배포합니다.
 
-### 사전 준비 — EC2 인스턴스 설정
+---
 
-1. **EC2 인스턴스 생성**
-   - OS: Ubuntu 22.04 LTS (권장)
-   - 인스턴스 타입: t3.medium 이상 (RAM 4GB+)
-   - 보안 그룹: 80 포트(HTTP) 인바운드 허용, 22 포트(SSH) 허용
-   - EBS: 20GB 이상
+### Phase 1: Lightsail 사전 준비 (1회)
 
-2. **Docker 설치**
-   ```bash
-   curl -fsSL https://get.docker.com | sh
-   sudo usermod -aG docker $USER
-   newgrp docker
-   ```
+- ✅ **인스턴스 생성**
+  - OS: Ubuntu 22.04 LTS
+  - 플랜: $20/월 이상 (RAM 4GB+)
+  - 방화벽: 80 포트(HTTP), 22 포트(SSH) 인바운드 허용
+- ✅ **Docker 설치**
+  ```bash
+  curl -fsSL https://get.docker.com | sh
+  sudo usermod -aG docker $USER
+  newgrp docker
+  ```
+- ✅ **저장소 클론**
+  ```bash
+  git clone https://github.com/frogy95/mystock.bot.git /opt/mystock-bot
+  cd /opt/mystock-bot
+  git checkout main
+  ```
+- ✅ `**.env` 파일 생성 및 설정**
+  ```bash
+  cp .env.example .env
+  # 아래 항목 편집
+  python3 -c "import secrets; print(secrets.token_hex(32))"  # SECRET_KEY, JWT_SECRET 생성용
+  ```
+  필수 설정값:
+  - `SECRET_KEY`, `JWT_SECRET` — 위 명령으로 각각 생성
+  - `POSTGRES_PASSWORD` — 특수문자 포함 12자 이상
+  - `DEBUG=false`
+  - `CORS_ORIGINS=http://{서버IP}` (또는 실제 도메인)
+  - `POSTGRES_HOST=postgres`, `REDIS_HOST=redis`
+  - `NEXT_PUBLIC_API_URL=http://{서버IP}`
+    > ℹ️ KIS API 키 및 텔레그램 설정은 앱 실행 후 관리자 페이지(설정 > 연동)에서 입력합니다.
 
-3. **저장소 클론**
-   ```bash
-   git clone https://github.com/frogy95/mystock.bot.git
-   cd mystock.bot
-   git checkout main
-   ```
+---
 
-### .env 파일 설정 체크리스트
+### Phase 2: GitHub 사전 준비 (1회)
 
-⬜ `.env.example`을 복사하여 `.env` 생성
+- ⬜ **GitHub Secrets 설정** (저장소 Settings > Secrets and variables > Actions)
+
+  | Secret 이름             | 설명                                 |
+  | --------------------- | ---------------------------------- |
+  | `LIGHTSAIL_SSH_KEY`   | Lightsail 인스턴스 SSH 개인키 (PEM 전체 내용) |
+  | `LIGHTSAIL_HOST`      | Lightsail 퍼블릭 IP                   |
+  | `LIGHTSAIL_USER`      | SSH 접속 사용자명 (보통 `ubuntu`)          |
+  | `POSTGRES_PASSWORD`   | Phase 1에서 설정한 DB 비밀번호              |
+  | `JWT_SECRET`          | Phase 1에서 생성한 JWT 시크릿              |
+  | `SECRET_KEY`          | Phase 1에서 생성한 앱 시크릿                |
+  | `NEXT_PUBLIC_API_URL` | 프론트엔드 API URL (예: `http://{서버IP}`) |
+
+  자세한 Secrets 설명은 `docs/ci-policy.md` 참조.
+
+---
+
+### Phase 3: 배포 실행
+
+- ⬜ `develop` → `main` PR 생성 및 머지
+- ⬜ **GitHub Actions 모니터링**: [https://github.com/frogy95/mystock.bot/actions](https://github.com/frogy95/mystock.bot/actions)
+  - `ci.yml` CI 워크플로우 통과 확인
+  - `deploy.yml` 완료 확인 (GHCR 이미지 push + Lightsail SSH 배포)
+
+---
+
+### Phase 4: 배포 후 확인
+
+- ⬜ **DB 마이그레이션** (최초 1회 또는 스키마 변경 시)
+  ```bash
+  ssh {LIGHTSAIL_USER}@{LIGHTSAIL_HOST}
+  cd /opt/mystock-bot
+  docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
+  ```
+  ⚠️ 되돌릴 수 없으므로 반드시 수동으로 실행합니다.
+- ⬜ **헬스체크**: `curl http://{서버IP}/api/v1/health` → 200 응답 확인
+- ⬜ 프론트엔드 메인 페이지 접속 확인
+- ⬜ 관리자 로그인 동작 확인
+
+---
+
+### 롤백 방법 (문제 발생 시)
+
 ```bash
-cp .env.example .env
+# Lightsail SSH 접속 후
+cd /opt/mystock-bot
+docker pull ghcr.io/frogy95/mystock-bot-backend:v0.16.0
+docker pull ghcr.io/frogy95/mystock-bot-frontend:v0.16.0
+docker compose -f docker-compose.prod.yml up -d
 ```
 
-⬜ **보안 필수 변경 항목:**
-```bash
-# 시크릿 키 생성 후 입력
-python3 -c "import secrets; print(secrets.token_hex(32))"
-```
-- `SECRET_KEY=<위 명령으로 생성한 값>`
-- `JWT_SECRET=<위 명령으로 다시 생성한 값>`
-- `POSTGRES_PASSWORD=<안전한 비밀번호, 특수문자 포함 12자 이상>`
-- `ADMIN_PASSWORD=<안전한 비밀번호>`
-
-⬜ **운영 환경 설정:**
-- `DEBUG=false`
-- `CORS_ORIGINS=https://yourdomain.com` (실제 도메인으로 변경)
-
-⬜ **서비스 연동:**
-- `POSTGRES_HOST=postgres`
-- `REDIS_HOST=redis`
-- `NEXT_PUBLIC_API_URL=http://yourdomain.com` (또는 서버 IP)
-
-⬜ KIS API 키 입력 (KIS_VTS_APP_KEY 등)
-⬜ 텔레그램 봇 토큰 입력
-
-### 프로덕션 빌드 및 기동
-
-```bash
-# 프로덕션 이미지 빌드 및 컨테이너 기동
-docker compose -f docker-compose.prod.yml up -d --build
-```
-
-### DB 마이그레이션 (최초 1회)
-
-```bash
-docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
-```
-
-⚠️ **주의:** 이 작업은 되돌릴 수 없으므로 반드시 수동으로 실행합니다.
-
-### 헬스체크 확인
-
-```bash
-# Nginx 경유 API 헬스체크 (200 응답 확인)
-curl http://localhost/api/v1/health
-
-# 컨테이너 상태 확인
-docker compose -f docker-compose.prod.yml ps
-```
-
-**예상 응답:**
-```json
-{"status": "healthy", "timestamp": "...", "version": "0.1.0", "checks": {...}}
-```
+---
 
 ### 모의투자 5일 안정 운영 가이드
 
 배포 후 최소 5거래일간 아래 항목을 모니터링합니다:
 
-| 항목 | 확인 방법 | 주기 |
-|------|-----------|------|
-| 컨테이너 재시작 여부 | `docker compose -f docker-compose.prod.yml ps` | 매일 |
-| 백엔드 로그 오류 | `docker compose -f docker-compose.prod.yml logs backend --tail 100` | 매일 |
-| DB 용량 | `docker system df` | 주 1회 |
-| 헬스체크 | `curl http://서버IP/api/v1/health` | 매일 |
-| KIS 토큰 갱신 | 백엔드 로그에서 `KIS 토큰 갱신` 메시지 확인 | 매일 |
 
-### 자동 검증 완료 항목 (Sprint 17)
+| 항목          | 확인 방법                                                               | 주기   |
+| ----------- | ------------------------------------------------------------------- | ---- |
+| 컨테이너 재시작 여부 | `docker compose -f docker-compose.prod.yml ps`                      | 매일   |
+| 백엔드 로그 오류   | `docker compose -f docker-compose.prod.yml logs backend --tail 100` | 매일   |
+| DB 용량       | `docker system df`                                                  | 주 1회 |
+| 헬스체크        | `curl http://서버IP/api/v1/health`                                    | 매일   |
+| KIS 토큰 갱신   | 백엔드 로그에서 `KIS 토큰 갱신` 메시지 확인                                         | 매일   |
+
+
+---
+
+## 배포 이력
+
+### v0.17.0 (2026-03-05)
+
+#### 포함 스프린트
+
+- Sprint 17: MVP 프로덕션 배포 준비 (Docker prod, Nginx, CI/CD 파이프라인)
+- Sprint 17 후속: 설정 간소화, CI/CD 워크플로우, 문서 업데이트
+
+#### PR
+
+- [release: v0.17.0 프로덕션 배포 (#27)](https://github.com/frogy95/mystock.bot/pull/27)
+
+#### 자동 검증 완료 항목
 
 - ✅ docker-compose.prod.yml 문법 검증: `docker compose -f docker-compose.prod.yml config`
 - ✅ Dockerfile.prod 파일 생성 확인 (백엔드/프론트엔드)
 - ✅ CORS 환경변수화 코드 반영 (`settings.CORS_ORIGINS` 적용)
 - ✅ 헬스체크 503 반환 코드 반영 (`JSONResponse` with `status_code=503`)
 - ✅ gunicorn 의존성 추가 (`backend/requirements.txt`)
+- ✅ develop 브랜치 커밋 정상 상태 확인 (e2a16e2)
+- ✅ GitHub Actions 워크플로우 파일 존재 확인 (ci.yml, deploy.yml)
+- ✅ main merge 시 `ci.yml` CI 체크 자동 실행
+- ✅ main merge 시 `deploy.yml` — GHCR 이미지 push + Lightsail SSH 배포 자동 실행
 
-### 수동 검증 필요 항목 (Sprint 17)
+#### 수동 검증 필요 항목
 
 - ⬜ `docker compose -f docker-compose.prod.yml up --build` 로컬 정상 기동 확인
 - ⬜ `curl http://localhost/api/v1/health` → Nginx 경유 200 응답 확인
 - ⬜ postgres/redis 포트 외부 접근 불가 확인 (`curl localhost:5432` 실패 확인)
-- ⬜ `docker compose exec backend pytest -v` → 테스트 통과 확인
-- ⬜ 프론트엔드 프로덕션 빌드 에러 없음 확인 (`next build`)
+- ⬜ Phase 3~4 배포 가이드 실행 및 서버 정상 동작 확인
 
