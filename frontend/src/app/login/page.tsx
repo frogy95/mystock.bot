@@ -6,6 +6,7 @@
  */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Bot, Cpu, Shield, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +31,7 @@ interface TokenResponse {
 
 export default function LoginPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const login = useAuthStore((state) => state.login);
   const setRole = useAuthStore((state) => state.setRole);
   const [email, setEmail] = useState("");
@@ -62,6 +64,8 @@ export default function LoginPage() {
       } catch {
         // me 호출 실패해도 로그인 자체는 유지한다
       }
+      // 이전 세션의 캐시 제거 후 대시보드로 이동
+      queryClient.clear();
       router.replace("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "로그인에 실패했습니다.");
@@ -89,6 +93,8 @@ export default function LoginPage() {
       } catch {
         // me 호출 실패해도 로그인 자체는 유지한다
       }
+      // 이전 세션의 캐시 제거 후 대시보드로 이동
+      queryClient.clear();
       router.replace("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "데모 로그인에 실패했습니다.");

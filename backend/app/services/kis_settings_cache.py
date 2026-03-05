@@ -1,12 +1,12 @@
 """
 KIS 설정 캐시 모듈
 DB의 system_settings 테이블에서 KIS 자격증명을 읽어 메모리에 캐싱한다.
-환경변수(config.settings)는 폴백으로만 사용된다.
+KIS/Telegram 설정은 DB(system_settings)에서만 관리하며 환경변수 폴백은 사용하지 않는다.
 """
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from sqlalchemy import select
 
@@ -31,29 +31,12 @@ class KISSettings:
 _cached_settings: KISSettings | None = None
 
 
-def _build_from_env() -> KISSettings:
-    """환경변수(config.settings)에서 KISSettings를 구성한다."""
-    from app.core.config import settings as env
-
-    return KISSettings(
-        vts_app_key=env.KIS_VTS_APP_KEY,
-        vts_app_secret=env.KIS_VTS_APP_SECRET,
-        vts_account_number=env.KIS_VTS_ACCOUNT_NUMBER,
-        real_app_key=env.KIS_REAL_APP_KEY,
-        real_app_secret=env.KIS_REAL_APP_SECRET,
-        real_account_number=env.KIS_REAL_ACCOUNT_NUMBER,
-        hts_id=env.KIS_HTS_ID,
-        environment=env.KIS_ENVIRONMENT,
-    )
-
-
 async def load_kis_settings() -> None:
     """DB에서 admin 사용자의 KIS 설정을 읽어 캐시를 갱신한다.
-    DB 조회 실패 또는 값이 없으면 환경변수로 폴백한다.
+    DB 조회 실패 또는 admin 사용자가 없으면 빈 설정을 사용한다.
     """
     global _cached_settings
 
-    from app.core.config import settings as env
     from app.core.database import AsyncSessionLocal
     from app.models.user import User
     from app.models.settings import SystemSetting
@@ -72,14 +55,14 @@ async def load_kis_settings() -> None:
 
     try:
         async with AsyncSessionLocal() as db:
-            # admin 사용자 ID 조회
+            # role=admin 사용자 ID 조회
             result = await db.execute(
-                select(User).where(User.username == env.ADMIN_USERNAME)
+                select(User).where(User.role == "admin")
             )
             user = result.scalar_one_or_none()
             if user is None:
-                logger.warning("KIS 설정 로드: admin 사용자(%s)를 찾을 수 없음 → 환경변수 사용", env.ADMIN_USERNAME)
-                _cached_settings = _build_from_env()
+                logger.warning("KIS 설정 로드: admin 사용자를 찾을 수 없음 → 빈 설정 사용")
+                _cached_settings = KISSettings()
                 return
 
             # 해당 사용자의 KIS 관련 설정값 조회
@@ -94,8 +77,8 @@ async def load_kis_settings() -> None:
         # DB값을 딕셔너리로 변환
         db_values: dict[str, str] = {row.setting_key: row.setting_value for row in rows}
 
-        # 환경변수를 기본값으로 먼저 채운 뒤 DB값으로 덮어쓴다
-        cfg = _build_from_env()
+        # 기본값(빈 문자열)에서 시작해 DB값으로 채운다
+        cfg = KISSettings()
         for db_key, field_name in _KEY_MAP.items():
             val = db_values.get(db_key, "")
             if val:  # DB에 값이 있을 때만 덮어씀
@@ -105,16 +88,16 @@ async def load_kis_settings() -> None:
         logger.info("KIS 설정 DB 로드 완료 (environment=%s)", cfg.environment)
 
     except Exception as exc:
-        logger.warning("KIS 설정 DB 로드 실패: %s → 환경변수 사용", exc)
-        _cached_settings = _build_from_env()
+        logger.warning("KIS 설정 DB 로드 실패: %s → 빈 설정 사용", exc)
+        _cached_settings = KISSettings()
 
 
 def get_kis_settings() -> KISSettings:
     """캐시된 KISSettings를 반환한다.
-    캐시가 비어 있으면 환경변수 기반 기본값을 반환한다 (비동기 불가 컨텍스트 안전).
+    캐시가 비어 있으면 빈 기본값을 반환한다 (비동기 불가 컨텍스트 안전).
     """
     if _cached_settings is None:
-        return _build_from_env()
+        return KISSettings()
     return _cached_settings
 
 

@@ -51,7 +51,8 @@ export function useUpdateSettings() {
     mutationFn: (settings) =>
       apiClient.put<SettingItemAPI[]>("/api/v1/system-settings", { settings }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      // kis_mode 등 설정 변경 시 모든 데이터 쿼리를 즉시 무효화하여 리페칭
+      queryClient.invalidateQueries();
     },
     onError: (error) => {
       // 설정 업데이트 실패 로깅 (toast는 MutationCache 글로벌 핸들러에서 처리)

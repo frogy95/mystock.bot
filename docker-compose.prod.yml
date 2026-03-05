@@ -42,6 +42,7 @@ services:
 
   # FastAPI 백엔드 서버 (gunicorn + uvicorn worker)
   backend:
+    image: ghcr.io/frogy95/mystock-bot-backend:latest
     build:
       context: .
       dockerfile: docker/backend/Dockerfile.prod
@@ -71,6 +72,7 @@ services:
 
   # Next.js 프론트엔드 서버 (standalone 빌드)
   frontend:
+    image: ghcr.io/frogy95/mystock-bot-frontend:latest
     build:
       context: .
       dockerfile: docker/frontend/Dockerfile.prod

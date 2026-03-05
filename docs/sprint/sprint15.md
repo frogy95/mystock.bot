@@ -26,7 +26,7 @@ Sprint 14에서 구축한 JWT 멀티유저 인증 기반 위에 데이터 격리
 - ✅ PUT /strategies/{id}/activate, /params → 본인 소유만 수정 가능 (프리셋 404)
 - ✅ GET /backtest/results → 본인 결과만 조회
 - ✅ 프론트엔드: 프리셋 토글 차단 UI, "내 전략으로 복사" 버튼
-- ✅ 전체 테스트 40 passed (기존 33 + 신규 7)
+- ✅ 전체 테스트 45 passed (기존 33 + 신규 12, 2단계 완료 후 최종 수치)
 
 ## 주요 변경 사항
 

@@ -54,11 +54,22 @@
 - **Sprint 9 (Phase 4):** 완료 (2026-03-02)
   - 텔레그램 알림 서비스 완성, 실시간 WebSocket 체결 알림 UI, 대시보드 Mock → 실제 API 교체
   - 브랜치: sprint9, PR: https://github.com/frogy95/mystock.bot/pull/14
-- **Sprint 10 (Phase 5):** 계획 수립 완료 (2026-03-02)
-  - 범위: 백엔드 에러 핸들링 강화, 구조화 로깅, 프론트엔드 에러 핸들링, Mock→API 전환, 통합 테스트, 안전장치 검증
-  - 기간: 2026-05-04 ~ 2026-05-09
-  - 6개 Task (Task 0~6), 브랜치: sprint10
-  - 계획 파일: /docs/sprint/sprint10.md
+- **Sprint 10 (Phase 5):** 완료 (2026-03-02)
+  - 범위: 백엔드 에러 핸들링 강화, 구조화 로깅, 프론트엔드 에러 핸들링, Mock→API 전환, 통합 테스트
+  - 브랜치: sprint10
+- **Sprint 11 (Phase 5+):** 완료 (2026-03-02) — 로그인 페이지 + 데모 모드
+- **Sprint 12 (Phase 5+):** 완료 (2026-03-03) — KIS API 듀얼 환경 분리
+- **Sprint 13 (Phase 6):** 완료 (2026-03-03) — MVP 안정화 (긴급 버그 수정, 33개 테스트)
+- **Sprint 14 (Phase 7):** 완료 (2026-03-03) — JWT 인증 + User 모델 확장, InvitationCode 모델
+  - 관리자 API: GET/POST /admin/invitations, GET/PUT /admin/users (승인/비활성화)
+  - 브랜치: sprint14, PR: #21, #22
+- **Sprint 15 (Phase 7):** 완료 (2026-03-03) — 사용자별 전략/백테스트 데이터 격리
+  - 전략 clone API, 프리셋 토글 차단 UI, 45개 테스트 통과
+  - 브랜치: sprint-15
+- **Sprint 16 (Phase 8):** 계획 수립 완료 (2026-03-03)
+  - 범위: 관리자 대시보드 UI + 초대코드 회원가입 플로우 완성
+  - 11개 Task (Task 0~11), 브랜치: sprint-16
+  - 계획 파일: /docs/sprint/sprint16.md
 
 ## 핵심 파일 경로
 - ROADMAP: /ROADMAP.md
@@ -114,6 +125,15 @@ users, watchlist_groups, watchlist_items, strategies, strategy_params, orders, o
 - 설정 화면: max-w-3xl 제한하여 과도한 폼 너비 방지
 - 주문 내역: 상태별 Badge 색상 - FILLED(초록), PENDING(노랑), CANCELLED(회색)
 - Mock delay: 300~700ms 범위 (Sprint 3 패턴 유지)
+
+## Sprint 16 핵심 주의사항
+- 관리자 백엔드 API(admin.py)는 이미 완성 — 프론트엔드 UI만 추가
+- auth-store에 role 필드 없을 수 있음 → /auth/me 엔드포인트 추가 필요 여부 확인 필수
+- useSearchParams()는 Next.js App Router에서 반드시 Suspense로 감싸야 함
+- shadcn/ui table, select, badge 컴포넌트 설치 여부 사전 확인 필요
+- 사이드바에 관리자 메뉴는 role === 'admin' 조건부로만 표시 (일반 유저 노출 금지)
+- /register 는 middleware.ts publicPaths에 추가해야 함 (인증 없이 접근 가능해야 함)
+- admin_user, client_with_admin 픽스처를 conftest.py에 추가해야 함
 
 ## Sprint 10 핵심 주의사항
 - 표준 에러 응답 스키마: `{"error": {"code": "...", "message": "...", "detail": "..."}}` 형식

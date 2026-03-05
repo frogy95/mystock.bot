@@ -30,10 +30,13 @@ async def seed() -> None:
 
     async with async_session() as session:
         # 1. 기본 관리자 유저 생성 (Sprint 14: JWT 인증 필드 포함)
+        # 비밀번호는 환경변수 SEED_ADMIN_PASSWORD 또는 기본값 사용
+        admin_email = settings.ADMIN_EMAIL
+        admin_password = os.environ.get("SEED_ADMIN_PASSWORD", "change-me-in-production")
         admin = User(
-            username=settings.ADMIN_USERNAME,
-            email=settings.ADMIN_EMAIL,
-            password_hash=hash_password(settings.ADMIN_PASSWORD),
+            username="admin",
+            email=admin_email,
+            password_hash=hash_password(admin_password),
             role=ROLE_ADMIN,
             is_approved=True,
             is_active=True,

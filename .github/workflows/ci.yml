@@ -1,0 +1,81 @@
+name: CI - PR 체크
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+
+jobs:
+  test:
+    name: 백엔드 테스트
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mystock_user
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: mystock_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 3.12 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: 의존성 설치
+        run: pip install -r backend/requirements.txt
+
+      - name: pytest 실행
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: mystock_test
+          POSTGRES_USER: mystock_user
+          POSTGRES_PASSWORD: testpassword
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          JWT_SECRET: test-jwt-secret-for-ci
+          SECRET_KEY: test-secret-key-for-ci
+          DEBUG: "false"
+        run: pytest backend/tests/ -v --tb=short
+
+  build:
+    name: Docker 빌드 확인
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: 백엔드 이미지 빌드 테스트
+        run: docker build -f docker/backend/Dockerfile.prod --target runtime -t mystock-backend:test .
+
+      - name: 프론트엔드 이미지 빌드 테스트
+        run: docker build -f docker/frontend/Dockerfile.prod --target runtime -t mystock-frontend:test .
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
