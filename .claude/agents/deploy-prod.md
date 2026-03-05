@@ -93,16 +93,21 @@ EOF
 - ✅ main merge 시 GHCR 이미지 push 자동 실행
 - ✅ Lightsail SSH 배포 자동 실행
 
+### 자동 검증 완료 (SSH + Playwright)
+- ✅ 헬스체크: GET http://{서버IP}/api/v1/health → 200
+- ✅ Docker 컨테이너 전체 Running 확인
+- ✅ 백엔드 로그 오류 없음 확인
+- ✅ 프론트엔드 메인 페이지 접속 확인 (Playwright)
+
 ### 수동 검증 필요
-- ⬜ 헬스체크: GET https://{도메인}/api/v1/health
-- ⬜ 로그인 동작 확인
-- ⬜ 주요 페이지 렌더링 확인
 - ⬜ Alembic 마이그레이션 적용 (스키마 변경이 있는 경우)
   ```bash
-  ssh {LIGHTSAIL_USER}@{LIGHTSAIL_HOST}
+  ssh ubuntu@{LIGHTSAIL_HOST} -i ./mystock-bot-ssh-key.pem
   cd /opt/mystock-bot
   docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
   ```
+- ⬜ 실제 KIS API 실거래 확인 (실제 자금)
+- ⬜ UI 디자인/시각적 품질 주관적 판단
 ```
 
 ### 4단계: 최종 보고
@@ -114,7 +119,7 @@ EOF
    ```
    https://github.com/frogy95/mystock.bot/actions
    ```
-3. **배포 후 수동 검증 필요 항목** (deploy.md 참조)
+3. **5단계 실서버 자동 검증** — GitHub Actions 완료 후 자동으로 진행됩니다.
 4. **롤백 방법** (문제 발생 시):
    ```bash
    # Lightsail SSH 접속 후
@@ -123,6 +128,43 @@ EOF
    docker pull ghcr.io/frogy95/mystock-bot-frontend:v{이전_버전}
    docker compose -f docker-compose.prod.yml up -d
    ```
+
+### 5단계: 실서버 자동 검증 (배포 완료 후)
+
+GitHub Actions 배포가 완료된 후, SSH로 실서버에 접속하여 자동 검증을 수행합니다.
+
+**SSH 접속 정보:**
+- 키: `./mystock-bot-ssh-key.pem` (프로젝트 루트)
+- 호스트: `3.39.124.72` (AWS Lightsail)
+- 사용자: `ubuntu`
+- 앱 경로: `/opt/mystock-bot`
+
+**자동 검증 실행:**
+```bash
+# 1. 헬스체크
+curl -s http://3.39.124.72/api/v1/health
+
+# 2. 컨테이너 상태 확인
+ssh -i ./mystock-bot-ssh-key.pem ubuntu@3.39.124.72 \
+  "cd /opt/mystock-bot && sudo docker compose -f docker-compose.prod.yml ps"
+
+# 3. 백엔드 최근 로그 오류 확인
+ssh -i ./mystock-bot-ssh-key.pem ubuntu@3.39.124.72 \
+  "cd /opt/mystock-bot && sudo docker compose -f docker-compose.prod.yml logs backend --tail 30 2>&1 | grep -i 'error\|traceback\|critical' || echo 'No errors found'"
+```
+
+**Playwright 프론트엔드 검증 (MCP 사용):**
+- 프론트엔드 메인 페이지 로딩 확인
+- 로그인 페이지 렌더링 확인
+
+검증 결과를 deploy.md의 "자동 검증 완료" 섹션에 기록합니다:
+- 통과 항목: `✅`로 표시
+- 실패 항목: 오류 내용과 함께 사용자에게 보고
+
+**여전히 수동 필요:**
+- ❌ `alembic upgrade head` — prod DB 스키마 변경 (되돌릴 수 없음)
+- ❌ 실제 KIS API 실거래 확인 (실제 자금)
+- ❌ UI 디자인/시각적 품질 주관적 판단
 
 ## 언어 및 문서 작성 규칙
 

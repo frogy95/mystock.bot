@@ -54,6 +54,16 @@ sprint{n}  →  PR to develop  →  로컬 Docker 스테이징 검증  →  PR t
   - sprint-close agent는 자동 실행 항목을 실행하고 결과를 deploy.md에 기록해야 합니다.
   - deploy.md에는 "자동 검증 완료" 항목과 "수동 검증 필요" 항목을 명확히 구분하여 기재합니다.
 
+- deploy-prod 실서버 검증 원칙 — **배포 후 SSH로 자동 실행**:
+  - SSH 키: `./mystock-bot-ssh-key.pem` (프로젝트 루트), 서버: `ubuntu@3.39.124.72`
+  - ✅ **자동 실행**: 헬스체크 (`curl http://3.39.124.72/api/v1/health`)
+  - ✅ **자동 실행**: Docker 컨테이너 상태 확인 (`docker compose ps`)
+  - ✅ **자동 실행**: 백엔드 로그 오류 확인 (`docker compose logs backend --tail 30`)
+  - ✅ **자동 실행**: Playwright 프론트엔드 접속 확인 (메인 페이지, 로그인 페이지)
+  - ❌ **수동 필요**: `alembic upgrade head` — prod DB 스키마 변경 (되돌릴 수 없음)
+  - ❌ **수동 필요**: 실제 KIS API 실거래 확인 (실제 자금)
+  - ❌ **수동 필요**: UI 디자인/시각적 품질 주관적 판단
+
 - 사용자가 직접 수행해야 하는 작업은 deploy.md 파일을 생성하거나 기존에 존재하는 deploy.md에 수행해야하는 작업을 자세히 정리해주세요.
 - 체크리스트 작성 형식:
   - 완료 항목: `- ✅ 항목 내용`
