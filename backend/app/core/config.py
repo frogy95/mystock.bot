@@ -31,23 +31,7 @@ class Settings(BaseSettings):
     # CORS 허용 origin 목록 (콤마 구분, 기본값 * → 개발용)
     CORS_ORIGINS: str = "*"
 
-    # 한국투자증권 (KIS) API 설정
-    # 모의투자 전용 키 (주문/잔고에 사용, KIS_ENVIRONMENT=vts 시)
-    KIS_VTS_APP_KEY: str = ""
-    KIS_VTS_APP_SECRET: str = ""
-    KIS_VTS_ACCOUNT_NUMBER: str = ""
-
-    # 실전 전용 키 (시세 조회 항상 사용 + KIS_ENVIRONMENT=real 시 주문/잔고에도 사용)
-    KIS_REAL_APP_KEY: str = ""
-    KIS_REAL_APP_SECRET: str = ""
-    KIS_REAL_ACCOUNT_NUMBER: str = ""
-
-    KIS_HTS_ID: str = ""  # eFriend Plus (HTS) 로그인 ID
-    KIS_ENVIRONMENT: str = "vts"  # vts: 모의투자, real: 실전투자
-
-    # 단일 유저 인증 설정 (레거시 - 초기 관리자 계정 생성용)
-    ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str = "change-me-in-production"
+    # 초기 관리자 계정 이메일 (DB 직접 주입 시 사용)
     ADMIN_EMAIL: str = "admin@mystock.bot"
 
     # JWT 설정
@@ -55,10 +39,6 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # 1시간
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30    # 30일
-
-    # 텔레그램 봇 설정
-    TELEGRAM_BOT_TOKEN: str = ""
-    TELEGRAM_CHAT_ID: str = ""
 
     @property
     def database_url(self) -> str:

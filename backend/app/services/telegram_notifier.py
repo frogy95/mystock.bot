@@ -1,28 +1,54 @@
 """
 텔레그램 알림 모듈
 매매 신호, 주문 체결, 손절/익절, 시스템 오류를 텔레그램으로 알린다.
-TELEGRAM_BOT_TOKEN이 미설정된 경우 gracefully skip한다.
+TELEGRAM_BOT_TOKEN은 DB(system_settings)에서 읽는다. 미설정 시 gracefully skip한다.
 """
 import logging
 from typing import Optional
 
-from app.core.config import settings
-
 logger = logging.getLogger("mystock.bot")
 
-_bot = None
+
+async def _get_telegram_token() -> str:
+    """DB에서 텔레그램 봇 토큰을 조회한다."""
+    try:
+        from app.core.database import AsyncSessionLocal
+        from app.models.settings import SystemSetting
+        from sqlalchemy import select
+
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(SystemSetting).where(
+                    SystemSetting.setting_key == "telegram_bot_token",
+                    SystemSetting.user_id == None,
+                )
+            )
+            setting = result.scalar_one_or_none()
+            return setting.setting_value if setting else ""
+    except Exception as e:
+        logger.debug(f"텔레그램 토큰 조회 실패: {e}")
+        return ""
 
 
-def _get_bot():
-    """텔레그램 봇 싱글턴을 반환한다."""
-    global _bot
-    if _bot is None and settings.TELEGRAM_BOT_TOKEN:
-        try:
-            from telegram import Bot
-            _bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
-        except Exception as e:
-            logger.warning(f"텔레그램 봇 초기화 실패: {e}")
-    return _bot
+async def _get_telegram_chat_id() -> str:
+    """DB에서 텔레그램 chat ID를 조회한다."""
+    try:
+        from app.core.database import AsyncSessionLocal
+        from app.models.settings import SystemSetting
+        from sqlalchemy import select
+
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(SystemSetting).where(
+                    SystemSetting.setting_key == "telegram_chat_id",
+                    SystemSetting.user_id == None,
+                )
+            )
+            setting = result.scalar_one_or_none()
+            return setting.setting_value if setting else ""
+    except Exception as e:
+        logger.debug(f"텔레그램 chat_id 조회 실패: {e}")
+        return ""
 
 
 async def _is_notification_enabled(setting_key: str) -> bool:
@@ -50,16 +76,18 @@ async def _is_notification_enabled(setting_key: str) -> bool:
 
 async def send_message(text: str, chat_id: Optional[str] = None) -> bool:
     """텔레그램 메시지를 전송한다."""
-    bot = _get_bot()
-    if not bot:
+    token = await _get_telegram_token()
+    if not token:
         logger.debug(f"텔레그램 미설정. 메시지 스킵: {text[:50]}")
         return False
 
-    target_chat_id = chat_id or settings.TELEGRAM_CHAT_ID
+    target_chat_id = chat_id or await _get_telegram_chat_id()
     if not target_chat_id:
         return False
 
     try:
+        from telegram import Bot
+        bot = Bot(token=token)
         await bot.send_message(
             chat_id=target_chat_id,
             text=text,

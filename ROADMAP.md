@@ -3,7 +3,7 @@
 ## 개요
 - **목표:** 한국투자증권 Open API를 활용한 KOSPI/KOSDAQ 퀀트 전략 기반 자동매매 웹 애플리케이션
 - **전체 예상 기간:** 10주 (2026-03-02 ~ 2026-05-10)
-- **현재 진행 단계:** Phase 8 완료 (Sprint 16: 관리자 대시보드 UI + 초대코드 회원가입 플로우 완성, 2026-03-04)
+- **현재 진행 단계:** Phase 9 완료 (Sprint 17: MVP 프로덕션 배포 준비, 2026-03-05)
 - **팀 규모:** 1-2인 소규모 개발팀
 - **MVP 대상 사용자:** 개인 사용자 1인 (개발자 본인)
 
@@ -19,9 +19,9 @@
 
 | 항목 | 상태 |
 |------|------|
-| 전체 진행률 | Sprint 0~16 완료 |
-| 현재 Phase | Phase 8 완료 — Sprint 16(관리자 대시보드 UI + 초대코드 회원가입 플로우) 완료 (2026-03-04) |
-| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01), Sprint 2 (2026-03-01), Sprint 3 (2026-03-01), Sprint 4 (2026-03-01), Sprint 4.1 (2026-03-01), Sprint 5 (2026-03-01), Sprint 6 (2026-03-01), Sprint 7 (2026-03-01), Sprint 8 (2026-03-01), Sprint 9 (2026-03-02), Sprint 10 (2026-03-02), Sprint 11 (2026-03-03), Sprint 12 (2026-03-03), Sprint 13 (2026-03-03), Sprint 14 (2026-03-03), Sprint 15 (2026-03-03), Sprint 16 (2026-03-04) |
+| 전체 진행률 | Sprint 0~17 완료 |
+| 현재 Phase | Phase 9 완료 — Sprint 17(MVP 프로덕션 배포 준비) 완료 (2026-03-05) |
+| 완료된 스프린트 | Sprint 0 (2026-02-28), Sprint 1 (2026-03-01), Sprint 2 (2026-03-01), Sprint 3 (2026-03-01), Sprint 4 (2026-03-01), Sprint 4.1 (2026-03-01), Sprint 5 (2026-03-01), Sprint 6 (2026-03-01), Sprint 7 (2026-03-01), Sprint 8 (2026-03-01), Sprint 9 (2026-03-02), Sprint 10 (2026-03-02), Sprint 11 (2026-03-03), Sprint 12 (2026-03-03), Sprint 13 (2026-03-03), Sprint 14 (2026-03-03), Sprint 15 (2026-03-03), Sprint 16 (2026-03-04), Sprint 17 (2026-03-05) |
 | 다음 마일스톤 | M5: MVP 출시 - 모의투자 5일 연속 안정 운영, 실전 전환 준비 |
 | 예상 MVP 완료일 | 2026-05-10 |
 
@@ -867,6 +867,23 @@ Sprint 0~12 전체 코드 리뷰에서 발견된 긴급 버그 및 중요 이슈
 
 ---
 
+## Phase 9: MVP 프로덕션 배포 준비 (Sprint 17)
+### 목표
+Docker 프로덕션 환경을 구성하고 EC2 배포를 위한 인프라를 준비한다.
+
+#### Sprint 17: MVP 프로덕션 배포 준비 ✅ 완료 (2026-03-05)
+- ✅ `.dockerignore` 추가 (빌드 컨텍스트 최적화)
+- ✅ `frontend/next.config.ts`: output='standalone', poweredByHeader=false 설정
+- ✅ 프로덕션 Dockerfile 작성 (backend/frontend 멀티스테이지 빌드, 비-root 실행)
+- ✅ `docker-compose.prod.yml` 작성 (postgres/redis 외부 포트 미노출, restart 정책, 로그 rotation)
+- ✅ Nginx 리버스 프록시 추가 (80 포트, /api/* → backend, / → frontend)
+- ✅ CORS_ORIGINS 환경변수화, DEBUG=False 시 시크릿 키 경고, 헬스체크 503 반환
+- ✅ `gunicorn>=22.0.0` 의존성 추가
+- ✅ deploy.md: EC2 프로덕션 배포 절차, 체크리스트, 5일 안정 운영 가이드 추가
+- ✅ 빌드/테스트 버그 3건 수정 (.dockerignore tests 제외, Dockerfile.prod npm ci, test 패치)
+
+---
+
 ## 리스크 및 완화 전략
 
 | 리스크 | 영향도 | 발생 확률 | 완화 전략 |
@@ -961,5 +978,6 @@ Sprint 0~12 전체 코드 리뷰에서 발견된 긴급 버그 및 중요 이슈
 | Sprint 14 | 2026-03-03 | Phase 7 | JWT 인증 + User 모델 확장 (멀티유저 기반 구축) |
 | Sprint 15 | 2026-03-03 | Phase 7 | 사용자별 전략/백테스트 데이터 격리 + 복사된 전략 관리 기능 보완 |
 | Sprint 16 | 2026-03-04 | Phase 8 | 관리자 대시보드 UI + 초대코드 회원가입 플로우 완성 |
+| Sprint 17 | 2026-03-05 | Phase 9 | MVP 프로덕션 배포 준비 (Docker prod, Nginx, 보안 설정) |
 
 > **참고:** 1-2인 소규모 팀 기준으로 각 스프린트는 5 영업일(월-금)로 설정. 주말 및 공휴일은 버퍼로 활용. 예상보다 빠르게 진행되면 Phase 간 간격을 줄이고, 지연 시 Could Have 항목을 다음 Phase로 이동.
