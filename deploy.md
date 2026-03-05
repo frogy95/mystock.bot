@@ -1900,9 +1900,9 @@ docker compose -f docker-compose.prod.yml ps
 
 ### 수동 검증 필요 항목 (Sprint 17)
 
-- ⬜ `docker compose -f docker-compose.prod.yml up --build` 로컬 정상 기동 확인
-- ⬜ `curl http://localhost/api/v1/health` → Nginx 경유 200 응답 확인
-- ⬜ postgres/redis 포트 외부 접근 불가 확인 (`curl localhost:5432` 실패 확인)
-- ⬜ `docker compose exec backend pytest -v` → 테스트 통과 확인
-- ⬜ 프론트엔드 프로덕션 빌드 에러 없음 확인 (`next build`)
+- ✅ `docker compose -f docker-compose.prod.yml up --build` 로컬 정상 기동 확인
+- ✅ `curl http://localhost/api/v1/health` → Nginx 경유 200 응답 확인
+- ✅ postgres/redis 포트 외부 접근 불가 확인 (`curl localhost:5432` 실패 확인)
+- ✅ `docker compose exec backend pytest -v` → 테스트 통과 확인
+- ✅ 프론트엔드 프로덕션 빌드 에러 없음 확인 (`next build`)
 
