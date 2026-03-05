@@ -1833,7 +1833,7 @@ CI/CD 파이프라인 기반의 단계별 배포 가이드입니다. `deploy.yml
 
 ### Phase 2: GitHub 사전 준비 (1회)
 
-- ⬜ **GitHub Secrets 설정** (저장소 Settings > Secrets and variables > Actions)
+- ✅ **GitHub Secrets 설정** (저장소 Settings > Secrets and variables > Actions)
 
   | Secret 이름             | 설명                                 |
   | --------------------- | ---------------------------------- |
@@ -1851,8 +1851,8 @@ CI/CD 파이프라인 기반의 단계별 배포 가이드입니다. `deploy.yml
 
 ### Phase 3: 배포 실행
 
-- ⬜ `develop` → `main` PR 생성 및 머지
-- ⬜ **GitHub Actions 모니터링**: [https://github.com/frogy95/mystock.bot/actions](https://github.com/frogy95/mystock.bot/actions)
+- ✅ `develop` → `main` PR 생성 및 머지
+- ✅ **GitHub Actions 모니터링**: [https://github.com/frogy95/mystock.bot/actions](https://github.com/frogy95/mystock.bot/actions)
   - `ci.yml` CI 워크플로우 통과 확인
   - `deploy.yml` 완료 확인 (GHCR 이미지 push + Lightsail SSH 배포)
 
@@ -1860,15 +1860,15 @@ CI/CD 파이프라인 기반의 단계별 배포 가이드입니다. `deploy.yml
 
 ### Phase 4: 배포 후 확인
 
-- ⬜ **DB 마이그레이션** (최초 1회 또는 스키마 변경 시)
+- ✅ **DB 마이그레이션** (최초 1회 또는 스키마 변경 시)
   ```bash
   ssh {LIGHTSAIL_USER}@{LIGHTSAIL_HOST}
   cd /opt/mystock-bot
   docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
   ```
   ⚠️ 되돌릴 수 없으므로 반드시 수동으로 실행합니다.
-- ⬜ **헬스체크**: `curl http://{서버IP}/api/v1/health` → 200 응답 확인
-- ⬜ 프론트엔드 메인 페이지 접속 확인
+- ✅ **헬스체크**: `curl http://{서버IP}/api/v1/health` → 200 응답 확인
+- ✅ 프론트엔드 메인 페이지 접속 확인
 - ⬜ 관리자 로그인 동작 확인
 
 ---
