@@ -2008,3 +2008,40 @@ docker compose -f docker-compose.prod.yml up -d
 - ✅ 모의투자 키 Collapsible 클릭 → 펼쳐짐/접힘 동작 브라우저 직접 확인
 - ✅ UI 디자인/시각적 품질 주관적 판단 (위험 구역 Card 빨간 테두리, 탭 레이아웃 미적 요소)
 
+---
+
+## Hotfix: KRX 종목 데이터 완성 — pykrx에서 FinanceDataReader로 교체 (2026-03-06)
+
+### 브랜치 및 PR
+
+- 브랜치: `hotfix/krx-fulldata`
+- PR: https://github.com/frogy95/mystock.bot/pull/32
+
+### 문제 원인
+
+기존 `scripts/update_krx_stocks.py`가 pykrx 라이브러리를 사용하고 있었으나 수집 결과가 197개에 그쳐, 종목 검색(`/api/v1/stocks/search`)에서 KOSPI/KOSDAQ 다수 종목 및 ETF가 검색되지 않는 문제가 있었습니다.
+
+### 수정 내용
+
+| 파일 | 변경 유형 | 내용 |
+|------|----------|------|
+| `scripts/update_krx_stocks.py` | 수정 | pykrx → FinanceDataReader로 교체, KOSPI-DESC / KOSDAQ-DESC / ETF/KR 수집 |
+| `scripts/requirements.txt` | 신규 생성 | 스크립트 전용 의존성 (`finance-datareader>=0.9.0`) |
+| `backend/data/krx_stocks.json` | 재생성 | 197개 → 3,790개 (KOSPI 951, KOSDAQ 1767, ETF 1072) |
+
+### 검증 결과
+
+- ✅ 자동 검증 완료 항목:
+  - 스크립트 실행 성공: 3,790개 종목 수집
+  - 유비케어 (KOSDAQ, 032620) 포함 확인
+  - KODEX ETF 230개 포함 확인
+  - 데이터 구조 일관성 확인 (symbol/name/market 3개 필드)
+  - 경량 코드 리뷰 통과 (Critical/High 이슈 없음)
+  - pytest: Docker 컨테이너 미실행으로 건너뜀 → 수동 검증 필요 항목으로 분류
+
+- ⬜ 수동 검증 필요 항목:
+  - `docker compose up --build` — 새 정적 데이터 파일 반영을 위한 Docker 재빌드
+  - `docker compose exec backend pytest -v` — 백엔드 통합 테스트 (컨테이너 재빌드 후)
+  - 종목 검색 API 동작 확인: `curl "http://localhost/api/v1/stocks/search?q=유비케어"`
+  - 프론트엔드 종목 검색창에서 KOSDAQ/ETF 종목 검색 결과 확인
+
