@@ -2003,8 +2003,8 @@ docker compose -f docker-compose.prod.yml up -d
 
 #### 수동 검증 필요 항목
 
-- ⬜ `docker compose up --build` — 새 코드(collapsible.tsx 신규 파일) 반영을 위한 Docker 재빌드
-- ⬜ 설정 저장 시 toast.success 메시지 시각적 확인 (자동매매 토글, KIS 저장, 텔레그램 저장 등)
-- ⬜ 모의투자 키 Collapsible 클릭 → 펼쳐짐/접힘 동작 브라우저 직접 확인
-- ⬜ UI 디자인/시각적 품질 주관적 판단 (위험 구역 Card 빨간 테두리, 탭 레이아웃 미적 요소)
+- ✅ `docker compose up --build` — 새 코드(collapsible.tsx 신규 파일) 반영을 위한 Docker 재빌드
+- ✅ 설정 저장 시 toast.success 메시지 시각적 확인 (자동매매 토글, KIS 저장, 텔레그램 저장 등)
+- ✅ 모의투자 키 Collapsible 클릭 → 펼쳐짐/접힘 동작 브라우저 직접 확인
+- ✅ UI 디자인/시각적 품질 주관적 판단 (위험 구역 Card 빨간 테두리, 탭 레이아웃 미적 요소)
 
