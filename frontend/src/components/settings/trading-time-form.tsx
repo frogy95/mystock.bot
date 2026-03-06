@@ -1,6 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -8,10 +10,15 @@ import type { TradingTimeConfig } from "@/lib/mock/types";
 
 interface TradingTimeFormProps {
   config: TradingTimeConfig;
-  onUpdate: (updates: Partial<TradingTimeConfig>) => void;
+  onUpdate: (config: TradingTimeConfig) => void;
 }
 
 export function TradingTimeForm({ config, onUpdate }: TradingTimeFormProps) {
+  const [local, setLocal] = useState<TradingTimeConfig>(config);
+
+  // 서버 데이터 동기화
+  useEffect(() => setLocal(config), [config]);
+
   return (
     <Card>
       <CardHeader>
@@ -24,8 +31,8 @@ export function TradingTimeForm({ config, onUpdate }: TradingTimeFormProps) {
           <Input
             id="startTime"
             type="time"
-            value={config.startTime}
-            onChange={(e) => onUpdate({ startTime: e.target.value })}
+            value={local.startTime}
+            onChange={(e) => setLocal((prev) => ({ ...prev, startTime: e.target.value }))}
             className="w-36"
           />
         </div>
@@ -36,8 +43,8 @@ export function TradingTimeForm({ config, onUpdate }: TradingTimeFormProps) {
           <Input
             id="endTime"
             type="time"
-            value={config.endTime}
-            onChange={(e) => onUpdate({ endTime: e.target.value })}
+            value={local.endTime}
+            onChange={(e) => setLocal((prev) => ({ ...prev, endTime: e.target.value }))}
             className="w-36"
           />
         </div>
@@ -47,16 +54,16 @@ export function TradingTimeForm({ config, onUpdate }: TradingTimeFormProps) {
           <div className="flex items-center justify-between">
             <Label>장 마감 전 거래 제외</Label>
             <span className="text-sm font-medium tabular-nums">
-              {config.excludeLastMinutes}분
+              {local.excludeLastMinutes}분
             </span>
           </div>
           <Slider
             min={0}
             max={60}
             step={5}
-            value={[config.excludeLastMinutes]}
+            value={[local.excludeLastMinutes]}
             onValueChange={(values: number[]) =>
-              onUpdate({ excludeLastMinutes: values[0] })
+              setLocal((prev) => ({ ...prev, excludeLastMinutes: values[0] }))
             }
           />
           <div className="flex justify-between text-xs text-muted-foreground">
@@ -64,6 +71,11 @@ export function TradingTimeForm({ config, onUpdate }: TradingTimeFormProps) {
             <span>60분</span>
           </div>
         </div>
+
+        {/* 저장 버튼 */}
+        <Button onClick={() => onUpdate(local)} className="w-full">
+          저장
+        </Button>
       </CardContent>
     </Card>
   );

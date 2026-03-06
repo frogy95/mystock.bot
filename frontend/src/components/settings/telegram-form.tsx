@@ -1,6 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -9,10 +11,15 @@ import type { TelegramConfig } from "@/lib/mock/types";
 
 interface TelegramFormProps {
   config: TelegramConfig;
-  onUpdate: (updates: Partial<TelegramConfig>) => void;
+  onUpdate: (config: TelegramConfig) => void;
 }
 
 export function TelegramForm({ config, onUpdate }: TelegramFormProps) {
+  const [local, setLocal] = useState<TelegramConfig>(config);
+
+  // 서버 데이터 동기화
+  useEffect(() => setLocal(config), [config]);
+
   return (
     <Card>
       <CardHeader>
@@ -26,8 +33,8 @@ export function TelegramForm({ config, onUpdate }: TelegramFormProps) {
           </Label>
           <Switch
             id="telegram-enabled"
-            checked={config.enabled}
-            onCheckedChange={(checked) => onUpdate({ enabled: checked })}
+            checked={local.enabled}
+            onCheckedChange={(checked) => setLocal((prev) => ({ ...prev, enabled: checked }))}
           />
         </div>
 
@@ -39,10 +46,10 @@ export function TelegramForm({ config, onUpdate }: TelegramFormProps) {
           <Input
             id="botToken"
             type="text"
-            value={config.botToken}
-            onChange={(e) => onUpdate({ botToken: e.target.value })}
+            value={local.botToken}
+            onChange={(e) => setLocal((prev) => ({ ...prev, botToken: e.target.value }))}
             placeholder="Bot Token을 입력하세요"
-            disabled={!config.enabled}
+            disabled={!local.enabled}
           />
         </div>
 
@@ -52,10 +59,10 @@ export function TelegramForm({ config, onUpdate }: TelegramFormProps) {
           <Input
             id="chatId"
             type="text"
-            value={config.chatId}
-            onChange={(e) => onUpdate({ chatId: e.target.value })}
+            value={local.chatId}
+            onChange={(e) => setLocal((prev) => ({ ...prev, chatId: e.target.value }))}
             placeholder="Chat ID를 입력하세요"
-            disabled={!config.enabled}
+            disabled={!local.enabled}
           />
         </div>
 
@@ -72,11 +79,9 @@ export function TelegramForm({ config, onUpdate }: TelegramFormProps) {
             </Label>
             <Switch
               id="notify-signal"
-              checked={config.notifyOnSignal}
-              onCheckedChange={(checked) =>
-                onUpdate({ notifyOnSignal: checked })
-              }
-              disabled={!config.enabled}
+              checked={local.notifyOnSignal}
+              onCheckedChange={(checked) => setLocal((prev) => ({ ...prev, notifyOnSignal: checked }))}
+              disabled={!local.enabled}
             />
           </div>
 
@@ -87,11 +92,9 @@ export function TelegramForm({ config, onUpdate }: TelegramFormProps) {
             </Label>
             <Switch
               id="notify-order"
-              checked={config.notifyOnOrder}
-              onCheckedChange={(checked) =>
-                onUpdate({ notifyOnOrder: checked })
-              }
-              disabled={!config.enabled}
+              checked={local.notifyOnOrder}
+              onCheckedChange={(checked) => setLocal((prev) => ({ ...prev, notifyOnOrder: checked }))}
+              disabled={!local.enabled}
             />
           </div>
 
@@ -102,14 +105,17 @@ export function TelegramForm({ config, onUpdate }: TelegramFormProps) {
             </Label>
             <Switch
               id="notify-error"
-              checked={config.notifyOnError}
-              onCheckedChange={(checked) =>
-                onUpdate({ notifyOnError: checked })
-              }
-              disabled={!config.enabled}
+              checked={local.notifyOnError}
+              onCheckedChange={(checked) => setLocal((prev) => ({ ...prev, notifyOnError: checked }))}
+              disabled={!local.enabled}
             />
           </div>
         </div>
+
+        {/* 저장 버튼 */}
+        <Button onClick={() => onUpdate(local)} className="w-full">
+          저장
+        </Button>
       </CardContent>
     </Card>
   );

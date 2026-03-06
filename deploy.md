@@ -1903,6 +1903,43 @@ docker compose -f docker-compose.prod.yml up -d
 
 ## 배포 이력
 
+### v0.17.1 (2026-03-06)
+
+#### 포함 변경사항
+
+- Hotfix: 대시보드 요약 카드 UX 개선 (PR #28, hotfix/dashboard-summary-ux)
+
+#### PR
+
+- [release: v0.17.1 프로덕션 배포 (#29)](https://github.com/frogy95/mystock.bot/pull/29)
+
+#### 주요 변경 내용
+
+- KIS 요약 데이터 통합: `get_balance()` output2에서 총평가금액, 매입합계, 손익합계, 전일총자산 필드 추가 추출
+- 일일 손익 구현: `calculate_summary()`에서 KIS 데이터를 단일 소스로 사용, `현재 총자산 - 전일 총자산`으로 일일 손익 계산
+- 에러/로딩 UX 개선: 포트폴리오 요약 카드에 `isError`/`isFetching` 상태 처리 및 "KIS 데이터를 불러오는 중..." 안내 텍스트 추가
+- 보유종목 테이블 에러 처리: `isError` 시 에러 메시지 표시
+
+#### 자동 배포 (GitHub Actions)
+
+- ✅ main merge 시 GHCR 이미지 push 자동 실행
+- ✅ Lightsail SSH 배포 자동 실행 (CD - 프로덕션 배포)
+
+#### 자동 검증 완료 항목 (SSH + Playwright)
+
+- ✅ 헬스체크: GET http://3.39.124.72/api/v1/health → 200 (status: healthy, db/redis/scheduler 모두 healthy)
+- ✅ Docker 컨테이너 전체 Running 확인 (backend/frontend/nginx/postgres/redis 5개 모두 Up)
+- ✅ 백엔드 로그 오류 없음 확인 (No errors found)
+- ✅ 프론트엔드 메인 페이지 접속 확인 (Playwright — 로그인 페이지 정상 렌더링, /login 리다이렉트 확인)
+
+#### 수동 검증 필요 항목
+
+- ⬜ Alembic 마이그레이션 적용 (스키마 변경 없음 — 이번 배포는 생략 가능)
+- ⬜ 실제 KIS API 실거래 대시보드 데이터 표시 확인 (실제 자금)
+- ⬜ UI 디자인/시각적 품질 주관적 판단 (로딩 스켈레톤, 에러 메시지 UI)
+
+---
+
 ### v0.17.0 (2026-03-05)
 
 #### 포함 스프린트
@@ -1932,4 +1969,42 @@ docker compose -f docker-compose.prod.yml up -d
 - ⬜ `curl http://localhost/api/v1/health` → Nginx 경유 200 응답 확인
 - ⬜ postgres/redis 포트 외부 접근 불가 확인 (`curl localhost:5432` 실패 확인)
 - ⬜ Phase 3~4 배포 가이드 실행 및 서버 정상 동작 확인
+
+---
+
+### v0.18.0 (2026-03-06)
+
+#### 포함 스프린트
+
+- Sprint 18: 설정 페이지 UX 개선 (탭 구조, 저장 버튼, toast 피드백, 위험 구역 Card)
+
+#### PR
+
+- sprint-18 → develop PR (개발 검토 후 링크 업데이트 예정)
+
+#### 변경 내용
+
+| 변경 | 결과 |
+|------|------|
+| 탭 구조 | 3개 탭: "API 연동" / "매매 설정" / "알림 & 위험" |
+| 저장 버튼 | 텔레그램, 매매시간, 안전장치 폼에 각각 추가 |
+| toast 피드백 | 설정 저장/자동매매 토글/긴급매도 onSuccess에 toast.success 추가 |
+| 긴급 매도 | w-full 제거, 위험 구역 Card로 분리 (빨간 테두리/배경) |
+| 모의투자 키 | Collapsible 기본 접힌 상태, "선택사항" 라벨 |
+| KIS 필드 순서 | 실전투자 키(필수) → 모의투자 키(선택) → HTS ID → 투자 모드 |
+
+#### 자동 검증 완료 항목
+
+- ✅ 백엔드 통합 테스트: `pytest -v` → 51 passed (1 warning)
+- ✅ Playwright UI — 3개 탭 렌더링 (API 연동 / 매매 설정 / 알림 & 위험)
+- ✅ Playwright UI — API 연동 탭: 실전투자 키 상단, 모의투자 키 Collapsible 접힌 상태 확인
+- ✅ Playwright UI — 매매 설정 탭: 매매시간 저장 버튼 + 안전장치 저장 버튼 확인
+- ✅ Playwright UI — 알림 & 위험 탭: 텔레그램 저장 버튼 + 위험 구역 Card(긴급 전체 매도) 확인
+
+#### 수동 검증 필요 항목
+
+- ✅ `docker compose up --build` — 새 코드(collapsible.tsx 신규 파일) 반영을 위한 Docker 재빌드
+- ✅ 설정 저장 시 toast.success 메시지 시각적 확인 (자동매매 토글, KIS 저장, 텔레그램 저장 등)
+- ✅ 모의투자 키 Collapsible 클릭 → 펼쳐짐/접힘 동작 브라우저 직접 확인
+- ✅ UI 디자인/시각적 품질 주관적 판단 (위험 구역 Card 빨간 테두리, 탭 레이아웃 미적 요소)
 

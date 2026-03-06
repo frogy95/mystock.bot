@@ -14,7 +14,9 @@ import { TelegramForm } from "@/components/settings/telegram-form";
 import { TradingTimeForm } from "@/components/settings/trading-time-form";
 import { SafetySettingsForm } from "@/components/settings/safety-settings-form";
 import { EmergencySellButton } from "@/components/settings/emergency-sell-button";
-import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Card } from "@/components/ui/card";
+import { AlertTriangle } from "lucide-react";
 import type {
   KisApiConfig,
   TelegramConfig,
@@ -115,73 +117,95 @@ export default function SettingsPage() {
         onToggle={() => toggleAutoTrade.mutate(!autoTradeEnabled)}
       />
 
-      {/* KIS API 설정 */}
-      <KisApiForm
-        config={parseKisApiConfig(settings)}
-        onUpdate={(updates) => {
-          const items = buildItems({
-            ...(updates.vtsAppKey !== undefined && { kis_vts_app_key: updates.vtsAppKey }),
-            ...(updates.vtsAppSecret !== undefined && { kis_vts_app_secret: updates.vtsAppSecret }),
-            ...(updates.vtsAccountNumber !== undefined && { kis_vts_account_number: updates.vtsAccountNumber }),
-            ...(updates.realAppKey !== undefined && { kis_real_app_key: updates.realAppKey }),
-            ...(updates.realAppSecret !== undefined && { kis_real_app_secret: updates.realAppSecret }),
-            ...(updates.realAccountNumber !== undefined && { kis_real_account_number: updates.realAccountNumber }),
-            ...(updates.htsId !== undefined && { kis_hts_id: updates.htsId }),
-            ...(updates.mode !== undefined && { kis_mode: updates.mode }),
-          });
-          if (items.length > 0) updateSettings.mutate(items);
-        }}
-      />
+      {/* 탭 구조 */}
+      <Tabs defaultValue="api">
+        <TabsList className="w-full">
+          <TabsTrigger value="api" className="flex-1">API 연동</TabsTrigger>
+          <TabsTrigger value="trade" className="flex-1">매매 설정</TabsTrigger>
+          <TabsTrigger value="alert" className="flex-1">알림 &amp; 위험</TabsTrigger>
+        </TabsList>
 
-      {/* 텔레그램 알림 설정 */}
-      <TelegramForm
-        config={parseTelegramConfig(settings)}
-        onUpdate={(updates) => {
-          const items = buildItems({
-            ...(updates.botToken !== undefined && { telegram_bot_token: updates.botToken }),
-            ...(updates.chatId !== undefined && { telegram_chat_id: updates.chatId }),
-            ...(updates.enabled !== undefined && { telegram_enabled: updates.enabled }),
-            ...(updates.notifyOnSignal !== undefined && { telegram_notify_signal: updates.notifyOnSignal }),
-            ...(updates.notifyOnOrder !== undefined && { telegram_notify_order: updates.notifyOnOrder }),
-            ...(updates.notifyOnError !== undefined && { telegram_notify_error: updates.notifyOnError }),
-          });
-          if (items.length > 0) updateSettings.mutate(items);
-        }}
-      />
+        {/* API 연동 탭 */}
+        <TabsContent value="api" className="space-y-4 mt-4">
+          <KisApiForm
+            config={parseKisApiConfig(settings)}
+            onUpdate={(updates) => {
+              const items = buildItems({
+                ...(updates.vtsAppKey !== undefined && { kis_vts_app_key: updates.vtsAppKey }),
+                ...(updates.vtsAppSecret !== undefined && { kis_vts_app_secret: updates.vtsAppSecret }),
+                ...(updates.vtsAccountNumber !== undefined && { kis_vts_account_number: updates.vtsAccountNumber }),
+                ...(updates.realAppKey !== undefined && { kis_real_app_key: updates.realAppKey }),
+                ...(updates.realAppSecret !== undefined && { kis_real_app_secret: updates.realAppSecret }),
+                ...(updates.realAccountNumber !== undefined && { kis_real_account_number: updates.realAccountNumber }),
+                ...(updates.htsId !== undefined && { kis_hts_id: updates.htsId }),
+                ...(updates.mode !== undefined && { kis_mode: updates.mode }),
+              });
+              if (items.length > 0) updateSettings.mutate(items);
+            }}
+          />
+        </TabsContent>
 
-      {/* 매매 시간 설정 */}
-      <TradingTimeForm
-        config={parseTradingTimeConfig(settings)}
-        onUpdate={(updates) => {
-          const items = buildItems({
-            ...(updates.startTime !== undefined && { trading_start_time: updates.startTime }),
-            ...(updates.endTime !== undefined && { trading_end_time: updates.endTime }),
-            ...(updates.excludeLastMinutes !== undefined && { trading_exclude_last_minutes: updates.excludeLastMinutes }),
-          });
-          if (items.length > 0) updateSettings.mutate(items);
-        }}
-      />
+        {/* 매매 설정 탭 */}
+        <TabsContent value="trade" className="space-y-4 mt-4">
+          <TradingTimeForm
+            config={parseTradingTimeConfig(settings)}
+            onUpdate={(cfg) => {
+              const items = buildItems({
+                trading_start_time: cfg.startTime,
+                trading_end_time: cfg.endTime,
+                trading_exclude_last_minutes: cfg.excludeLastMinutes,
+              });
+              updateSettings.mutate(items);
+            }}
+          />
+          <SafetySettingsForm
+            config={parseSafetyConfig(settings)}
+            onUpdate={(cfg) => {
+              const items = buildItems({
+                safety_daily_loss_limit: cfg.dailyLossLimit,
+                safety_max_orders_per_day: cfg.maxOrdersPerDay,
+                safety_max_position_ratio: cfg.maxPositionRatio,
+                safety_stop_loss_rate: cfg.stopLossRate,
+              });
+              updateSettings.mutate(items);
+            }}
+          />
+        </TabsContent>
 
-      {/* 안전장치 설정 */}
-      <SafetySettingsForm
-        config={parseSafetyConfig(settings)}
-        onUpdate={(updates) => {
-          const items = buildItems({
-            ...(updates.dailyLossLimit !== undefined && { safety_daily_loss_limit: updates.dailyLossLimit }),
-            ...(updates.maxOrdersPerDay !== undefined && { safety_max_orders_per_day: updates.maxOrdersPerDay }),
-            ...(updates.maxPositionRatio !== undefined && { safety_max_position_ratio: updates.maxPositionRatio }),
-            ...(updates.stopLossRate !== undefined && { safety_stop_loss_rate: updates.stopLossRate }),
-          });
-          if (items.length > 0) updateSettings.mutate(items);
-        }}
-      />
+        {/* 알림 & 위험 탭 */}
+        <TabsContent value="alert" className="space-y-4 mt-4">
+          <TelegramForm
+            config={parseTelegramConfig(settings)}
+            onUpdate={(cfg) => {
+              const items = buildItems({
+                telegram_bot_token: cfg.botToken,
+                telegram_chat_id: cfg.chatId,
+                telegram_enabled: cfg.enabled,
+                telegram_notify_signal: cfg.notifyOnSignal,
+                telegram_notify_order: cfg.notifyOnOrder,
+                telegram_notify_error: cfg.notifyOnError,
+              });
+              updateSettings.mutate(items);
+            }}
+          />
 
-      {/* 위험 섹션 */}
-      <Separator className="my-2" />
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-destructive">위험 구역</p>
-        <EmergencySellButton onConfirm={() => emergencySell.mutate()} />
-      </div>
+          {/* 위험 구역 Card */}
+          <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950">
+            <div className="flex items-center justify-between px-6 py-4">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-semibold text-base">
+                  <AlertTriangle className="h-5 w-5 shrink-0" />
+                  위험 구역
+                </div>
+                <p className="text-sm text-red-600 dark:text-red-500">
+                  아래 작업은 되돌릴 수 없습니다. 신중하게 사용하세요.
+                </p>
+              </div>
+              <EmergencySellButton onConfirm={() => emergencySell.mutate()} />
+            </div>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

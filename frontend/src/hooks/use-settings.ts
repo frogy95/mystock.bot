@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
+import { toast } from "sonner";
 
 /** 백엔드 설정 항목 타입 */
 export interface SettingItemAPI {
@@ -53,6 +54,7 @@ export function useUpdateSettings() {
     onSuccess: () => {
       // kis_mode 등 설정 변경 시 모든 데이터 쿼리를 즉시 무효화하여 리페칭
       queryClient.invalidateQueries();
+      toast.success("설정이 저장되었습니다.");
     },
     onError: (error) => {
       // 설정 업데이트 실패 로깅 (toast는 MutationCache 글로벌 핸들러에서 처리)
@@ -71,6 +73,7 @@ export function useToggleAutoTrade() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["safety"] });
+      toast.success("자동매매 상태가 변경되었습니다.");
     },
     onError: (error) => {
       // 자동매매 토글 실패 로깅 (toast는 MutationCache 글로벌 핸들러에서 처리)
@@ -88,6 +91,7 @@ export function useEmergencySell() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portfolio"] });
       queryClient.invalidateQueries({ queryKey: ["safety"] });
+      toast.success("긴급 매도가 실행되었습니다.");
     },
     onError: (error) => {
       // 긴급 매도 실패 로깅 (toast는 MutationCache 글로벌 핸들러에서 처리)
