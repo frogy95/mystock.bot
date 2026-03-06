@@ -4,6 +4,42 @@
 
 ---
 
+## 프로덕션 배포 - v0.21.0 (2026-03-07)
+
+### 포함 스프린트
+- Sprint 21: 전략/백테스트 버그 수정 (전략명 매핑, 프리셋 자동 생성, 백테스트 폼 개선)
+
+### 포함 핫픽스
+- hotfix/ssh-timeout: CD deploy job SSH 타임아웃 설정 추가
+- hotfix/cd-compose-write-permission: CD 배포 시 compose 파일 쓰기 권한 오류 수정 (curl → sudo curl)
+
+### PR
+- https://github.com/frogy95/mystock.bot/pull/40 (develop → main)
+
+### 자동 배포 (GitHub Actions)
+- ✅ main merge 시 GHCR 이미지 push 자동 실행
+- ✅ Lightsail SSH 배포 자동 실행
+
+### 자동 검증 완료 (SSH + Playwright)
+- ✅ 헬스체크: GET http://3.39.124.72/api/v1/health → 200
+- ✅ Docker 컨테이너 전체 Running 확인
+- ✅ 백엔드 로그 오류 없음 확인
+- ✅ 프론트엔드 메인 페이지 접속 확인 (Playwright)
+
+### 수동 검증 필요
+- ⬜ Alembic 마이그레이션 적용 (스키마 변경이 있는 경우)
+  ```bash
+  ssh ubuntu@3.39.124.72 -i ./mystock-bot-ssh-key.pem
+  cd /opt/mystock-bot
+  docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
+  ```
+- ⬜ 실서버에서 프리셋 전략 3개 자동 생성 확인 (백엔드 로그)
+- ⬜ 실서버 백테스트 폼 전략 드롭다운 및 종목 검색 Popover 동작 확인
+- ⬜ 실제 KIS API 실거래 확인 (실제 자금)
+- ⬜ UI 디자인/시각적 품질 주관적 판단
+
+---
+
 ## Hotfix: CD 배포 시 compose 파일 쓰기 권한 오류 수정 (2026-03-06)
 
 ### 브랜치 및 PR
