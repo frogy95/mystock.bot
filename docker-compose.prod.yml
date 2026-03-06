@@ -1,5 +1,5 @@
 # mystock.bot 프로덕션 Docker Compose 설정
-# 사용법: docker compose -f docker-compose.prod.yml up -d --build
+# 사용법: docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d
 
 services:
   # PostgreSQL 데이터베이스 (외부 포트 미노출)
@@ -43,9 +43,6 @@ services:
   # FastAPI 백엔드 서버 (gunicorn + uvicorn worker)
   backend:
     image: ghcr.io/frogy95/mystock-bot-backend:latest
-    build:
-      context: .
-      dockerfile: docker/backend/Dockerfile.prod
     # 포트 미노출 — Nginx를 통해서만 접근
     env_file:
       - .env
@@ -73,11 +70,6 @@ services:
   # Next.js 프론트엔드 서버 (standalone 빌드)
   frontend:
     image: ghcr.io/frogy95/mystock-bot-frontend:latest
-    build:
-      context: .
-      dockerfile: docker/frontend/Dockerfile.prod
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
     # 포트 미노출 — Nginx를 통해서만 접근
     env_file:
       - .env
@@ -93,9 +85,7 @@ services:
 
   # Nginx 리버스 프록시 (80 포트 노출)
   nginx:
-    build:
-      context: .
-      dockerfile: docker/nginx/Dockerfile
+    image: ghcr.io/frogy95/mystock-bot-nginx:latest
     ports:
       - "80:80"
     depends_on:
