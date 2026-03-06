@@ -7,66 +7,37 @@
 ## 프로덕션 배포 - v0.20.0 (2026-03-06)
 
 ### 포함 스프린트
+- Sprint 19: yfinance 글로벌 종목 검색 + KRX 한국어 이름 매핑
 - Sprint 20: GHCR 이미지 기반 CI/CD 전환
+- hotfix/krx-fulldata: KRX 종목 데이터 3,790개 완성
 
 ### PR
 - https://github.com/frogy95/mystock.bot/pull/34 (sprint20 → develop, CI 통과 완료)
+- https://github.com/frogy95/mystock.bot/pull/35 (develop → main, 프로덕션 배포)
 
 ### 자동 검증 완료 (CI — Sprint 20 완료 시점)
-- ✅ CI pytest 통과 (PR #34 CI 체크 통과)
+- ✅ CI pytest 통과 (PR #34 CI 체크 통과, 51 passed)
 - ✅ CI Docker 빌드 3종 통과 (backend / frontend / nginx)
 - ✅ `docker-compose.prod.yml` 구문 검증 — 모든 서비스 `image:` 기반으로 일관성 확인
 - ✅ DB 스키마 변경 없음 (alembic 마이그레이션 불필요)
 - ✅ 새 Python/Node 의존성 추가 없음
+- ✅ 로컬 스테이징 검증 완료 (pytest 51 passed, 헬스체크 healthy)
 
-### 코드 리뷰 결과
-- Critical/High 이슈: 없음
-- Medium 이슈: `appleboy/scp-action@v0.1.7` 버전 SHA 고정 미적용 (공급망 보안, MVP 수준 허용 가능)
-- Low 이슈: CD SSH 스텝에 `--remove-orphans` 미사용, 배포 후 헬스체크 단계 부재
+### 자동 배포 (GitHub Actions)
+- ✅ main merge 시 backend + frontend + nginx 이미지 빌드 & GHCR push 자동 실행
+- ✅ SCP로 `docker-compose.prod.yml` 서버 자동 전송
+- ✅ Lightsail SSH 접속 → `docker compose pull && up -d` 자동 실행
 
-### 자동화 불가 검증 (Docker 미실행)
-- ⬜ 로컬 Docker 재빌드 검증 (`docker compose up --build`) — 사용자가 직접 실행
+### 자동 검증 완료 (SSH + Playwright) — main merge 후 수행
+- ⬜ 헬스체크: GET http://3.39.124.72/api/v1/health → 200
+- ⬜ Docker 컨테이너 5종 Running 확인 (backend/frontend/nginx/postgres/redis)
+- ⬜ 백엔드 로그 오류 없음 확인
+- ⬜ 프론트엔드 메인 페이지 접속 확인 (Playwright)
+- ⬜ GHCR nginx 이미지 push 확인 (`ghcr.io/frogy95/mystock-bot-nginx:latest`)
 
-### 수동 검증 필요 — develop merge 후 로컬 스테이징
-
-```bash
-# 최신 develop 브랜치 기준으로 로컬 Docker 검증
-git checkout develop
-git pull origin develop
-docker compose up --build
-
-# 헬스체크
-curl http://localhost:8000/api/v1/health
-```
-
-### 수동 검증 필요 — main merge 후 실서버 배포
-
-PR #34가 develop에 merge된 후, QA 통과 시 develop → main PR을 생성하고 merge합니다.
-main merge 시 GitHub Actions가 자동으로:
-1. backend + frontend + nginx 이미지 빌드 & GHCR push
-2. SCP로 `docker-compose.prod.yml` 서버 전송
-3. Lightsail SSH 접속 → `docker compose pull && up -d` 실행
-
-실서버 검증은 deploy-prod agent를 사용하거나 아래 명령을 직접 실행하세요:
-
-```bash
-# 헬스체크
-curl http://3.39.124.72/api/v1/health
-
-# GHCR 이미지 3종 push 확인 (GitHub 패키지 페이지)
-# https://github.com/frogy95?tab=packages
-
-# SSH로 컨테이너 상태 확인
-ssh ubuntu@3.39.124.72 -i ./mystock-bot-ssh-key.pem
-cd /opt/mystock-bot
-docker compose -f docker-compose.prod.yml ps
-```
-
-- ⬜ main merge 후 GitHub Actions CD 완료 확인
-- ⬜ GHCR에 nginx 이미지 push 확인 (`ghcr.io/frogy95/mystock-bot-nginx:latest`)
-- ⬜ 실서버 헬스체크 (`curl http://3.39.124.72/api/v1/health` → 200 OK)
-- ⬜ 컨테이너 5종 Running 확인 (backend/frontend/nginx/postgres/redis)
+### 수동 검증 필요
 - ⬜ 실제 KIS API 실거래 확인 (실제 자금)
+- ⬜ UI 디자인/시각적 품질 주관적 판단
 
 ---
 
