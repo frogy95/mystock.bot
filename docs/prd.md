@@ -57,7 +57,7 @@
 ### 2.2 관심종목/보유종목 관리
 
 #### 2.2.1 관심종목 (Watchlist)
-- 종목코드 또는 종목명으로 검색 및 추가
+- 종목코드 또는 종목명으로 검색 및 추가 (글로벌 시장 지원: KOSPI, KOSDAQ, NYSE, NASDAQ 등)
 - 관심종목 그룹 분류 (예: "성장주", "배당주", "단기 트레이딩")
 - 종목별 전략 할당 (어떤 전략으로 매매할지 설정)
 - 목표 매수가 / 매수 조건 설정
@@ -209,6 +209,9 @@
   - 선택 이유: 한국투자증권 라이브러리(python-kis)가 Python 기반, 퀀트 라이브러리(TA-Lib, VectorBT, pandas) 모두 Python
   - 비동기 지원, 자동 API 문서 생성 (Swagger)
   - WebSocket 지원
+- **yfinance**: 글로벌 종목 검색 (KRX, NYSE, NASDAQ 등 전세계 시장, API 키 불필요)
+  - `backend/data/krx_stocks.json` — 정적 KRX 한국어 종목명 매핑 파일 (월 1회 수동 갱신)
+  - `scripts/update_krx_stocks.py` — 로컬 환경에서 pykrx로 KRX 데이터 갱신
 - **Celery + Redis**: 백그라운드 작업 스케줄링 (전략 실행, 정기 분석)
 - **APScheduler** (경량 대안): MVP에서 간단한 스케줄링용
 
@@ -407,6 +410,18 @@
 - TA-Lib C 라이브러리 설치 필요 (Docker 환경 권장)
 - VectorBT Apache 2.0 라이선스 → 상용 배포 시 라이선스 문제 없음
 - 한국 주식 시장 데이터의 과거 데이터 접근성 한계
+
+---
+
+## 개발 프로세스
+
+개발 작업은 규모와 긴급도에 따라 두 가지 트랙으로 운영합니다.
+
+- **Sprint**: 기능 개발, 대규모 변경 → sprint-planner → 구현 → sprint-close → deploy-prod
+- **Hotfix**: 긴급 버그 수정, 소규모 패치 → 즉시 구현 → hotfix-close → 자동 배포
+
+상세 프로세스는 `CLAUDE.md`의 "개발시 유의해야할 사항"을 참조합니다.
+CI/CD 정책은 `docs/ci-policy.md`를 참조합니다.
 
 ---
 

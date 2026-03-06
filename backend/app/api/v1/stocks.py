@@ -20,7 +20,7 @@ from app.services.demo_data import (
 from app.schemas.search import StockSearchResult
 from app.schemas.stock import BalanceResponse, StockChartResponse, StockQuoteResponse
 from app.services.kis_client import kis_client
-from app.services.stock_master import search_stocks
+from app.services.stock_search import search_stocks
 
 router = APIRouter()
 

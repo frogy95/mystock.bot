@@ -23,7 +23,7 @@ from app.core.exceptions import (
 from app.core.middleware import RequestIdMiddleware
 from app.services.kis_client import kis_client
 from app.services.redis_client import close_redis
-from app.services.stock_master import load_stock_master
+from app.services.krx_names import load_krx_names
 from app.services.scheduler import start_scheduler, stop_scheduler
 from app.services.websocket_manager import ws_manager
 
@@ -50,11 +50,11 @@ async def lifespan(app: FastAPI):
         await load_kis_settings()
     except Exception as e:
         logger.warning(f"KIS 설정 DB 초기 로드 실패: {e}")
-    # 종목 마스터 데이터 Redis 캐싱
+    # KRX 한국어 종목명 매핑 로드
     try:
-        await load_stock_master()
+        await load_krx_names()
     except Exception as e:
-        logger.warning(f"종목 마스터 초기 로드 실패: {e}")
+        logger.warning(f"KRX 종목명 매핑 로드 실패: {e}")
     # APScheduler 시작
     try:
         await start_scheduler()
