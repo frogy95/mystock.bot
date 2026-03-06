@@ -234,7 +234,15 @@ STRATEGY_REGISTRY: dict[str, BaseStrategy] = {
     "ValueMomentum": ValueMomentumStrategy(),
 }
 
+# DB 한글 전략명 → 레지스트리 영문 키 매핑
+_NAME_TO_ENGINE: dict[str, str] = {
+    "골든크로스+RSI": "GoldenCrossRSI",
+    "가치+모멘텀": "ValueMomentum",
+    "볼린저밴드반전": "BollingerReversal",
+}
+
 
 def get_strategy(name: str) -> Optional[BaseStrategy]:
-    """전략명으로 전략 인스턴스를 반환한다."""
-    return STRATEGY_REGISTRY.get(name)
+    """전략명으로 전략 인스턴스를 반환한다. DB 한글 이름도 지원한다."""
+    key = _NAME_TO_ENGINE.get(name, name)
+    return STRATEGY_REGISTRY.get(key)

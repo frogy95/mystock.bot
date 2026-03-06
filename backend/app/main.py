@@ -31,6 +31,74 @@ import logging
 
 logger = logging.getLogger("mystock.bot")
 
+# 앱 시작 시 생성할 프리셋 전략 정의 (seed.py와 동일)
+_PRESET_STRATEGIES = [
+    {
+        "name": "골든크로스+RSI",
+        "strategy_type": "technical",
+        "params": [
+            ("sma_short", "20", "int"),
+            ("sma_long", "60", "int"),
+            ("rsi_period", "14", "int"),
+            ("rsi_buy_threshold", "30", "int"),
+            ("rsi_sell_threshold", "70", "int"),
+        ],
+    },
+    {
+        "name": "가치+모멘텀",
+        "strategy_type": "fundamental",
+        "params": [
+            ("per_ratio", "0.7", "float"),
+            ("pbr_max", "1.0", "float"),
+            ("roe_min", "10.0", "float"),
+        ],
+    },
+    {
+        "name": "볼린저밴드반전",
+        "strategy_type": "technical",
+        "params": [
+            ("bb_period", "20", "int"),
+            ("bb_std", "2.0", "float"),
+            ("rsi_buy_threshold", "30", "int"),
+        ],
+    },
+]
+
+
+async def ensure_preset_strategies() -> None:
+    """프리셋 전략이 DB에 없으면 자동 생성한다."""
+    from sqlalchemy import select
+    from app.core.database import AsyncSessionLocal
+    from app.models.strategy import Strategy, StrategyParam
+
+    async with AsyncSessionLocal() as session:
+        for preset in _PRESET_STRATEGIES:
+            result = await session.execute(
+                select(Strategy).where(
+                    Strategy.name == preset["name"],
+                    Strategy.is_preset.is_(True),
+                )
+            )
+            if result.scalar_one_or_none() is not None:
+                continue
+            strategy = Strategy(
+                name=preset["name"],
+                strategy_type=preset["strategy_type"],
+                is_active=True,
+                is_preset=True,
+            )
+            session.add(strategy)
+            await session.flush()
+            for key, value, type_ in preset["params"]:
+                session.add(StrategyParam(
+                    strategy_id=strategy.id,
+                    param_key=key,
+                    param_value=value,
+                    param_type=type_,
+                ))
+            logger.info(f"프리셋 전략 자동 생성: {preset['name']}")
+        await session.commit()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -44,6 +112,11 @@ async def lifespan(app: FastAPI):
                 "⚠️ 프로덕션 환경에서 기본 시크릿 키가 사용 중입니다. "
                 "SECRET_KEY와 JWT_SECRET을 안전한 값으로 변경하세요."
             )
+    # 프리셋 전략 자동 생성
+    try:
+        await ensure_preset_strategies()
+    except Exception as e:
+        logger.warning(f"프리셋 전략 자동 생성 실패: {e}")
     # KIS 설정 DB 초기 로드
     try:
         from app.services.kis_settings_cache import load_kis_settings

@@ -4,6 +4,42 @@
 
 ---
 
+## 프로덕션 배포 - v0.21.0 (2026-03-07)
+
+### 포함 스프린트
+- Sprint 21: 전략/백테스트 버그 수정 (전략명 매핑, 프리셋 자동 생성, 백테스트 폼 개선)
+
+### 포함 핫픽스
+- hotfix/ssh-timeout: CD deploy job SSH 타임아웃 설정 추가
+- hotfix/cd-compose-write-permission: CD 배포 시 compose 파일 쓰기 권한 오류 수정 (curl → sudo curl)
+
+### PR
+- https://github.com/frogy95/mystock.bot/pull/40 (develop → main)
+
+### 자동 배포 (GitHub Actions)
+- ✅ main merge 시 GHCR 이미지 push 자동 실행
+- ✅ Lightsail SSH 배포 자동 실행
+
+### 자동 검증 완료 (SSH + Playwright)
+- ✅ 헬스체크: GET http://3.39.124.72/api/v1/health → 200
+- ✅ Docker 컨테이너 전체 Running 확인
+- ✅ 백엔드 로그 오류 없음 확인
+- ✅ 프론트엔드 메인 페이지 접속 확인 (Playwright)
+
+### 수동 검증 필요
+- ⬜ Alembic 마이그레이션 적용 (스키마 변경이 있는 경우)
+  ```bash
+  ssh ubuntu@3.39.124.72 -i ./mystock-bot-ssh-key.pem
+  cd /opt/mystock-bot
+  docker compose -f docker-compose.prod.yml exec backend alembic upgrade head
+  ```
+- ⬜ 실서버에서 프리셋 전략 3개 자동 생성 확인 (백엔드 로그)
+- ⬜ 실서버 백테스트 폼 전략 드롭다운 및 종목 검색 Popover 동작 확인
+- ⬜ 실제 KIS API 실거래 확인 (실제 자금)
+- ⬜ UI 디자인/시각적 품질 주관적 판단
+
+---
+
 ## Hotfix: CD 배포 시 compose 파일 쓰기 권한 오류 수정 (2026-03-06)
 
 ### 브랜치 및 PR
@@ -2290,4 +2326,43 @@ docker compose -f docker-compose.prod.yml up -d
   git push origin develop
   # 또는 GitHub에서 main → develop PR 생성
   ```
+
+---
+
+## Sprint 21: 전략/백테스트 버그 수정 (2026-03-07)
+
+### 자동 검증 결과
+
+| 항목 | 결과 | 비고 |
+|------|------|------|
+| `pytest -v` | ✅ 51 passed | 기존 테스트 회귀 없음 |
+| TypeScript 타입 검사 | ✅ 오류 없음 | `tsc --noEmit` |
+| 헬스체크 API | ✅ healthy | DB, Redis, Scheduler 모두 정상 |
+| 전략 목록 API | ✅ 200 OK | 프리셋 전략 3개 반환 확인 |
+| 종목 검색 API | ✅ 200 OK | 삼성전자 등 KRX 한국어 이름 매핑 정상 |
+| Playwright UI 검증 | ⬜ 미수행 | MCP Chrome 세션 충돌 — Claude Code 재시작 후 재시도 |
+
+### 수동 검증 필요 항목
+
+아래 항목은 Docker 재빌드 또는 KIS API가 필요하여 사용자가 직접 수행해야 합니다.
+
+**1단계: Docker 재빌드 및 앱 시작 확인**
+
+```bash
+docker compose up --build
+```
+
+- ⬜ 백엔드 로그에서 `ensure_preset_strategies` 실행 로그 확인
+- ⬜ 전략 페이지에서 이동평균 교차 전략 / RSI 전략 / MACD 전략 3개 자동 생성 확인
+
+**2단계: 백테스트 폼 UI 검증**
+
+- ⬜ 백테스트 페이지 접속 → 전략 선택 드롭다운에 DB 전략 목록 표시 확인
+- ⬜ 종목 검색 입력창 클릭 → Popover 열림 및 검색 결과 목록 표시 확인
+- ⬜ 종목 선택 후 폼에 종목명 + 코드 정상 반영 확인
+
+**3단계: 실서버 백테스트 실행 확인 (KIS API 필요)**
+
+- ⬜ 전략 선택 + 종목 선택 + 기간 입력 후 백테스트 실행 버튼 동작 확인
+- ⬜ 백테스트 결과 차트 및 통계 정상 표시 확인
 
