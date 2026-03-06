@@ -15,7 +15,7 @@ import { TradingTimeForm } from "@/components/settings/trading-time-form";
 import { SafetySettingsForm } from "@/components/settings/safety-settings-form";
 import { EmergencySellButton } from "@/components/settings/emergency-sell-button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
 import type {
   KisApiConfig,
@@ -191,18 +191,18 @@ export default function SettingsPage() {
 
           {/* 위험 구역 Card */}
           <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
-                <AlertTriangle className="h-5 w-5" />
-                위험 구역
-              </CardTitle>
-              <CardDescription className="text-red-600 dark:text-red-500">
-                아래 작업은 되돌릴 수 없습니다. 신중하게 사용하세요.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+            <div className="flex items-center justify-between px-6 py-4">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-semibold text-base">
+                  <AlertTriangle className="h-5 w-5 shrink-0" />
+                  위험 구역
+                </div>
+                <p className="text-sm text-red-600 dark:text-red-500">
+                  아래 작업은 되돌릴 수 없습니다. 신중하게 사용하세요.
+                </p>
+              </div>
               <EmergencySellButton onConfirm={() => emergencySell.mutate()} />
-            </CardContent>
+            </div>
           </Card>
         </TabsContent>
       </Tabs>
