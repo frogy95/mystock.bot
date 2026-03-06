@@ -92,7 +92,7 @@ jobs:
           command_timeout: 10m
           script: |
             cd /opt/mystock-bot
-            curl -fsSL \
+            sudo curl -fsSL \
               -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               https://raw.githubusercontent.com/${{ github.repository }}/main/docker-compose.prod.yml \
               -o docker-compose.prod.yml

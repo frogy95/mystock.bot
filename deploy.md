@@ -4,6 +4,57 @@
 
 ---
 
+## Hotfix: CD 배포 시 compose 파일 쓰기 권한 오류 수정 (2026-03-06)
+
+### 브랜치 및 PR
+- 브랜치: `hotfix/cd-compose-write-permission`
+- PR: https://github.com/frogy95/mystock.bot/pull/38
+
+### 문제 원인
+GitHub Actions CD 배포 시 `curl: (23) Failure writing output to destination` 오류 발생.
+서버의 `/opt/mystock-bot/docker-compose.prod.yml` 소유자가 `root:root`이어서
+`ubuntu` 사용자가 파일을 덮어쓸 수 없었음.
+결과적으로 compose 파일이 옛 버전 그대로 유지되어 `docker compose pull` 시
+nginx가 `No image to be pulled`로 스킵되고 프로덕션 배포가 정상 반영되지 않음.
+
+### 수정 내용
+`.github/workflows/deploy.yml` 93번 줄: `curl` → `sudo curl`
+root 소유 파일에 쓸 수 있도록 sudo 권한으로 curl 실행.
+
+### 검증 결과
+- ✅ 자동 검증 완료 항목:
+  - 코드 리뷰: Critical/High 이슈 없음 (1파일 1줄 변경, 부작용 없음)
+  - pytest: CI/CD 설정 파일 변경이므로 해당 없음
+  - Playwright: CI/CD 설정 파일 변경이므로 해당 없음
+
+- ⬜ 수동 검증 필요 항목 (PR #38 main merge 후 순서대로 수행):
+
+  **1. compose 파일 소유권 사전 수정 (CD rerun 전 1회만 필요)**
+  ```bash
+  ssh ubuntu@3.39.124.72 -i ./mystock-bot-ssh-key.pem
+  sudo chown ubuntu:ubuntu /opt/mystock-bot/docker-compose.prod.yml
+  ```
+
+  **2. GitHub Actions CD rerun — 오류 없이 성공 확인**
+  - https://github.com/frogy95/mystock.bot/actions 에서 최신 CD 워크플로우 rerun
+  - `curl: (23) Failure writing output to destination` 오류가 사라져야 함
+
+  **3. 배포 후 헬스체크**
+  ```bash
+  curl http://3.39.124.72/api/v1/health
+  # → {"status":"healthy",...} 200 응답 확인
+  ```
+
+  **4. develop 역머지**
+  ```bash
+  git checkout develop
+  git pull origin main
+  git push origin develop
+  ```
+  또는 GitHub에서 `main → develop` PR 생성.
+
+---
+
 ## 프로덕션 배포 - v0.20.0 (2026-03-06)
 
 ### 포함 스프린트
@@ -2177,4 +2228,66 @@ docker compose -f docker-compose.prod.yml up -d
 - ⬜ 한글 쿼리 검색: `유비케어` → KOSDAQ 결과 확인
 - ⬜ ETF 검색: `KODEX` → ETF 결과 확인
 - ⬜ UI 디자인/시각적 품질 주관적 판단 (검색 결과 레이아웃 등)
+
+---
+
+## Hotfix: CD 배포 시 compose 파일 쓰기 권한 오류 수정 (2026-03-06)
+
+### 브랜치 및 PR
+
+- 브랜치: `hotfix/cd-compose-write-permission`
+- PR: https://github.com/frogy95/mystock.bot/pull/38
+
+### 문제 원인
+
+서버의 `/opt/mystock-bot/docker-compose.prod.yml` 소유자가 `root:root`로 설정되어 있어, GitHub Actions CD 워크플로우에서 `ubuntu` 사용자 권한으로 `curl` 실행 시 파일 덮어쓰기 실패. 이로 인해 compose 파일이 옛 버전(build 지시자 포함, nginx image 누락) 그대로 유지되어 프로덕션 배포가 정상 반영되지 않는 장애 발생.
+
+오류 메시지: `curl: (23) Failure writing output to destination`
+
+### 수정 내용
+
+`.github/workflows/deploy.yml` 93번 줄: `curl -fsSL` → `sudo curl -fsSL` (1줄 변경)
+
+### 검증 결과
+
+- ✅ 자동 검증 완료 항목:
+  - pytest: 51 passed, 1 warning (Docker 컨테이너 내 실행)
+  - 경량 코드 리뷰: Critical/High 이슈 없음 (1줄 변경, 부작용 없음)
+
+- ⬜ 수동 검증 필요 항목:
+
+  **1단계: 서버 compose 파일 소유권 변경 (향후 sudo 불필요하도록, 선택 사항)**
+
+  ```bash
+  ssh -i ./mystock-bot-ssh-key.pem ubuntu@3.39.124.72
+  sudo chown ubuntu:ubuntu /opt/mystock-bot/docker-compose.prod.yml
+  ```
+
+  **2단계: PR #38 merge 후 GitHub Actions CD rerun**
+
+  - `curl: (23)` 오류 없이 성공하는지 확인
+
+  **3단계: 배포 후 실서버 검증**
+
+  ```bash
+  # 헬스체크
+  curl http://3.39.124.72/api/v1/health
+
+  # Docker 컨테이너 상태 확인
+  ssh -i ./mystock-bot-ssh-key.pem ubuntu@3.39.124.72 \
+    "cd /opt/mystock-bot && docker compose -f docker-compose.prod.yml ps"
+
+  # nginx가 ghcr.io 이미지 사용 확인
+  ssh -i ./mystock-bot-ssh-key.pem ubuntu@3.39.124.72 \
+    "docker ps --format 'table {{.Image}}\t{{.Names}}'"
+  ```
+
+  **4단계: develop 역머지**
+
+  ```bash
+  git checkout develop
+  git pull origin main
+  git push origin develop
+  # 또는 GitHub에서 main → develop PR 생성
+  ```
 
