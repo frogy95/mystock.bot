@@ -25,7 +25,7 @@ export function EmergencySellButton({ onConfirm }: EmergencySellButtonProps) {
         <Button
           size="lg"
           variant="destructive"
-          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold"
+          className="bg-red-600 hover:bg-red-700 text-white font-bold"
         >
           긴급 전체 매도
         </Button>

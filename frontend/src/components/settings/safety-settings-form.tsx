@@ -1,6 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
@@ -8,10 +10,15 @@ import type { SafetyConfig } from "@/lib/mock/types";
 
 interface SafetySettingsFormProps {
   config: SafetyConfig;
-  onUpdate: (updates: Partial<SafetyConfig>) => void;
+  onUpdate: (config: SafetyConfig) => void;
 }
 
 export function SafetySettingsForm({ config, onUpdate }: SafetySettingsFormProps) {
+  const [local, setLocal] = useState<SafetyConfig>(config);
+
+  // 서버 데이터 동기화
+  useEffect(() => setLocal(config), [config]);
+
   return (
     <Card>
       <CardHeader>
@@ -23,16 +30,16 @@ export function SafetySettingsForm({ config, onUpdate }: SafetySettingsFormProps
           <div className="flex items-center justify-between">
             <Label>일일 손실 한도</Label>
             <span className="text-sm font-medium tabular-nums">
-              {config.dailyLossLimit}%
+              {local.dailyLossLimit}%
             </span>
           </div>
           <Slider
             min={1}
             max={20}
             step={0.5}
-            value={[config.dailyLossLimit]}
+            value={[local.dailyLossLimit]}
             onValueChange={(values: number[]) =>
-              onUpdate({ dailyLossLimit: values[0] })
+              setLocal((prev) => ({ ...prev, dailyLossLimit: values[0] }))
             }
           />
           <div className="flex justify-between text-xs text-muted-foreground">
@@ -49,10 +56,8 @@ export function SafetySettingsForm({ config, onUpdate }: SafetySettingsFormProps
             type="number"
             min={1}
             max={50}
-            value={config.maxOrdersPerDay}
-            onChange={(e) =>
-              onUpdate({ maxOrdersPerDay: Number(e.target.value) })
-            }
+            value={local.maxOrdersPerDay}
+            onChange={(e) => setLocal((prev) => ({ ...prev, maxOrdersPerDay: Number(e.target.value) }))}
             className="w-28"
           />
         </div>
@@ -62,16 +67,16 @@ export function SafetySettingsForm({ config, onUpdate }: SafetySettingsFormProps
           <div className="flex items-center justify-between">
             <Label>종목당 최대 비중</Label>
             <span className="text-sm font-medium tabular-nums">
-              {config.maxPositionRatio}%
+              {local.maxPositionRatio}%
             </span>
           </div>
           <Slider
             min={5}
             max={50}
             step={5}
-            value={[config.maxPositionRatio]}
+            value={[local.maxPositionRatio]}
             onValueChange={(values: number[]) =>
-              onUpdate({ maxPositionRatio: values[0] })
+              setLocal((prev) => ({ ...prev, maxPositionRatio: values[0] }))
             }
           />
           <div className="flex justify-between text-xs text-muted-foreground">
@@ -85,16 +90,16 @@ export function SafetySettingsForm({ config, onUpdate }: SafetySettingsFormProps
           <div className="flex items-center justify-between">
             <Label>기본 손절률</Label>
             <span className="text-sm font-medium tabular-nums">
-              {config.stopLossRate}%
+              {local.stopLossRate}%
             </span>
           </div>
           <Slider
             min={1}
             max={20}
             step={0.5}
-            value={[config.stopLossRate]}
+            value={[local.stopLossRate]}
             onValueChange={(values: number[]) =>
-              onUpdate({ stopLossRate: values[0] })
+              setLocal((prev) => ({ ...prev, stopLossRate: values[0] }))
             }
           />
           <div className="flex justify-between text-xs text-muted-foreground">
@@ -102,6 +107,11 @@ export function SafetySettingsForm({ config, onUpdate }: SafetySettingsFormProps
             <span>20%</span>
           </div>
         </div>
+
+        {/* 저장 버튼 */}
+        <Button onClick={() => onUpdate(local)} className="w-full">
+          저장
+        </Button>
       </CardContent>
     </Card>
   );
