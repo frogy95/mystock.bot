@@ -2301,6 +2301,10 @@ docker compose -f docker-compose.prod.yml up -d
 |------|------|------|
 | `pytest -v` | ✅ 51 passed | 기존 테스트 회귀 없음 |
 | TypeScript 타입 검사 | ✅ 오류 없음 | `tsc --noEmit` |
+| 헬스체크 API | ✅ healthy | DB, Redis, Scheduler 모두 정상 |
+| 전략 목록 API | ✅ 200 OK | 프리셋 전략 3개 반환 확인 |
+| 종목 검색 API | ✅ 200 OK | 삼성전자 등 KRX 한국어 이름 매핑 정상 |
+| Playwright UI 검증 | ⬜ 미수행 | MCP Chrome 세션 충돌 — Claude Code 재시작 후 재시도 |
 
 ### 수동 검증 필요 항목
 

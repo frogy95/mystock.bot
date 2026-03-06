@@ -67,4 +67,4 @@
 
 ## 검증 결과
 
-- [검증 보고서](sprint21/)
+- [검증 보고서](sprint21/validation-report.md)
