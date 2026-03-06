@@ -1903,6 +1903,43 @@ docker compose -f docker-compose.prod.yml up -d
 
 ## 배포 이력
 
+### v0.17.1 (2026-03-06)
+
+#### 포함 변경사항
+
+- Hotfix: 대시보드 요약 카드 UX 개선 (PR #28, hotfix/dashboard-summary-ux)
+
+#### PR
+
+- [release: v0.17.1 프로덕션 배포 (#29)](https://github.com/frogy95/mystock.bot/pull/29)
+
+#### 주요 변경 내용
+
+- KIS 요약 데이터 통합: `get_balance()` output2에서 총평가금액, 매입합계, 손익합계, 전일총자산 필드 추가 추출
+- 일일 손익 구현: `calculate_summary()`에서 KIS 데이터를 단일 소스로 사용, `현재 총자산 - 전일 총자산`으로 일일 손익 계산
+- 에러/로딩 UX 개선: 포트폴리오 요약 카드에 `isError`/`isFetching` 상태 처리 및 "KIS 데이터를 불러오는 중..." 안내 텍스트 추가
+- 보유종목 테이블 에러 처리: `isError` 시 에러 메시지 표시
+
+#### 자동 배포 (GitHub Actions)
+
+- ✅ main merge 시 GHCR 이미지 push 자동 실행
+- ✅ Lightsail SSH 배포 자동 실행 (CD - 프로덕션 배포)
+
+#### 자동 검증 완료 항목 (SSH + Playwright)
+
+- ✅ 헬스체크: GET http://3.39.124.72/api/v1/health → 200 (status: healthy, db/redis/scheduler 모두 healthy)
+- ✅ Docker 컨테이너 전체 Running 확인 (backend/frontend/nginx/postgres/redis 5개 모두 Up)
+- ✅ 백엔드 로그 오류 없음 확인 (No errors found)
+- ✅ 프론트엔드 메인 페이지 접속 확인 (Playwright — 로그인 페이지 정상 렌더링, /login 리다이렉트 확인)
+
+#### 수동 검증 필요 항목
+
+- ⬜ Alembic 마이그레이션 적용 (스키마 변경 없음 — 이번 배포는 생략 가능)
+- ⬜ 실제 KIS API 실거래 대시보드 데이터 표시 확인 (실제 자금)
+- ⬜ UI 디자인/시각적 품질 주관적 판단 (로딩 스켈레톤, 에러 메시지 UI)
+
+---
+
 ### v0.17.0 (2026-03-05)
 
 #### 포함 스프린트
