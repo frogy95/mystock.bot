@@ -1,8 +1,8 @@
 /** 종목 기본 정보 */
 export interface Stock {
-  symbol: string; // 종목코드 (예: "005930")
-  name: string; // 종목명 (예: "삼성전자")
-  market: "KOSPI" | "KOSDAQ";
+  symbol: string; // 종목코드 (예: "005930", "AAPL")
+  name: string; // 종목명 (예: "삼성전자", "Apple Inc.")
+  market: string; // 시장 구분 (예: "KOSPI", "KOSDAQ", "NMS", "NYQ")
 }
 
 /** 현재가 정보 */
@@ -110,7 +110,7 @@ export interface WatchlistItem {
   id: string;
   symbol: string;
   name: string;
-  market: "KOSPI" | "KOSDAQ";
+  market: string; // 시장 구분 (예: "KOSPI", "KOSDAQ", "NMS", "NYQ")
   currentPrice: number;
   changeRate: number; // (%)
   changePrice: number;

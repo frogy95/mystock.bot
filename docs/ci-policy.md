@@ -23,6 +23,16 @@ main    ──────────────→ GitHub Actions → AWS Lig
 v1.0.0, v1.1.0 ...
 ```
 
+### Hotfix 배포 흐름
+
+```
+hotfix/*
+  ↓ PR & merge (긴급 패치)
+main    ──────────────→ GitHub Actions → AWS Lightsail 자동 배포
+  ↓ 역머지
+develop ──────────────→ main 변경사항 동기화
+```
+
 ---
 
 ### Docker 이미지 태깅 규칙
@@ -46,7 +56,10 @@ v1.0.0, v1.1.0 ...
 
 - `main` 직접 push 금지 — 반드시 PR + 리뷰 후 merge
 - `develop` → `main` merge는 QA 통과 후 진행
-- 긴급 패치는 `hotfix/*` 브랜치에서 작업 후 `main`과 `develop`에 동시 merge
+- 긴급 패치는 **`main` 기반**으로 `hotfix/*` 브랜치를 생성하여 작업
+- hotfix PR은 **`main`으로 직접** 생성 (develop 거치지 않음)
+- main merge 후 반드시 `develop`에 역머지하여 동기화
+- hotfix 범위 제한: 파일 3개 이하, 코드 50줄 이하, DB 변경 없음, 새 의존성 없음
 - 스프린트 병렬 진행 시 `develop` merge 충돌 주의
 
 ---

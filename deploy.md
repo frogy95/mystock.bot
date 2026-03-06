@@ -4,6 +4,40 @@
 
 ---
 
+## 프로덕션 배포 - v0.19.0 (2026-03-06)
+
+### 포함 스프린트
+- Sprint 19: 글로벌 종목 검색 (yfinance 기반) + KRX 한국어 이름 매핑
+- hotfix/krx-fulldata: KRX 종목 데이터 3,790개 완성 (KOSPI 951, KOSDAQ 1,767, ETF 1,072)
+
+### PR
+- https://github.com/frogy95/mystock.bot/pull/33
+
+### 자동 배포 (GitHub Actions)
+- ✅ PR #33 main merge 시 GHCR 이미지 push 자동 실행
+- ✅ Lightsail SSH 배포 자동 실행
+
+### 자동 검증 완료 (로컬 — Sprint 19 완료 시점)
+- ✅ pytest 51 passed
+- ✅ Docker 재빌드 후 삼성전자 한국어 이름 검색 정상 동작 확인
+- ✅ AAPL 글로벌 종목 검색 정상 동작 확인
+- ✅ DB 스키마 변경 없음 (alembic 마이그레이션 불필요)
+
+### 실서버 자동 검증 (PR merge 후 GitHub Actions 완료 시 수행)
+- ⬜ 헬스체크: GET http://3.39.124.72/api/v1/health → 200
+- ⬜ Docker 컨테이너 전체 Running 확인
+- ⬜ 백엔드 로그 오류 없음 확인
+- ⬜ 프론트엔드 메인 페이지 접속 확인 (Playwright)
+
+### 수동 검증 필요
+- ⬜ 실서버 종목 검색 동작 확인 (삼성전자 한국어 이름 표시, AAPL 글로벌 검색)
+- ⬜ 실제 KIS API 실거래 확인 (실제 자금)
+- ⬜ UI 디자인/시각적 품질 주관적 판단
+
+> GitHub Actions 배포 완료 후 deploy-prod agent 5단계(실서버 SSH 자동 검증)를 실행하세요.
+
+---
+
 ## 1. 한국투자증권 (KIS) API 준비
 
 ### 1-1. 계좌 개설
@@ -2010,38 +2044,43 @@ docker compose -f docker-compose.prod.yml up -d
 
 ---
 
-## Hotfix: KRX 종목 데이터 완성 — pykrx에서 FinanceDataReader로 교체 (2026-03-06)
+### v0.19.0 (2026-03-06)
 
-### 브랜치 및 PR
+#### 포함 스프린트
 
-- 브랜치: `hotfix/krx-fulldata`
-- PR: https://github.com/frogy95/mystock.bot/pull/32
+- Sprint 19: 글로벌 종목 검색 구현 (yfinance 전환, KRX 한국어 매핑, 한글 IME 수정)
+- Hotfix: KRX 종목 데이터 완성 (FinanceDataReader 교체, 3,790개)
 
-### 문제 원인
+#### PR
 
-기존 `scripts/update_krx_stocks.py`가 pykrx 라이브러리를 사용하고 있었으나 수집 결과가 197개에 그쳐, 종목 검색(`/api/v1/stocks/search`)에서 KOSPI/KOSDAQ 다수 종목 및 ETF가 검색되지 않는 문제가 있었습니다.
+- Sprint 19 → develop → main: PR #33 (예정)
+- Hotfix KRX 데이터: PR #32 (main 머지 완료)
 
-### 수정 내용
+#### 변경 내용
 
-| 파일 | 변경 유형 | 내용 |
-|------|----------|------|
-| `scripts/update_krx_stocks.py` | 수정 | pykrx → FinanceDataReader로 교체, KOSPI-DESC / KOSDAQ-DESC / ETF/KR 수집 |
-| `scripts/requirements.txt` | 신규 생성 | 스크립트 전용 의존성 (`finance-datareader>=0.9.0`) |
-| `backend/data/krx_stocks.json` | 재생성 | 197개 → 3,790개 (KOSPI 951, KOSDAQ 1767, ETF 1072) |
+| 변경 | 결과 |
+|------|------|
+| 검색 엔진 교체 | pykrx(403 에러) → yfinance (전세계 시장, 무료, API 키 불필요) |
+| KRX 한국어 이름 매핑 | `backend/data/krx_stocks.json` 정적 파일 로드 → 메모리 캐시 |
+| KRX 종목 데이터 확장 | 197개 → 3,790개 (KOSPI 951, KOSDAQ 1767, ETF 1072) |
+| 검색 범위 확장 | KOSPI/KOSDAQ → NYSE, NASDAQ, TSE 등 전세계 시장 |
+| 한글 IME 버그 수정 | Popover `onOpenAutoFocus` 차단 + 300ms 디바운스 |
+| 타입 확장 | `market: "KOSPI"\|"KOSDAQ"` → `string` (글로벌 대응) |
+| 의존성 변경 | `pykrx`, `setuptools` 제거 → `yfinance>=0.2.0` 추가 |
 
-### 검증 결과
+#### 자동 검증 완료 항목
 
-- ✅ 자동 검증 완료 항목:
-  - 스크립트 실행 성공: 3,790개 종목 수집
-  - 유비케어 (KOSDAQ, 032620) 포함 확인
-  - KODEX ETF 230개 포함 확인
-  - 데이터 구조 일관성 확인 (symbol/name/market 3개 필드)
-  - 경량 코드 리뷰 통과 (Critical/High 이슈 없음)
-  - pytest: Docker 컨테이너 미실행으로 건너뜀 → 수동 검증 필요 항목으로 분류
+- ✅ 백엔드 통합 테스트: `pytest -v` → 51 passed (1 warning)
+- ✅ KRX 종목 데이터 수집: 3,790개 (KOSPI 951, KOSDAQ 1767, ETF 1072)
+- ✅ 유비케어 (KOSDAQ, 032620) 포함 확인
+- ✅ KODEX ETF 230개 포함 확인
 
-- ⬜ 수동 검증 필요 항목:
-  - `docker compose up --build` — 새 정적 데이터 파일 반영을 위한 Docker 재빌드
-  - `docker compose exec backend pytest -v` — 백엔드 통합 테스트 (컨테이너 재빌드 후)
-  - 종목 검색 API 동작 확인: `curl "http://localhost/api/v1/stocks/search?q=유비케어"`
-  - 프론트엔드 종목 검색창에서 KOSDAQ/ETF 종목 검색 결과 확인
+#### 수동 검증 필요 항목
+
+- ⬜ `docker compose up --build` — yfinance 설치 + 새 JSON 데이터 반영을 위한 Docker 재빌드
+- ⬜ 한국 종목 검색: `삼성` → 한국어 이름 정상 반환 확인
+- ⬜ 글로벌 종목 검색: `AAPL` → 정상 반환 확인
+- ⬜ 한글 쿼리 검색: `유비케어` → KOSDAQ 결과 확인
+- ⬜ ETF 검색: `KODEX` → ETF 결과 확인
+- ⬜ UI 디자인/시각적 품질 주관적 판단 (검색 결과 레이아웃 등)
 
