@@ -2015,10 +2015,12 @@ docker compose -f docker-compose.prod.yml up -d
 #### 포함 스프린트
 
 - Sprint 19: 글로벌 종목 검색 구현 (yfinance 전환, KRX 한국어 매핑, 한글 IME 수정)
+- Hotfix: KRX 종목 데이터 완성 (FinanceDataReader 교체, 3,790개)
 
 #### PR
 
-- sprint-19 → develop PR (개발 검토 후 링크 업데이트 예정)
+- Sprint 19 → develop → main: PR #33 (예정)
+- Hotfix KRX 데이터: PR #32 (main 머지 완료)
 
 #### 변경 내용
 
@@ -2026,6 +2028,7 @@ docker compose -f docker-compose.prod.yml up -d
 |------|------|
 | 검색 엔진 교체 | pykrx(403 에러) → yfinance (전세계 시장, 무료, API 키 불필요) |
 | KRX 한국어 이름 매핑 | `backend/data/krx_stocks.json` 정적 파일 로드 → 메모리 캐시 |
+| KRX 종목 데이터 확장 | 197개 → 3,790개 (KOSPI 951, KOSDAQ 1767, ETF 1072) |
 | 검색 범위 확장 | KOSPI/KOSDAQ → NYSE, NASDAQ, TSE 등 전세계 시장 |
 | 한글 IME 버그 수정 | Popover `onOpenAutoFocus` 차단 + 300ms 디바운스 |
 | 타입 확장 | `market: "KOSPI"\|"KOSDAQ"` → `string` (글로벌 대응) |
@@ -2034,31 +2037,16 @@ docker compose -f docker-compose.prod.yml up -d
 #### 자동 검증 완료 항목
 
 - ✅ 백엔드 통합 테스트: `pytest -v` → 51 passed (1 warning)
-- ✅ KRX 한국어 이름 매핑 로드 확인 (`삼성전자`, `SK하이닉스` 정상 반환)
-- ✅ Docker 내부 `krx_names.py` 정상 동작 확인
+- ✅ KRX 종목 데이터 수집: 3,790개 (KOSPI 951, KOSDAQ 1767, ETF 1072)
+- ✅ 유비케어 (KOSDAQ, 032620) 포함 확인
+- ✅ KODEX ETF 230개 포함 확인
 
 #### 수동 검증 필요 항목
 
-- ✅ `docker compose up --build` — yfinance 설치 포함 Docker 재빌드 완료
-- ✅ 한국 종목 검색: `삼성` → `[삼성전자(005930/KOSPI), 삼성물산(028260), 삼성전기(009150), ...]` 한국어 이름 정상 반환
-- ✅ 글로벌 종목 검색: `AAPL` → `[Apple Inc.(NMS), ...]` 정상 반환
-- ✅ 종목코드 검색: `005930` → `[삼성전자(KOSPI)]` 한국어 이름 매핑 정상
-- ✅ 관심종목 검색창 한글 입력("삼성") → 드롭다운에 결과 표시 → 추가 버튼 동작 확인 (Playwright 검증)
+- ⬜ `docker compose up --build` — yfinance 설치 + 새 JSON 데이터 반영을 위한 Docker 재빌드
+- ⬜ 한국 종목 검색: `삼성` → 한국어 이름 정상 반환 확인
+- ⬜ 글로벌 종목 검색: `AAPL` → 정상 반환 확인
+- ⬜ 한글 쿼리 검색: `유비케어` → KOSDAQ 결과 확인
+- ⬜ ETF 검색: `KODEX` → ETF 결과 확인
 - ⬜ UI 디자인/시각적 품질 주관적 판단 (검색 결과 레이아웃 등)
-
-> **참고 — 검색 엔진 분기 로직 (테스트 중 발견 및 수정):**
-> yfinance가 한글 쿼리를 지원하지 않아 `stock_search.py`에 분기 추가:
-> - 한글 포함 → KRX 인메모리 dict 직접 검색 (`search_krx_by_name`)
-> - 영문/숫자 → yfinance Search API
-
-#### KRX 종목 데이터 갱신 방법 (선택)
-
-현재 `backend/data/krx_stocks.json`에는 주요 종목 ~180개 시드 데이터가 포함됩니다.
-pykrx가 동작하는 환경(KRX API 접근 가능)에서 전 종목(약 2,500개)으로 갱신 가능합니다:
-
-```bash
-pip install pykrx
-python scripts/update_krx_stocks.py
-# → backend/data/krx_stocks.json 갱신 후 docker compose up --build 재빌드 필요
-```
 
