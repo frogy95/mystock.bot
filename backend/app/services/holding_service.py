@@ -83,14 +83,46 @@ async def sync_with_kis(user_id: int, db: AsyncSession) -> List[Holding]:
 
 async def calculate_summary(user_id: int, db: AsyncSession) -> dict:
     """
-    보유종목 기반 포트폴리오 요약을 계산한다.
-    KIS 잔고에서 예수금을 가져와 합산한다.
+    포트폴리오 요약을 계산한다.
+    KIS 연결 시 KIS 잔고를 단일 소스로 사용하고, 미연결 시 DB 폴백.
     """
     result = await db.execute(
         select(Holding).where(Holding.user_id == user_id, Holding.quantity > 0)
     )
     holdings = result.scalars().all()
 
+    # KIS 사용 가능 시: KIS 요약 데이터 우선 사용
+    if kis_client.is_available():
+        try:
+            balance = await kis_client.get_balance()
+            if balance:
+                total_eval = balance.get("total_evaluation", 0)
+                total_purch = balance.get("total_purchase", 0)
+                total_pl = balance.get("total_profit_loss", 0)
+                deposit = float(balance.get("cash", 0))
+                prev_total = balance.get("prev_total_asset", 0)
+
+                # 일일 손익 계산: 현재 총자산 - 전일 총자산
+                current_total = total_eval + deposit
+                daily_pl = (current_total - prev_total) if prev_total > 0 else 0.0
+                daily_rate = (daily_pl / prev_total * 100) if prev_total > 0 else 0.0
+
+                return {
+                    "total_evaluation": round(total_eval, 2),
+                    "total_purchase": round(total_purch, 2),
+                    "total_profit_loss": round(total_pl, 2),
+                    "total_profit_loss_rate": round(
+                        (total_pl / total_purch * 100) if total_purch > 0 else 0.0, 2
+                    ),
+                    "deposit": deposit,
+                    "holdings_count": len(balance.get("stocks", [])),
+                    "daily_profit_loss": round(daily_pl, 2),
+                    "daily_profit_rate": round(daily_rate, 2),
+                }
+        except Exception as e:
+            logger.warning(f"KIS 요약 조회 실패, DB 폴백: {e}")
+
+    # KIS 미연결 시: DB 기반 폴백 계산
     total_evaluation = 0.0
     total_purchase = 0.0
 
@@ -104,21 +136,13 @@ async def calculate_summary(user_id: int, db: AsyncSession) -> dict:
         (total_profit_loss / total_purchase * 100) if total_purchase > 0 else 0.0
     )
 
-    # 예수금은 KIS API에서 조회 (미설정 시 0 반환)
-    deposit = 0.0
-    if kis_client.is_available():
-        try:
-            balance = await kis_client.get_balance()
-            if balance:
-                deposit = float(balance.get("cash", 0))
-        except Exception as e:
-            logger.warning(f"예수금 조회 실패: {e}")
-
     return {
         "total_evaluation": round(total_evaluation, 2),
         "total_purchase": round(total_purchase, 2),
         "total_profit_loss": round(total_profit_loss, 2),
         "total_profit_loss_rate": round(total_profit_loss_rate, 2),
-        "deposit": deposit,
+        "deposit": 0.0,
         "holdings_count": len(holdings),
+        "daily_profit_loss": 0.0,
+        "daily_profit_rate": 0.0,
     }

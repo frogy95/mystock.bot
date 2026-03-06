@@ -331,8 +331,16 @@ class KISClient:
             output2 = data.get("output2", [{}])  # 계좌 요약
             summary = output2[0] if output2 else {}
 
+            # 디버깅용: output2 전체 필드 확인 (KIS 필드명 검증)
+            logger.debug("KIS output2 전체: %s", summary)
+
             return {
                 "cash": float(summary.get("dnca_tot_amt", 0)),  # 예수금 총금액
+                "total_evaluation": float(summary.get("scts_evlu_amt", 0)),  # 유가증권평가금액
+                "total_purchase": float(summary.get("pchs_amt_smtl_amt", 0)),  # 매입금액합계
+                "total_profit_loss": float(summary.get("evlu_pfls_smtl_amt", 0)),  # 평가손익합계
+                "prev_total_asset": float(summary.get("bfdy_tot_asst_evlu_amt", 0)),  # 전일총자산평가금액
+                "net_asset": float(summary.get("nass_amt", 0)),  # 순자산금액
                 "stocks": [
                     {
                         "symbol": item["pdno"],
