@@ -97,8 +97,8 @@ docker compose up --build
 
 1. Docker 이미지 빌드 (backend + frontend + nginx)
 2. GHCR(`ghcr.io/frogy95/mystock-bot`)에 3개 이미지 push
-3. SCP로 `docker-compose.prod.yml`을 Lightsail 서버(`/opt/mystock-bot/`)에 전송
-4. AWS Lightsail 서버에 SSH 접속
+3. AWS Lightsail 서버에 SSH 접속 (appleboy/ssh-action, timeout: 60s)
+4. SSH 세션 내에서 curl로 `docker-compose.prod.yml` 다운로드 (`/opt/mystock-bot/`)
 5. `docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d` 실행
 
 ---

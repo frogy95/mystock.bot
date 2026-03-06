@@ -88,6 +88,8 @@ jobs:
           host: ${{ secrets.LIGHTSAIL_HOST }}
           username: ${{ secrets.LIGHTSAIL_USER }}
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          timeout: 60s
+          command_timeout: 10m
           script: |
             cd /opt/mystock-bot
             curl -fsSL \
