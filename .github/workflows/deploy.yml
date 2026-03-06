@@ -82,18 +82,6 @@ jobs:
     needs: build-and-push
 
     steps:
-      - name: 코드 체크아웃
-        uses: actions/checkout@v4
-
-      - name: Compose 파일 서버 전송
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.LIGHTSAIL_HOST }}
-          username: ${{ secrets.LIGHTSAIL_USER }}
-          key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
-          source: "docker-compose.prod.yml"
-          target: "/opt/mystock-bot/"
-
       - name: Lightsail SSH 배포
         uses: appleboy/ssh-action@v1
         with:
@@ -102,6 +90,10 @@ jobs:
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           script: |
             cd /opt/mystock-bot
+            curl -fsSL \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              https://raw.githubusercontent.com/${{ github.repository }}/main/docker-compose.prod.yml \
+              -o docker-compose.prod.yml
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
