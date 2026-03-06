@@ -4,6 +4,40 @@
 
 ---
 
+## 프로덕션 배포 - v0.19.0 (2026-03-06)
+
+### 포함 스프린트
+- Sprint 19: 글로벌 종목 검색 (yfinance 기반) + KRX 한국어 이름 매핑
+- hotfix/krx-fulldata: KRX 종목 데이터 3,790개 완성 (KOSPI 951, KOSDAQ 1,767, ETF 1,072)
+
+### PR
+- https://github.com/frogy95/mystock.bot/pull/33
+
+### 자동 배포 (GitHub Actions)
+- ✅ PR #33 main merge 시 GHCR 이미지 push 자동 실행
+- ✅ Lightsail SSH 배포 자동 실행
+
+### 자동 검증 완료 (로컬 — Sprint 19 완료 시점)
+- ✅ pytest 51 passed
+- ✅ Docker 재빌드 후 삼성전자 한국어 이름 검색 정상 동작 확인
+- ✅ AAPL 글로벌 종목 검색 정상 동작 확인
+- ✅ DB 스키마 변경 없음 (alembic 마이그레이션 불필요)
+
+### 실서버 자동 검증 (PR merge 후 GitHub Actions 완료 시 수행)
+- ⬜ 헬스체크: GET http://3.39.124.72/api/v1/health → 200
+- ⬜ Docker 컨테이너 전체 Running 확인
+- ⬜ 백엔드 로그 오류 없음 확인
+- ⬜ 프론트엔드 메인 페이지 접속 확인 (Playwright)
+
+### 수동 검증 필요
+- ⬜ 실서버 종목 검색 동작 확인 (삼성전자 한국어 이름 표시, AAPL 글로벌 검색)
+- ⬜ 실제 KIS API 실거래 확인 (실제 자금)
+- ⬜ UI 디자인/시각적 품질 주관적 판단
+
+> GitHub Actions 배포 완료 후 deploy-prod agent 5단계(실서버 SSH 자동 검증)를 실행하세요.
+
+---
+
 ## 1. 한국투자증권 (KIS) API 준비
 
 ### 1-1. 계좌 개설
