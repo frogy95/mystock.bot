@@ -4,6 +4,43 @@
 
 ---
 
+## 프로덕션 배포 - v0.20.0 (2026-03-06)
+
+### 포함 스프린트
+- Sprint 19: yfinance 글로벌 종목 검색 + KRX 한국어 이름 매핑
+- Sprint 20: GHCR 이미지 기반 CI/CD 전환
+- hotfix/krx-fulldata: KRX 종목 데이터 3,790개 완성
+
+### PR
+- https://github.com/frogy95/mystock.bot/pull/34 (sprint20 → develop, CI 통과 완료)
+- https://github.com/frogy95/mystock.bot/pull/35 (develop → main, 프로덕션 배포)
+
+### 자동 검증 완료 (CI — Sprint 20 완료 시점)
+- ✅ CI pytest 통과 (PR #34 CI 체크 통과, 51 passed)
+- ✅ CI Docker 빌드 3종 통과 (backend / frontend / nginx)
+- ✅ `docker-compose.prod.yml` 구문 검증 — 모든 서비스 `image:` 기반으로 일관성 확인
+- ✅ DB 스키마 변경 없음 (alembic 마이그레이션 불필요)
+- ✅ 새 Python/Node 의존성 추가 없음
+- ✅ 로컬 스테이징 검증 완료 (pytest 51 passed, 헬스체크 healthy)
+
+### 자동 배포 (GitHub Actions)
+- ✅ main merge 시 backend + frontend + nginx 이미지 빌드 & GHCR push 자동 실행
+- ✅ SCP로 `docker-compose.prod.yml` 서버 자동 전송
+- ✅ Lightsail SSH 접속 → `docker compose pull && up -d` 자동 실행
+
+### 자동 검증 완료 (SSH + Playwright) — main merge 후 수행
+- ⬜ 헬스체크: GET http://3.39.124.72/api/v1/health → 200
+- ⬜ Docker 컨테이너 5종 Running 확인 (backend/frontend/nginx/postgres/redis)
+- ⬜ 백엔드 로그 오류 없음 확인
+- ⬜ 프론트엔드 메인 페이지 접속 확인 (Playwright)
+- ⬜ GHCR nginx 이미지 push 확인 (`ghcr.io/frogy95/mystock-bot-nginx:latest`)
+
+### 수동 검증 필요
+- ⬜ 실제 KIS API 실거래 확인 (실제 자금)
+- ⬜ UI 디자인/시각적 품질 주관적 판단
+
+---
+
 ## 프로덕션 배포 - v0.19.0 (2026-03-06)
 
 ### 포함 스프린트
@@ -23,18 +60,75 @@
 - ✅ AAPL 글로벌 종목 검색 정상 동작 확인
 - ✅ DB 스키마 변경 없음 (alembic 마이그레이션 불필요)
 
-### 실서버 자동 검증 (PR merge 후 GitHub Actions 완료 시 수행)
-- ⬜ 헬스체크: GET http://3.39.124.72/api/v1/health → 200
-- ⬜ Docker 컨테이너 전체 Running 확인
-- ⬜ 백엔드 로그 오류 없음 확인
-- ⬜ 프론트엔드 메인 페이지 접속 확인 (Playwright)
+### 실서버 자동 검증 (2026-03-06 GitHub Actions 완료 후 수행)
+
+#### 1. 헬스체크
+- ✅ GET http://3.39.124.72/api/v1/health → 200
+  ```json
+  {"status":"healthy","timestamp":"2026-03-06T05:12:22.276119+00:00","version":"0.1.0","checks":{"database":{"status":"healthy"},"redis":{"status":"healthy"},"scheduler":{"status":"healthy","jobs":4}}}
+  ```
+
+#### 2. Docker 컨테이너 상태
+- ✅ 전체 5개 컨테이너 Running 확인 (backend/frontend/nginx/postgres/redis)
+  - mystock-bot-backend-1: Up 20 hours (healthy)
+  - mystock-bot-frontend-1: Up 20 hours
+  - mystock-bot-nginx-1: Up 20 hours (0.0.0.0:80->80/tcp)
+  - mystock-bot-postgres-1: Up 20 hours (healthy)
+  - mystock-bot-redis-1: Up 20 hours (healthy)
+
+#### 3. 백엔드 로그 오류 확인
+- ✅ No errors found (ERROR/TRACEBACK/CRITICAL 없음)
+
+#### 4. 종목 검색 API 검증 — 실패 (배포 미반영)
+- ❌ `/api/v1/stocks/search?q=유비케어` → 빈 배열 반환
+- ❌ `/api/v1/stocks/search?q=KODEX` → 빈 배열 반환
+- **원인 분석:**
+  - `docker-compose.prod.yml`이 `image:` 대신 `build:`를 사용
+  - CD 워크플로우가 서버에서 `docker compose pull && up -d`를 실행하지만, `build:` 기반 서비스는 pull 대상 없음 → 소스 코드 변경이 컨테이너에 반영되지 않음
+  - 서버 `/opt/mystock-bot`의 git HEAD: `3875ab0` (Sprint 17 수준, PR #33 미반영)
+  - 컨테이너 내 `/app/data/` 디렉토리 없음 → `krx_stocks.json` 미존재
+  - 컨테이너 내 `app.services.stock_search` 모듈 없음
+
+#### 5. Playwright 프론트엔드 검증
+- ⬜ 미수행 (종목 검색 API 미반영 문제 우선 해결 필요)
+
+### 긴급 수동 조치 필요 — 실서버 코드 미반영
+
+GitHub Actions CD가 성공했지만 서버 코드가 갱신되지 않았습니다.
+서버에서 아래 명령을 직접 실행해야 Sprint 19가 반영됩니다:
+
+```bash
+ssh ubuntu@3.39.124.72 -i ./mystock-bot-ssh-key.pem
+
+# 1. 서버 소스 코드 갱신
+cd /opt/mystock-bot
+sudo git pull origin main
+
+# 2. 이미지 재빌드 및 컨테이너 재시작
+sudo docker compose -f docker-compose.prod.yml up -d --build
+
+# 3. 검증
+curl http://3.39.124.72/api/v1/health
+```
+
+재빌드 완료 후 아래 검증도 수행하세요:
+```bash
+# 데모 토큰 취득 후 종목 검색 확인
+TOKEN=$(curl -s -X POST http://3.39.124.72/api/v1/auth/demo -H "Content-Type: application/json" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+curl -s "http://3.39.124.72/api/v1/stocks/search?q=유비케어" -H "Authorization: Bearer $TOKEN"
+curl -s "http://3.39.124.72/api/v1/stocks/search?q=AAPL" -H "Authorization: Bearer $TOKEN"
+```
+
+### 구조적 문제 — CD 워크플로우 개선 필요
+현재 `docker-compose.prod.yml`이 `build:` 방식이라 CD가 제대로 동작하지 않습니다.
+다음 스프린트에서 두 가지 방법 중 하나를 선택해 수정해야 합니다:
+1. **서버 git pull + --build 방식**: CD 스크립트에 `git pull origin main && docker compose up -d --build` 추가
+2. **GHCR image: 방식**: `docker-compose.prod.yml`을 `image: ghcr.io/frogy95/...` 형식으로 전환
 
 ### 수동 검증 필요
-- ⬜ 실서버 종목 검색 동작 확인 (삼성전자 한국어 이름 표시, AAPL 글로벌 검색)
+- ⬜ 위 긴급 조치 수행 후 종목 검색 동작 확인 (유비케어 KOSDAQ, AAPL 글로벌)
 - ⬜ 실제 KIS API 실거래 확인 (실제 자금)
 - ⬜ UI 디자인/시각적 품질 주관적 판단
-
-> GitHub Actions 배포 완료 후 deploy-prod agent 5단계(실서버 SSH 자동 검증)를 실행하세요.
 
 ---
 

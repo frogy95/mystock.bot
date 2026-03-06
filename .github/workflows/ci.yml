@@ -79,3 +79,6 @@ jobs:
         run: docker build -f docker/frontend/Dockerfile.prod --target runtime -t mystock-frontend:test .
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8000
+
+      - name: nginx 이미지 빌드 테스트
+        run: docker build -f docker/nginx/Dockerfile -t mystock-nginx:test .
