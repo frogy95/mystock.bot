@@ -5,22 +5,42 @@ import { StatCard } from "@/components/common/stat-card";
 import { StatCardSkeleton } from "@/components/common/loading-skeleton";
 import { usePortfolioSummary } from "@/hooks/use-dashboard";
 import { formatKRW, formatKRWCompact } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 export function PortfolioSummary() {
-  const { data, isLoading } = usePortfolioSummary();
+  const { data, isLoading, isError, error, isFetching } = usePortfolioSummary();
 
+  // 에러 상태
+  if (isError) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="col-span-full p-6 text-center border rounded-lg">
+          <p className="text-sm text-muted-foreground">
+            포트폴리오 요약을 불러오지 못했습니다.
+          </p>
+          <p className="text-xs text-destructive mt-1">{(error as Error)?.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 로딩 상태 (스켈레톤 + 안내 텍스트)
   if (isLoading || !data) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <StatCardSkeleton key={i} />
         ))}
+        <p className="col-span-full text-xs text-center text-muted-foreground">
+          KIS 데이터를 불러오는 중...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4",
+      isFetching && "opacity-70")}>
       <StatCard
         title="총 평가금액"
         value={formatKRWCompact(data.totalEvaluation)}

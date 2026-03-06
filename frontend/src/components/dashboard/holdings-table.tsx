@@ -20,7 +20,7 @@ import { formatKRW } from "@/lib/format";
 import { RefreshCw } from "lucide-react";
 
 export function HoldingsTable() {
-  const { data: holdings, isLoading } = useHoldings();
+  const { data: holdings, isLoading, isError } = useHoldings();
   const { data: kisStatus } = useKisStatus();
   const { mutate: syncHoldings, isPending: isSyncing } = useSyncHoldings();
   const autoSyncTriggered = useRef(false);
@@ -68,7 +68,13 @@ export function HoldingsTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading || isSyncing ? (
+            {isError ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-destructive h-24">
+                  보유종목을 불러오지 못했습니다.
+                </TableCell>
+              </TableRow>
+            ) : isLoading || isSyncing ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRowSkeleton key={i} columns={7} />
               ))
