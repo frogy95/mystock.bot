@@ -90,7 +90,7 @@ jobs:
           key: ${{ secrets.LIGHTSAIL_SSH_KEY }}
           script: |
             cd /opt/mystock-bot
-            curl -fsSL \
+            sudo curl -fsSL \
               -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               https://raw.githubusercontent.com/${{ github.repository }}/main/docker-compose.prod.yml \
               -o docker-compose.prod.yml
