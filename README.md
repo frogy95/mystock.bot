@@ -161,6 +161,7 @@ docker compose exec backend python scripts/seed.py
 
 ## 프로젝트 문서
 
+- [**Notion 기술 문서**](https://www.notion.so/mystock-bot-31272cf10d6b80e68f8dd7defa070056) - 프로젝트 개요, 아키텍처, 기능 명세, API 명세, 데이터 모델, 릴리즈 노트 등
 - [`ROADMAP.md`](./ROADMAP.md) - 프로젝트 로드맵 및 스프린트 현황
 - [`docs/prd.md`](./docs/prd.md) - 제품 요구사항 정의서
 - [`deploy.md`](./deploy.md) - 배포 및 운영 가이드
