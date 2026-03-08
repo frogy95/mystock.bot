@@ -14,6 +14,7 @@ class BacktestRunRequest(BaseModel):
     start_date: date                     # 백테스트 시작일
     end_date: date                       # 백테스트 종료일
     initial_cash: float = 10_000_000     # 초기 자본 (기본 1천만원)
+    strategy_id: Optional[int] = None   # 커스텀 전략 DB ID (커스텀 전략인 경우)
 
     @field_validator("symbol")
     @classmethod

@@ -13,6 +13,7 @@ from app.core.auth import get_current_user, is_demo_user
 from app.services.demo_data import get_demo_backtest_results, get_demo_backtest_result
 from app.core.database import get_db
 from app.models.backtest import BacktestResult
+from app.models.strategy import Strategy
 from app.models.user import User
 from app.schemas.backtest import BacktestRunRequest, BacktestResultResponse, EquityPoint, BacktestTrade
 from app.services.backtest_engine import BacktestConfig, run_backtest
@@ -75,6 +76,24 @@ async def run_backtest_api(
     """
     if is_demo_user(current_user.username):
         raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
+
+    # 커스텀 전략인 경우 DB에서 조건 로드
+    buy_conditions = None
+    sell_conditions = None
+    if request.strategy_id is not None:
+        from sqlalchemy import or_
+        strategy_result = await db.execute(
+            select(Strategy).where(
+                Strategy.id == request.strategy_id,
+                or_(Strategy.user_id.is_(None), Strategy.user_id == current_user.id),
+                Strategy.is_preset.is_(False),
+            )
+        )
+        custom_strategy = strategy_result.scalar_one_or_none()
+        if custom_strategy and custom_strategy.buy_conditions and custom_strategy.sell_conditions:
+            buy_conditions = custom_strategy.buy_conditions
+            sell_conditions = custom_strategy.sell_conditions
+
     try:
         config = BacktestConfig(
             symbol=request.symbol,
@@ -83,6 +102,8 @@ async def run_backtest_api(
             start_date=request.start_date,
             end_date=request.end_date,
             initial_cash=request.initial_cash,
+            buy_conditions=buy_conditions,
+            sell_conditions=sell_conditions,
         )
         result = await run_backtest(config)
         metrics = calculate_metrics(result)
