@@ -155,3 +155,33 @@ class StockStatusResponse(BaseModel):
     current_sell_strategy: Optional[str] = None
     is_watchlist: bool
     watchlist_items: List[WatchlistStatusItem] = []
+
+
+# ── Sprint 25: AI 추천 스키마 ──────────────────────────────────────────
+
+class AIRecommendResultSummary(BaseModel):
+    """AI 추천 요청 내 전략 성과 요약"""
+    strategy_name: str
+    total_return: float
+    mdd: float
+    sharpe_ratio: float
+    win_rate: float
+    total_trades: int
+
+
+class AIRecommendRequest(BaseModel):
+    """AI 전략 추천 요청 스키마"""
+    symbol: str
+    stock_name: str = ""
+    results_summary: List[AIRecommendResultSummary]
+    is_holding: bool = False
+    is_watchlist: bool = False
+
+
+class AIRecommendationResponse(BaseModel):
+    """AI 전략 추천 응답 스키마"""
+    recommended_strategy: str
+    confidence: str          # "높음" | "보통" | "낮음"
+    analysis: str
+    risk_warning: str
+    position_advice: str

@@ -177,3 +177,44 @@ export function useStockStatus(symbol: string | null) {
     staleTime: 30_000,
   });
 }
+
+// ── Sprint 25: AI 추천 훅 ─────────────────────────────────────────────
+
+/** AI 추천 요청 내 전략 성과 요약 */
+export interface AIRecommendResultSummary {
+  strategy_name: string;
+  total_return: number;
+  mdd: number;
+  sharpe_ratio: number;
+  win_rate: number;
+  total_trades: number;
+}
+
+/** AI 전략 추천 요청 타입 */
+export interface AIRecommendRequest {
+  symbol: string;
+  stock_name?: string;
+  results_summary: AIRecommendResultSummary[];
+  is_holding: boolean;
+  is_watchlist: boolean;
+}
+
+/** AI 전략 추천 응답 타입 */
+export interface AIRecommendationResponse {
+  recommended_strategy: string;
+  confidence: "높음" | "보통" | "낮음";
+  analysis: string;
+  risk_warning: string;
+  position_advice: string;
+}
+
+/** AI 전략 추천 뮤테이션 훅 */
+export function useAIRecommend() {
+  return useMutation<AIRecommendationResponse, Error, AIRecommendRequest>({
+    mutationFn: (request) =>
+      apiClient.post<AIRecommendationResponse>("/api/v1/backtest/ai-recommend", request),
+    onError: (error) => {
+      console.error("[useAIRecommend] AI 추천 실패:", error);
+    },
+  });
+}

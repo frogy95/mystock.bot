@@ -6,6 +6,7 @@ import { BacktestResultCards } from "@/components/backtest/backtest-result-cards
 import { BacktestEquityChart } from "@/components/backtest/backtest-equity-chart";
 import { BacktestTradesTable } from "@/components/backtest/backtest-trades-table";
 import { BacktestRankingTable } from "@/components/backtest/backtest-ranking-table";
+import { BacktestAIRecommendation } from "@/components/backtest/backtest-ai-recommendation";
 import {
   useBacktestRun,
   useBacktestRunMulti,
@@ -15,6 +16,7 @@ import { useStrategies } from "@/hooks/use-strategy";
 import type {
   BacktestResultAPI,
   BacktestMultiResponse,
+  AIRecommendResultSummary,
 } from "@/hooks/use-backtest";
 import type { BacktestResult, BacktestTrade } from "@/lib/mock/types";
 
@@ -128,7 +130,7 @@ export default function BacktestPage() {
       )}
 
       {/* 다중 전략 결과 */}
-      {multiResult && (
+      {multiResult && currentSymbol && (
         <>
           <div className="rounded-lg bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
             선택한 전략들의 과거 데이터 기반 비교 시뮬레이션 결과입니다. 실제 투자 성과와 다를 수 있습니다.
@@ -138,6 +140,18 @@ export default function BacktestPage() {
             stockStatus={stockStatus ?? null}
           />
           <BacktestEquityChart multiResults={multiResult.results} />
+          <BacktestAIRecommendation
+            symbol={currentSymbol}
+            resultsSummary={multiResult.results.map((r): AIRecommendResultSummary => ({
+              strategy_name: r.strategy_name,
+              total_return: r.total_return,
+              mdd: r.mdd,
+              sharpe_ratio: r.sharpe_ratio,
+              win_rate: r.win_rate,
+              total_trades: r.total_trades,
+            }))}
+            stockStatus={stockStatus ?? null}
+          />
         </>
       )}
 

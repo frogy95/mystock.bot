@@ -19,6 +19,8 @@ from app.models.strategy import Strategy
 from app.models.user import User
 from app.models.watchlist import WatchlistItem
 from app.schemas.backtest import (
+    AIRecommendRequest,
+    AIRecommendationResponse,
     BacktestMultiResponse,
     BacktestMultiResultItem,
     BacktestMultiRunRequest,
@@ -366,3 +368,35 @@ async def get_stock_status(
         is_watchlist=len(watchlist_rows) > 0,
         watchlist_items=watchlist_items,
     )
+
+
+@router.post("/ai-recommend", response_model=AIRecommendationResponse, summary="AI 전략 추천")
+async def ai_recommend(
+    request: AIRecommendRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """
+    백테스트 결과를 Claude API로 분석하여 최적 전략을 추천한다.
+    사용자가 버튼 클릭 시에만 호출되는 선택적 기능이다.
+    """
+    if is_demo_user(current_user.username):
+        raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
+
+    if not request.results_summary:
+        raise HTTPException(status_code=400, detail="분석할 전략 성과 데이터가 없습니다.")
+
+    try:
+        from app.services.ai_advisor import get_ai_recommendation
+        result = await get_ai_recommendation(
+            symbol=request.symbol,
+            stock_name=request.stock_name or request.symbol,
+            results_summary=[r.model_dump() for r in request.results_summary],
+            is_holding=request.is_holding,
+            is_watchlist=request.is_watchlist,
+        )
+        return AIRecommendationResponse(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.error(f"AI 추천 오류 [{request.symbol}]: {e}")
+        raise HTTPException(status_code=500, detail="AI 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
