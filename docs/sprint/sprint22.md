@@ -51,11 +51,16 @@
 
 ### 보고서 및 첨부 파일
 - [코드 리뷰 보고서](sprint22/code-review-report.md)
+- [Playwright 검증 스크린샷](sprint22/)
 
 ### 자동 검증 (sprint-close 시점)
 - ✅ `pytest -v` — 51개 테스트 모두 통과
-- ✅ `chart_cache.py` 모델 임포트 성공
-- ✅ `chart_data_service.py` 임포트 성공
+- ✅ 헬스체크 (`/api/v1/health`) — DB/Redis/Scheduler 모두 healthy
+- ✅ Playwright: 로그인 페이지 렌더링 정상
+- ✅ Playwright: 로그인 후 대시보드 이동 정상
+- ✅ Playwright: 백테스트 페이지 렌더링 정상
+- ✅ Playwright: 전략 드롭다운 API 연동 — 3개 전략 정상 로드 (골든크로스+RSI, 가치+모멘텀, 볼린저밴드반전)
+- ✅ 코드 리뷰: Critical/High 이슈 없음 ([보고서](sprint22/code-review-report.md))
 
 ### 수동 검증 필요 항목
 - ⬜ Docker 재빌드: `docker compose up --build`
@@ -65,6 +70,8 @@
 - ⬜ 백테스트 재실행 — DB 캐시 히트 확인 (백엔드 로그에 "차트 캐시 히트" 출력 확인)
 - ⬜ 평일 KIS API 정상 시 KIS 데이터 우선 사용 확인 (로그: "차트 조회 완료")
 - ⬜ 주말/KIS 점검 시 yfinance 폴백 동작 확인 (로그: "yfinance 조회 완료")
+- ⬜ 백테스트 결과 차트에서 3개 라인(전략 수익/KOSPI 벤치마크/종목 바이앤홀드) 및 만원 단위 표시 확인
+- ⬜ 백테스트 결과 거래 내역 테이블 표시 확인
 
 ## 추가 UX 개선 (2026-03-08)
 
