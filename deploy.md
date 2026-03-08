@@ -8,13 +8,21 @@
 
 ### 브랜치 및 PR
 - 브랜치: `hotfix/preset-strategy-duplicate`
-- PR: (hotfix-close 후 생성 예정)
+- PR: https://github.com/frogy95/mystock.bot/pull/41
 
 ### 문제 원인
-`seed.py`와 `ensure_preset_strategies()` (main.py)가 거의 동시에 실행되어 각 프리셋 전략이 2개씩 DB에 중복 생성됨.
+`seed.py`와 `ensure_preset_strategies()` (main.py)가 서버 기동 시 거의 동시에 실행되어 각 프리셋 전략이 2개씩 DB에 중복 생성됨. 또한 `scalar_one_or_none()`은 중복 행 존재 시 `MultipleResultsFound` 예외를 발생시켜 2차 장애 유발.
+
+### 수정 내용
+- `main.py`: `scalar_one_or_none()` → `scalars().first()` 변경 (중복 결과 시 예외 방지)
+- `seed.py`: 동일 이름 프리셋 존재 여부 확인 후 건너뜀 처리 (중복 방지)
+
+### 코드 리뷰 결과
+- Critical/High 이슈 없음
 
 ### 자동 검증 완료
-- ⬜ 백엔드 테스트 (`pytest -v`) — hotfix-close 시점에 실행 예정
+- ⬜ 백엔드 테스트 (`pytest -v`) — Docker 미실행으로 수동 검증 필요
+- ⬜ 타겟 API 검증 — Docker 미실행으로 수동 검증 필요
 
 ### 수동 검증 필요 — 실서버 DB 중복 데이터 정리
 
