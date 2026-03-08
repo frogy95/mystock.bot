@@ -3,10 +3,22 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
 
+/** 백엔드 시뮬레이션 거래 내역 타입 */
+export interface BacktestTradeAPI {
+  type: string;       // "BUY" | "SELL"
+  date: string;       // "YYYY-MM-DD"
+  price: number;
+  qty: number;
+  amount: number;
+  pnl: number | null; // SELL 시 손익, BUY는 null
+}
+
 /** 백엔드 Equity Curve 포인트 타입 */
 export interface EquityPoint {
-  date: string;   // "YYYY-MM-DD"
-  value: number;  // 포트폴리오 가치 (원)
+  date: string;           // "YYYY-MM-DD"
+  value: number;          // 포트폴리오 가치 (원)
+  benchmark: number;      // 벤치마크 가치 (원)
+  stock_buyhold: number;  // 종목 바이앤홀드 가치 (원)
 }
 
 /** 백엔드 백테스팅 결과 응답 타입 */
@@ -24,6 +36,7 @@ export interface BacktestResultAPI {
   win_rate: number;           // 승률 (%)
   benchmark_return: number;   // 벤치마크 수익률 (%)
   equity_curve: EquityPoint[]; // 자산 가치 곡선
+  trades: BacktestTradeAPI[];  // 시뮬레이션 거래 내역
   created_at: string;
 }
 

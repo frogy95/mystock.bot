@@ -114,14 +114,14 @@ def _simulate_portfolio_basic(
                     cash -= cost
                     shares = buy_qty
                     buy_price = price
-                    trades.append({"type": "BUY", "price": price, "qty": buy_qty, "pnl": None})
+                    trades.append({"type": "BUY", "date": str(dt.date()), "price": price, "qty": buy_qty, "pnl": None})
 
         # 매도 신호
         elif exits.iloc[i] and shares > 0:
             revenue = shares * price * (1 - commission)
             pnl = revenue - (shares * buy_price)
             cash += revenue
-            trades.append({"type": "SELL", "price": price, "qty": shares, "pnl": pnl})
+            trades.append({"type": "SELL", "date": str(dt.date()), "price": price, "qty": shares, "pnl": pnl})
             shares = 0
             buy_price = 0.0
 
@@ -132,13 +132,50 @@ def _simulate_portfolio_basic(
     # 미청산 포지션 강제 청산 (마지막 종가 기준)
     if shares > 0:
         last_price = close.iloc[-1]
+        last_date = str(close.index[-1].date()) if hasattr(close.index[-1], 'date') else str(close.index[-1])
         revenue = shares * last_price * (1 - commission)
         pnl = revenue - (shares * buy_price)
-        trades.append({"type": "SELL", "price": last_price, "qty": shares, "pnl": pnl})
+        trades.append({"type": "SELL", "date": last_date, "price": last_price, "qty": shares, "pnl": pnl})
         equity_values[-1] = cash + revenue
 
     equity_series = pd.Series(equity_values, index=close.index)
     return {"equity": equity_series, "trades": trades}
+
+
+async def _fetch_kospi_data(start_date: date, end_date: date) -> dict:
+    """
+    yfinance로 KOSPI(^KS11) 일별 종가를 조회한다.
+    실패 시 기본값(연 8% 복리 성장)으로 대체한다.
+    반환: {"annual_return": float, "prices": pd.Series | None}
+    """
+    try:
+        import yfinance as yf
+        import asyncio
+        from datetime import timedelta
+        end_plus = end_date + timedelta(days=5)
+        loop = asyncio.get_event_loop()
+        raw = await loop.run_in_executor(
+            None,
+            lambda: yf.download("^KS11", start=str(start_date), end=str(end_plus), progress=False, auto_adjust=True)
+        )
+        if raw is None or len(raw) < 2:
+            raise ValueError("KOSPI 데이터 부족")
+        # MultiIndex 컬럼 처리
+        if isinstance(raw.columns, pd.MultiIndex):
+            raw.columns = raw.columns.get_level_values(0)
+        prices: pd.Series = raw["Close"].dropna()
+        prices.index = pd.to_datetime(prices.index)
+        start_price = float(prices.iloc[0])
+        end_price = float(prices.iloc[-1])
+        total_return = (end_price - start_price) / start_price
+        days = (end_date - start_date).days
+        years = days / 365.25 if days > 0 else 1.0
+        annual_return = (1 + total_return) ** (1 / years) - 1
+        logger.info(f"KOSPI 벤치마크: 기간 수익률 {total_return:.2%}, 연환산 {annual_return:.2%}")
+        return {"annual_return": annual_return, "prices": prices}
+    except Exception as e:
+        logger.warning(f"KOSPI 벤치마크 조회 실패, 기본값 8% 사용: {e}")
+        return {"annual_return": 0.08, "prices": None}
 
 
 async def run_backtest(config: BacktestConfig) -> dict:
@@ -154,11 +191,10 @@ async def run_backtest(config: BacktestConfig) -> dict:
         df: OHLCV + 지표 DataFrame
         use_vbt: vectorbt 사용 여부
     """
-    # 1. KIS 과거 데이터 조회
-    if not kis_client.is_available():
-        raise ValueError("KIS API가 설정되지 않았습니다. 백테스팅에 실제 차트 데이터가 필요합니다.")
-
-    chart_data = await kis_client.get_chart(config.symbol, period="day", count=600)
+    # 1. 차트 데이터 조회 (DB 캐시 → KIS API → yfinance 폴백)
+    from app.services.chart_data_service import get_chart_data
+    warmup_days = 80  # SMA(60) 계산을 위한 워밍업 + 여유분
+    chart_data = await get_chart_data(config.symbol, config.start_date, config.end_date, warmup_days=warmup_days)
     if not chart_data or len(chart_data) < 30:
         raise ValueError(f"차트 데이터 부족: {config.symbol} (최소 30일 데이터 필요)")
 
@@ -195,7 +231,8 @@ async def run_backtest(config: BacktestConfig) -> dict:
 
     # 4. 전략 신호 생성
     # start_ts 근처부터 루프를 시작하여 성능을 최적화한다 (df 전체를 전달해 인덱스 정합성 유지)
-    start_signal_idx = max(20, df.index.searchsorted(start_ts) - 5)
+    # SMA(60) 계산을 위한 최소 워밍업 보장 (60행 이상에서 신호 생성 시작)
+    start_signal_idx = max(60, df.index.searchsorted(start_ts) - 5)
     entries, exits = _build_signals(df, config.strategy_name, config.params, signal_start_idx=start_signal_idx)
 
     # 요청 기간으로 결과 필터링 (신호 생성은 전체 데이터 기반)
@@ -234,15 +271,16 @@ async def run_backtest(config: BacktestConfig) -> dict:
         )
         logger.info(f"기본 시뮬레이션 완료: {config.symbol}")
 
-    # KOSPI 벤치마크 (KIS API에서 지수 조회 불가 시 고정 수익률로 대체)
-    benchmark_return = 0.08  # KOSPI 연평균 8% 가정
+    # KOSPI 벤치마크: yfinance로 실제 ^KS11 일별 데이터 조회
+    kospi_data = await _fetch_kospi_data(config.start_date, config.end_date)
 
     return {
         "portfolio_data": portfolio_data,
         "close": close,
         "entries": entries,
         "exits": exits,
-        "benchmark_return": benchmark_return,
+        "benchmark_return": kospi_data["annual_return"],
+        "benchmark_prices": kospi_data["prices"],  # 실제 KOSPI 일별 종가 (None이면 복리 근사)
         "df": df,
         "initial_cash": config.initial_cash,
         "use_vbt": use_vbt,

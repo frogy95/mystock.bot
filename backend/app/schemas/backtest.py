@@ -34,8 +34,20 @@ class BacktestRunRequest(BaseModel):
 
 class EquityPoint(BaseModel):
     """Equity Curve 개별 포인트"""
-    date: str    # "YYYY-MM-DD"
-    value: float # 포트폴리오 가치 (원)
+    date: str       # "YYYY-MM-DD"
+    value: float    # 포트폴리오 가치 (원)
+    benchmark: float = 0.0      # 벤치마크 가치 (원)
+    stock_buyhold: float = 0.0  # 종목 바이앤홀드 가치 (원)
+
+
+class BacktestTrade(BaseModel):
+    """시뮬레이션 개별 거래 내역"""
+    type: str           # "BUY" | "SELL"
+    date: str           # "YYYY-MM-DD"
+    price: float        # 거래 가격
+    qty: int            # 거래 수량
+    amount: float       # 거래 금액 (price * qty)
+    pnl: Optional[float] = None  # 손익 (SELL 시), BUY는 None
 
 
 class BacktestResultResponse(BaseModel):
@@ -53,4 +65,5 @@ class BacktestResultResponse(BaseModel):
     win_rate: float           # 승률 (%)
     benchmark_return: float   # 벤치마크 수익률 (%)
     equity_curve: list[EquityPoint]  # 자산 가치 곡선
+    trades: list[BacktestTrade] = []  # 시뮬레이션 거래 내역
     created_at: str

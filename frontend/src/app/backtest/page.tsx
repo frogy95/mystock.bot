@@ -7,7 +7,7 @@ import { BacktestEquityChart } from "@/components/backtest/backtest-equity-chart
 import { BacktestTradesTable } from "@/components/backtest/backtest-trades-table";
 import { useBacktestRun } from "@/hooks/use-backtest";
 import type { BacktestResultAPI } from "@/hooks/use-backtest";
-import type { BacktestResult } from "@/lib/mock/types";
+import type { BacktestResult, BacktestTrade } from "@/lib/mock/types";
 
 /**
  * BacktestResultAPI → BacktestResult 타입 변환
@@ -31,7 +31,19 @@ function mapBacktestAPIToResult(api: BacktestResultAPI): BacktestResult {
     equityCurve: api.equity_curve.map((point) => ({
       date: point.date,
       value: point.value,
-      benchmark: 0, // API에 벤치마크 곡선 없음
+      benchmark: point.benchmark,
+      stockBuyhold: point.stock_buyhold,
+    })),
+    trades: (api.trades ?? []).map((t, i): BacktestTrade => ({
+      id: String(i),
+      date: t.date,
+      type: t.type as "BUY" | "SELL",
+      price: t.price,
+      quantity: t.qty,
+      amount: t.amount,
+      profitLoss: t.pnl,
+      profitRate: null,
+      reason: "",
     })),
   };
 }
@@ -85,10 +97,12 @@ export default function BacktestPage() {
       {/* 백테스트 결과 영역 */}
       {result && (
         <>
+          <div className="rounded-lg bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+            선택한 전략의 과거 데이터 기반 시뮬레이션 결과입니다. 실제 투자 성과와 다를 수 있습니다.
+          </div>
           <BacktestResultCards result={result} />
           <BacktestEquityChart equityCurve={result.equityCurve} />
-          {/* API에 개별 거래 내역이 없으므로 빈 배열 전달 */}
-          <BacktestTradesTable trades={[]} />
+          <BacktestTradesTable trades={result.trades} />
         </>
       )}
 
