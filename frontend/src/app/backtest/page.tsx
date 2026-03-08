@@ -32,6 +32,7 @@ function mapBacktestAPIToResult(api: BacktestResultAPI): BacktestResult {
       date: point.date,
       value: point.value,
       benchmark: point.benchmark,
+      stockBuyhold: point.stock_buyhold,
     })),
     trades: (api.trades ?? []).map((t, i): BacktestTrade => ({
       id: String(i),

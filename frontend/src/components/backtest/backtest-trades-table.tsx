@@ -65,12 +65,12 @@ export function BacktestTradesTable({ trades }: BacktestTradesTableProps) {
                 {/* 수량 */}
                 <TableCell className="text-right">{trade.quantity}주</TableCell>
 
-                {/* 금액 */}
+                {/* 금액 (만원 단위) */}
                 <TableCell className="text-right">
-                  {trade.amount.toLocaleString("ko-KR")}원
+                  {(trade.amount / 10000).toFixed(0)}만원
                 </TableCell>
 
-                {/* 손익 + 수익률 */}
+                {/* 손익 + 수익률 (만원 단위) */}
                 <TableCell className="text-right">
                   {trade.profitLoss === null ? (
                     <span className="text-muted-foreground">-</span>
@@ -81,7 +81,7 @@ export function BacktestTradesTable({ trades }: BacktestTradesTableProps) {
                       }
                     >
                       {trade.profitLoss > 0 ? "+" : ""}
-                      {trade.profitLoss.toLocaleString("ko-KR")}원
+                      {(trade.profitLoss / 10000).toFixed(0)}만원
                       <br />
                       <span className="text-xs">
                         {trade.profitRate !== null

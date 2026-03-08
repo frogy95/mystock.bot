@@ -13,7 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface BacktestEquityChartProps {
-  equityCurve: { date: string; value: number; benchmark: number }[];
+  equityCurve: { date: string; value: number; benchmark: number; stockBuyhold: number }[];
 }
 
 export function BacktestEquityChart({ equityCurve }: BacktestEquityChartProps) {
@@ -39,29 +39,38 @@ export function BacktestEquityChart({ equityCurve }: BacktestEquityChartProps) {
               interval="preserveStartEnd"
             />
 
-            {/* Y축: 포트폴리오 가치 */}
+            {/* Y축: 포트폴리오 가치 (만원 단위) */}
             <YAxis
               tick={{ fontSize: 11 }}
               tickLine={false}
-              tickFormatter={(v: number) => `${v.toFixed(0)}`}
+              tickFormatter={(v: number) => `${(v / 10000).toLocaleString("ko-KR")}만`}
               domain={["auto", "auto"]}
-              label={{ value: "포트폴리오 가치(원)", angle: -90, position: "insideLeft", style: { fontSize: 11 } }}
+              label={{ value: "포트폴리오 가치(만원)", angle: -90, position: "insideLeft", style: { fontSize: 11 } }}
             />
 
             <Tooltip
               formatter={(
                 value: number | string | undefined,
                 name: string | undefined
-              ) => [
-                typeof value === "number" ? value.toFixed(2) : String(value ?? ""),
-                name === "value" ? "전략 수익" : "벤치마크",
-              ]}
+              ) => {
+                const formatted = typeof value === "number"
+                  ? `${(value / 10000).toFixed(1)}만원`
+                  : String(value ?? "");
+                let label = name ?? "";
+                if (name === "value") label = "전략 수익";
+                else if (name === "benchmark") label = "KOSPI 벤치마크";
+                else if (name === "stockBuyhold") label = "종목 바이앤홀드";
+                return [formatted, label];
+              }}
             />
 
             <Legend
-              formatter={(value: string) =>
-                value === "value" ? "전략 수익" : "벤치마크"
-              }
+              formatter={(value: string) => {
+                if (value === "value") return "전략 수익";
+                if (value === "benchmark") return "KOSPI 벤치마크";
+                if (value === "stockBuyhold") return "종목 바이앤홀드";
+                return value;
+              }}
             />
 
             {/* 전략 수익 라인 - 빨간색 */}
@@ -82,6 +91,16 @@ export function BacktestEquityChart({ equityCurve }: BacktestEquityChartProps) {
               dot={false}
               strokeWidth={2}
               name="benchmark"
+            />
+
+            {/* 종목 바이앤홀드 라인 - 녹색 */}
+            <Line
+              type="monotone"
+              dataKey="stockBuyhold"
+              stroke="#22c55e"
+              dot={false}
+              strokeWidth={2}
+              name="stockBuyhold"
             />
           </LineChart>
         </ResponsiveContainer>

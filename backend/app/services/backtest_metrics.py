@@ -78,6 +78,25 @@ def _extract_vbt_trades(trades_df: Any) -> list:
     return result
 
 
+def _build_stock_buyhold_values(dates: list, initial_cash: float, close: Any) -> list:
+    """
+    종목 바이앤홀드 가치 시계열을 생성한다.
+    초기 자본으로 첫날 종가에 전량 매수했을 때의 포트폴리오 가치.
+    """
+    try:
+        bm_index = pd.to_datetime(dates)
+        close_aligned = close.reindex(bm_index, method="ffill").bfill()
+        if close_aligned.isna().any() or len(close_aligned) == 0:
+            raise ValueError("종가 날짜 정렬 실패")
+        start_price = float(close_aligned.iloc[0])
+        if start_price == 0:
+            raise ValueError("시작 종가가 0")
+        return [initial_cash * float(v) / start_price for v in close_aligned]
+    except Exception as e:
+        logger.warning(f"종목 바이앤홀드 시계열 생성 실패: {e}")
+        return [initial_cash] * len(dates)
+
+
 def _build_benchmark_values(dates: list, initial_cash: float, benchmark_return: float, benchmark_prices: Any = None) -> list:
     """
     벤치마크 가치 시계열을 생성한다.
@@ -102,7 +121,7 @@ def _build_benchmark_values(dates: list, initial_cash: float, benchmark_return: 
     return [initial_cash * (1 + daily_bm_rate) ** i for i in range(len(dates))]
 
 
-def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float, initial_cash: float = 10_000_000, benchmark_prices: Any = None) -> dict:
+def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float, initial_cash: float = 10_000_000, benchmark_prices: Any = None, close: Any = None) -> dict:
     """vectorbt 포트폴리오 객체에서 성과 지표를 계산한다."""
     try:
         total_return = float(portfolio.total_return())
@@ -159,6 +178,9 @@ def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float, initial
         # 벤치마크 시계열: 실제 KOSPI 데이터 또는 복리 근사
         bm_values = _build_benchmark_values(dates, initial_cash, benchmark_return, benchmark_prices)
 
+        # 종목 바이앤홀드 시계열
+        sh_values = _build_stock_buyhold_values(dates, initial_cash, close) if close is not None else [initial_cash] * len(dates)
+
         return {
             "total_return": round(total_return * 100, 2),
             "cagr": round(cagr * 100, 2),
@@ -168,8 +190,8 @@ def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float, initial
             "win_rate": round(win_rate * 100, 2),
             "benchmark_return": round(benchmark_return * 100, 2),
             "equity_curve": [
-                {"date": d, "value": round(v, 2), "benchmark": round(b, 2)}
-                for d, v, b in zip(dates, equity_values, bm_values)
+                {"date": d, "value": round(v, 2), "benchmark": round(b, 2), "stock_buyhold": round(sh, 2)}
+                for d, v, b, sh in zip(dates, equity_values, bm_values, sh_values)
             ],
             "trades": _extract_vbt_trades(trades),
         }
@@ -222,6 +244,9 @@ def _calculate_metrics_from_basic(
         # 벤치마크 시계열: 실제 KOSPI 데이터 또는 복리 근사
         bm_values = _build_benchmark_values(dates, initial_cash, benchmark_return, benchmark_prices)
 
+        # 종목 바이앤홀드 시계열
+        sh_values = _build_stock_buyhold_values(dates, initial_cash, close)
+
         return {
             "total_return": round(total_return * 100, 2),
             "cagr": round(cagr * 100, 2),
@@ -231,8 +256,8 @@ def _calculate_metrics_from_basic(
             "win_rate": round(win_rate * 100, 2),
             "benchmark_return": round(benchmark_return * 100, 2),
             "equity_curve": [
-                {"date": d, "value": round(v, 2), "benchmark": round(b, 2)}
-                for d, v, b in zip(dates, equity_values, bm_values)
+                {"date": d, "value": round(v, 2), "benchmark": round(b, 2), "stock_buyhold": round(sh, 2)}
+                for d, v, b, sh in zip(dates, equity_values, bm_values, sh_values)
             ],
             "trades": [
                 {
@@ -291,6 +316,6 @@ def calculate_metrics(result: dict) -> dict:
     use_vbt = result.get("use_vbt", False)
 
     if use_vbt and "vbt_portfolio" in portfolio_data:
-        return _calculate_metrics_from_vbt(portfolio_data["vbt_portfolio"], benchmark_return, initial_cash, benchmark_prices)
+        return _calculate_metrics_from_vbt(portfolio_data["vbt_portfolio"], benchmark_return, initial_cash, benchmark_prices, close)
     else:
         return _calculate_metrics_from_basic(portfolio_data, close, initial_cash, benchmark_return, benchmark_prices)

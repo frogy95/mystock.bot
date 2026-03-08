@@ -49,6 +49,9 @@
 
 ## 검증 결과
 
+### 보고서 및 첨부 파일
+- [코드 리뷰 보고서](sprint22/code-review-report.md)
+
 ### 자동 검증 (sprint-close 시점)
 - ✅ `pytest -v` — 51개 테스트 모두 통과
 - ✅ `chart_cache.py` 모델 임포트 성공
@@ -62,6 +65,30 @@
 - ⬜ 백테스트 재실행 — DB 캐시 히트 확인 (백엔드 로그에 "차트 캐시 히트" 출력 확인)
 - ⬜ 평일 KIS API 정상 시 KIS 데이터 우선 사용 확인 (로그: "차트 조회 완료")
 - ⬜ 주말/KIS 점검 시 yfinance 폴백 동작 확인 (로그: "yfinance 조회 완료")
+
+## 추가 UX 개선 (2026-03-08)
+
+### 종목 바이앤홀드 비교 라인 추가
+- 백엔드 `EquityPoint` 스키마에 `stock_buyhold` 필드 추가
+- `backtest_metrics.py`에 `_build_stock_buyhold_values()` 헬퍼 추가 (초기자본 × 종가비율)
+- VBT/기본 시뮬레이션 양쪽 모두 equity_curve에 `stock_buyhold` 포함
+- 차트에 녹색(#22c55e) "종목 바이앤홀드" 3번째 라인 추가
+
+### 만원 단위 표기
+- Y축: `(v/10000).toLocaleString() + "만"` 형태로 변경, 레이블 "만원"
+- Tooltip: `(value/10000).toFixed(1) + "만원"` 형태
+- 거래 내역 금액/손익: `(amount/10000).toFixed(0) + "만원"` 형태
+
+### 변경 파일
+| 파일 | 변경 |
+|------|------|
+| `backend/app/schemas/backtest.py` | `EquityPoint`에 `stock_buyhold` 필드 추가 |
+| `backend/app/services/backtest_metrics.py` | 바이앤홀드 시계열 헬퍼 + equity_curve 반영 |
+| `frontend/src/hooks/use-backtest.ts` | `EquityPoint`에 `stock_buyhold` 추가 |
+| `frontend/src/lib/mock/types.ts` | `equityCurve` 타입에 `stockBuyhold` 추가 |
+| `frontend/src/app/backtest/page.tsx` | `stock_buyhold` → `stockBuyhold` 매핑 |
+| `frontend/src/components/backtest/backtest-equity-chart.tsx` | 3번째 라인 + 만원 단위 |
+| `frontend/src/components/backtest/backtest-trades-table.tsx` | 금액/손익 만원 단위 |
 
 ## 완료 기준 (Definition of Done)
 
