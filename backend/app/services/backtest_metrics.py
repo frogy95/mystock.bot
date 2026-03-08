@@ -319,3 +319,64 @@ def calculate_metrics(result: dict) -> dict:
         return _calculate_metrics_from_vbt(portfolio_data["vbt_portfolio"], benchmark_return, initial_cash, benchmark_prices, close)
     else:
         return _calculate_metrics_from_basic(portfolio_data, close, initial_cash, benchmark_return, benchmark_prices)
+
+
+def calculate_ranking_score(results: list[dict]) -> list[dict]:
+    """
+    다중 백테스트 결과에 랭킹 스코어를 계산하여 반환한다.
+
+    가중 스코어 = 수익률(30%) + 샤프지수(25%) + 승률(20%) + MDD 역수(15%) + CAGR(10%)
+    각 지표를 min-max 정규화 후 가중합 (0~100 점수)
+    """
+    if not results:
+        return []
+
+    if len(results) == 1:
+        # 단일 전략은 기본 스코어 50 부여
+        item = results[0].copy()
+        item["score"] = 50.0
+        item["rank"] = 1
+        return [item]
+
+    def minmax(values: list[float], invert: bool = False) -> list[float]:
+        """min-max 정규화. invert=True면 낮을수록 좋은 지표(MDD)."""
+        min_v = min(values)
+        max_v = max(values)
+        if max_v == min_v:
+            return [0.5] * len(values)
+        normalized = [(v - min_v) / (max_v - min_v) for v in values]
+        if invert:
+            normalized = [1.0 - n for n in normalized]
+        return normalized
+
+    returns = [r.get("total_return", 0.0) for r in results]
+    sharpes = [r.get("sharpe_ratio", 0.0) for r in results]
+    win_rates = [r.get("win_rate", 0.0) for r in results]
+    mdds = [abs(r.get("mdd", 0.0)) for r in results]  # MDD는 음수이므로 절대값
+    cagrs = [r.get("cagr", 0.0) for r in results]
+
+    norm_returns = minmax(returns)
+    norm_sharpes = minmax(sharpes)
+    norm_win_rates = minmax(win_rates)
+    norm_mdds = minmax(mdds, invert=True)  # MDD는 낮을수록 좋음
+    norm_cagrs = minmax(cagrs)
+
+    scored = []
+    for i, r in enumerate(results):
+        score = (
+            norm_returns[i] * 30
+            + norm_sharpes[i] * 25
+            + norm_win_rates[i] * 20
+            + norm_mdds[i] * 15
+            + norm_cagrs[i] * 10
+        )
+        item = r.copy()
+        item["score"] = round(score, 2)
+        scored.append(item)
+
+    # 스코어 기준 내림차순 정렬 후 순위 부여
+    scored.sort(key=lambda x: x["score"], reverse=True)
+    for rank, item in enumerate(scored, start=1):
+        item["rank"] = rank
+
+    return scored

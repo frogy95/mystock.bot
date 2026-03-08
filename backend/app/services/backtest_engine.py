@@ -10,7 +10,7 @@ import pandas as pd
 
 from app.services.kis_client import kis_client
 from app.services.indicators import _ohlcv_to_df, _calculate_indicators
-from app.services.strategy_engine import get_strategy
+from app.services.strategy_engine import get_strategy, get_dynamic_strategy
 
 logger = logging.getLogger("mystock.bot")
 
@@ -34,6 +34,9 @@ class BacktestConfig:
     end_date: date                       # 종료일
     initial_cash: float = 10_000_000     # 초기 자본 (기본 1천만원)
     commission: float = 0.00015          # 수수료 (기본 0.015%)
+    # 커스텀 전략 조건 (동적 전략 엔진 사용 시)
+    buy_conditions: dict = None
+    sell_conditions: dict = None
 
 
 def _build_signals(
@@ -41,13 +44,20 @@ def _build_signals(
     strategy_name: str,
     params: dict,
     signal_start_idx: int = 20,
+    buy_conditions: dict = None,
+    sell_conditions: dict = None,
 ) -> tuple[pd.Series, pd.Series]:
     """
     전략 엔진을 사용하여 매수/매도 신호 시리즈를 생성한다.
     각 시점(signal_start_idx번째 행부터)에서 누적 데이터를 전략에 입력하여 신호를 평가한다.
     signal_start_idx로 루프 시작점을 제한하여 성능을 최적화하되 df 전체를 받아 인덱스 정합성을 유지한다.
+    커스텀 전략은 buy_conditions/sell_conditions를 전달하면 DynamicStrategy를 사용한다.
     """
-    engine = get_strategy(strategy_name)
+    # 커스텀 동적 전략 사용
+    if buy_conditions is not None and sell_conditions is not None:
+        engine = get_dynamic_strategy(buy_conditions, sell_conditions)
+    else:
+        engine = get_strategy(strategy_name)
     if engine is None:
         raise ValueError(f"전략 없음: {strategy_name}")
 
@@ -233,7 +243,14 @@ async def run_backtest(config: BacktestConfig) -> dict:
     # start_ts 근처부터 루프를 시작하여 성능을 최적화한다 (df 전체를 전달해 인덱스 정합성 유지)
     # SMA(60) 계산을 위한 최소 워밍업 보장 (60행 이상에서 신호 생성 시작)
     start_signal_idx = max(60, df.index.searchsorted(start_ts) - 5)
-    entries, exits = _build_signals(df, config.strategy_name, config.params, signal_start_idx=start_signal_idx)
+    entries, exits = _build_signals(
+        df,
+        config.strategy_name,
+        config.params,
+        signal_start_idx=start_signal_idx,
+        buy_conditions=config.buy_conditions,
+        sell_conditions=config.sell_conditions,
+    )
 
     # 요청 기간으로 결과 필터링 (신호 생성은 전체 데이터 기반)
     period_mask = (df.index >= start_ts) & (df.index <= end_ts)

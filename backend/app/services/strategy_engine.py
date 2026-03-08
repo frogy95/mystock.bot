@@ -245,6 +245,170 @@ class ValueMomentumStrategy(BaseStrategy):
         return Signal(signal_type="HOLD", confidence=0.0, reason="조건 미충족")
 
 
+class DynamicStrategy(BaseStrategy):
+    """
+    동적 커스텀 전략 - JSONB 조건 구조를 파싱하여 매매 신호를 생성한다.
+
+    지원 지표: SMA, EMA, RSI, MACD, BB_UPPER, BB_LOWER, ATR, VOLUME_RATIO, PRICE
+    지원 연산자: >, >=, <, <=, CROSS_ABOVE, CROSS_BELOW
+    """
+
+    name = "DynamicStrategy"
+    description = "커스텀 조건 기반 동적 전략"
+
+    def __init__(self, buy_conditions: dict, sell_conditions: dict) -> None:
+        self._buy_conditions = buy_conditions
+        self._sell_conditions = sell_conditions
+
+    def _compute_indicator(self, df: pd.DataFrame, operand: dict) -> Optional[pd.Series]:
+        """좌변/우변 피연산자를 DataFrame 시리즈로 변환한다."""
+        if operand.get("type") == "value":
+            # 상수값 → 전체 행과 같은 크기의 Series
+            return pd.Series([float(operand["value"])] * len(df), index=df.index)
+
+        indicator = operand.get("indicator", "")
+        params = operand.get("params", {})
+
+        try:
+            import pandas_ta as ta
+
+            if indicator == "SMA":
+                period = int(params.get("period", 20))
+                return df.ta.sma(length=period)
+            elif indicator == "EMA":
+                period = int(params.get("period", 12))
+                return df.ta.ema(length=period)
+            elif indicator == "RSI":
+                period = int(params.get("period", 14))
+                return df.ta.rsi(length=period)
+            elif indicator == "MACD":
+                macd_df = df.ta.macd(fast=12, slow=26, signal=9)
+                if macd_df is not None:
+                    return macd_df.iloc[:, 0]  # MACD 라인
+            elif indicator == "BB_UPPER":
+                period = int(params.get("period", 20))
+                bb_df = df.ta.bbands(length=period, std=2)
+                if bb_df is not None:
+                    # BBU_20_2.0 컬럼
+                    upper_col = [c for c in bb_df.columns if c.startswith("BBU")]
+                    return bb_df[upper_col[0]] if upper_col else None
+            elif indicator == "BB_LOWER":
+                period = int(params.get("period", 20))
+                bb_df = df.ta.bbands(length=period, std=2)
+                if bb_df is not None:
+                    lower_col = [c for c in bb_df.columns if c.startswith("BBL")]
+                    return bb_df[lower_col[0]] if lower_col else None
+            elif indicator == "ATR":
+                period = int(params.get("period", 14))
+                return df.ta.atr(length=period)
+            elif indicator == "VOLUME_RATIO":
+                period = int(params.get("period", 20))
+                return df["Volume"] / df["Volume"].rolling(period).mean()
+            elif indicator == "PRICE":
+                return df["Close"]
+        except Exception as e:
+            logger.warning(f"DynamicStrategy 지표 계산 오류 ({indicator}): {e}")
+
+        return None
+
+    def _evaluate_condition(self, df: pd.DataFrame, condition: dict) -> Optional[bool]:
+        """단일 조건 행을 최신 시점 기준으로 평가한다."""
+        left_series = self._compute_indicator(df, condition.get("leftOperand", {}))
+        right_series = self._compute_indicator(df, condition.get("rightOperand", {}))
+        operator = condition.get("operator", ">")
+
+        if left_series is None or right_series is None:
+            return None
+        if left_series.isna().iloc[-1] or right_series.isna().iloc[-1]:
+            return None
+
+        left_val = float(left_series.iloc[-1])
+        right_val = float(right_series.iloc[-1])
+
+        if operator == ">":
+            return left_val > right_val
+        elif operator == ">=":
+            return left_val >= right_val
+        elif operator == "<":
+            return left_val < right_val
+        elif operator == "<=":
+            return left_val <= right_val
+        elif operator == "CROSS_ABOVE":
+            # 직전 행에서 left <= right이고 현재 행에서 left > right
+            if len(left_series) < 2 or len(right_series) < 2:
+                return None
+            prev_left = float(left_series.iloc[-2])
+            prev_right = float(right_series.iloc[-2])
+            return prev_left <= prev_right and left_val > right_val
+        elif operator == "CROSS_BELOW":
+            if len(left_series) < 2 or len(right_series) < 2:
+                return None
+            prev_left = float(left_series.iloc[-2])
+            prev_right = float(right_series.iloc[-2])
+            return prev_left >= prev_right and left_val < right_val
+
+        return None
+
+    def _evaluate_group(self, df: pd.DataFrame, group: dict) -> bool:
+        """조건 그룹 전체를 AND/OR 로직으로 평가한다."""
+        conditions = group.get("conditions", [])
+        logic_operators = group.get("logicOperators", [])
+
+        if not conditions:
+            return False
+
+        results = [self._evaluate_condition(df, c) for c in conditions]
+        # None(평가 불가)은 False로 처리
+        bool_results = [r if r is not None else False for r in results]
+
+        if len(bool_results) == 1:
+            return bool_results[0]
+
+        # AND/OR 로직 순차 적용
+        result = bool_results[0]
+        for i, op in enumerate(logic_operators):
+            if i + 1 >= len(bool_results):
+                break
+            if op == "AND":
+                result = result and bool_results[i + 1]
+            else:  # OR
+                result = result or bool_results[i + 1]
+
+        return result
+
+    def evaluate(self, df: pd.DataFrame, params: dict[str, Any]) -> Signal:
+        if len(df) < 5:
+            return Signal(signal_type="HOLD", confidence=0.0, reason="데이터 부족")
+
+        try:
+            is_buy = self._evaluate_group(df, self._buy_conditions)
+            is_sell = self._evaluate_group(df, self._sell_conditions)
+
+            if is_buy:
+                return Signal(
+                    signal_type="BUY",
+                    confidence=0.7,
+                    reason="커스텀 매수 조건 충족",
+                    target_price=float(df["Close"].iloc[-1]),
+                )
+            if is_sell:
+                return Signal(
+                    signal_type="SELL",
+                    confidence=0.7,
+                    reason="커스텀 매도 조건 충족",
+                    target_price=float(df["Close"].iloc[-1]),
+                )
+        except Exception as e:
+            logger.warning(f"DynamicStrategy 평가 오류: {e}")
+
+        return Signal(signal_type="HOLD", confidence=0.0, reason="조건 미충족")
+
+
+def get_dynamic_strategy(buy_conditions: dict, sell_conditions: dict) -> DynamicStrategy:
+    """JSONB 조건 딕셔너리로 DynamicStrategy 인스턴스를 생성한다."""
+    return DynamicStrategy(buy_conditions, sell_conditions)
+
+
 # 등록된 전략 레지스트리 (strategy name → 인스턴스)
 STRATEGY_REGISTRY: dict[str, BaseStrategy] = {
     "GoldenCrossRSI": GoldenCrossRSIStrategy(),

@@ -2,9 +2,10 @@
 전략 ORM 모델 모듈
 매매 전략과 전략 파라미터 정보를 정의한다.
 """
-from typing import Optional
+from typing import Any, Dict, Optional
 
-from sqlalchemy import String, Boolean, ForeignKey
+from sqlalchemy import String, Boolean, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -27,6 +28,12 @@ class Strategy(Base):
     is_preset: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # 소유 사용자 FK - NULL이면 시스템 프리셋, 값이 있으면 사용자 소유
     user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    # 커스텀 전략 매수 조건 (JSONB) - 프리셋은 NULL
+    buy_conditions: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    # 커스텀 전략 매도 조건 (JSONB) - 프리셋은 NULL
+    sell_conditions: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    # 전략 설명 (커스텀 전략용)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
 class StrategyParam(Base):

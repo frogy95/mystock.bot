@@ -4,6 +4,59 @@
 
 ---
 
+## Hotfix: 백테스트 종목검색 드롭다운 오버플로우 버그 수정 (2026-03-08)
+
+### 브랜치 및 PR
+- 브랜치: `sprint25` (hotfix 작업 포함)
+- PR: https://github.com/frogy95/mystock.bot/pull/47 (sprint25 → main)
+
+### 문제 원인
+Radix UI `ScrollArea` 컴포넌트 Root에 `overflow-hidden` 클래스가 누락되어 내부 Viewport가 스크롤을 활성화하지 않는 상태로 동작. 이로 인해 종목 검색 드롭다운 목록이 아래 UI 콘텐츠(시작일, 종료일, 실행 버튼)와 겹쳐 렌더링되는 버그 발생.
+
+### 수정 내용
+- `frontend/src/components/backtest/backtest-config-form.tsx` L190
+- `<ScrollArea className="max-h-[200px]">` → `<ScrollArea className="max-h-[200px] overflow-hidden">`
+
+### 검증 결과
+- ✅ 자동 검증 완료 항목:
+  - pytest: 51 passed (회귀 없음)
+  - Playwright 타겟 검증: "삼성" 검색 시 드롭다운 정상 표시 — 아래 콘텐츠와 겹치지 않는 독립 레이어로 렌더링 확인
+  - Playwright 타겟 검증: 드롭다운에서 "삼성전자(005930)" 선택 → 입력창 반영 및 드롭다운 닫힘 정상 동작 확인
+  - 스크린샷: `docs/sprint/hotfix-20260308/playwright-dropdown-overflow.png`
+
+- ⬜ 수동 검증 필요 항목:
+  - `docker compose up --build` — 프론트엔드 코드 변경 반영 (이미지 재빌드)
+
+---
+
+## Sprint 23~25 마무리 (2026-03-08) — Phase 15: 전략 테스팅 업그레이드
+
+### PR
+- https://github.com/frogy95/mystock.bot/pull/46 (sprint25 → develop)
+
+### 자동 검증 완료
+- ✅ `pytest -v` — 51 passed (기존 테스트 회귀 없음)
+- ✅ 헬스체크 (`/api/v1/health`) — DB/Redis/Scheduler 모두 healthy
+- ✅ 신규 API 엔드포인트 라우터 등록: `/backtest/run-multi`, `/backtest/stock-status/{symbol}`, `/backtest/ai-recommend`
+- ✅ `/backtest/stock-status/005930` 응답 정상
+- ✅ Playwright: 백테스팅 페이지 렌더링 정상
+- ✅ Playwright: 체크박스 전략 다중 선택 동작 정상 (2개 선택 → 버튼 레이블 동적 변경)
+- ✅ Playwright: 커스텀 전략 에디터 렌더링 및 "업데이트" 버튼 표시 정상
+- ✅ 코드 리뷰: Critical/High 이슈 없음
+- ✅ `checkbox.tsx` 누락 컴포넌트 추가 (빌드 오류 수정)
+
+### 수동 검증 필요
+- ⬜ `docker compose up --build` — anthropic 패키지 포함 이미지 재빌드
+- ⬜ `docker compose exec backend alembic upgrade head` — JSONB 컬럼 마이그레이션 적용
+- ⬜ `.env`에 `ANTHROPIC_API_KEY=sk-ant-...` 설정
+- ⬜ 다중 전략 선택(2개 이상) → 백테스트 실행 → 랭킹 테이블 렌더링 확인
+- ⬜ 랭킹 테이블에서 "적용" 버튼 클릭 → 단일 결과 표시 전환 확인
+- ⬜ "AI 분석 요청" 버튼 클릭 → 추천 전략/신뢰도/리스크/포지션 조언 카드 표시 확인
+- ⬜ 커스텀 전략 "업데이트" 버튼 클릭 → 서버 저장 성공 토스트 확인
+- ⬜ ANTHROPIC_API_KEY 미설정 상태에서 AI 분석 요청 → 503 오류 처리 확인
+
+---
+
 ## Sprint 22 최종 마무리 (2026-03-08)
 
 ### PR

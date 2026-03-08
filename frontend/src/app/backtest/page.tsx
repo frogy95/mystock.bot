@@ -5,20 +5,27 @@ import { BacktestConfigForm } from "@/components/backtest/backtest-config-form";
 import { BacktestResultCards } from "@/components/backtest/backtest-result-cards";
 import { BacktestEquityChart } from "@/components/backtest/backtest-equity-chart";
 import { BacktestTradesTable } from "@/components/backtest/backtest-trades-table";
-import { useBacktestRun } from "@/hooks/use-backtest";
-import type { BacktestResultAPI } from "@/hooks/use-backtest";
+import { BacktestRankingTable } from "@/components/backtest/backtest-ranking-table";
+import { BacktestAIRecommendation } from "@/components/backtest/backtest-ai-recommendation";
+import {
+  useBacktestRun,
+  useBacktestRunMulti,
+  useStockStatus,
+} from "@/hooks/use-backtest";
+import { useStrategies } from "@/hooks/use-strategy";
+import type {
+  BacktestResultAPI,
+  BacktestMultiResponse,
+  AIRecommendResultSummary,
+} from "@/hooks/use-backtest";
 import type { BacktestResult, BacktestTrade } from "@/lib/mock/types";
 
-/**
- * BacktestResultAPI → BacktestResult 타입 변환
- * 컴포넌트가 기대하는 필드명으로 매핑한다.
- */
 function mapBacktestAPIToResult(api: BacktestResultAPI): BacktestResult {
   return {
     strategyId: String(api.id),
     strategyName: api.strategy_name,
     symbol: api.symbol,
-    stockName: api.symbol, // API에 종목명 없으므로 코드로 대체
+    stockName: api.symbol,
     startDate: api.start_date,
     endDate: api.end_date,
     totalReturn: api.total_return,
@@ -49,65 +56,118 @@ function mapBacktestAPIToResult(api: BacktestResultAPI): BacktestResult {
 }
 
 export default function BacktestPage() {
-  // 백테스팅 실행 mutation 훅
   const backtestRun = useBacktestRun();
+  const backtestRunMulti = useBacktestRunMulti();
+  const { data: strategies } = useStrategies();
 
-  // 현재 화면에 표시할 결과 상태
-  const [result, setResult] = useState<BacktestResult | null>(null);
+  const [singleResult, setSingleResult] = useState<BacktestResult | null>(null);
+  const [multiResult, setMultiResult] = useState<BacktestMultiResponse | null>(null);
+  const [currentSymbol, setCurrentSymbol] = useState<string | null>(null);
 
-  /**
-   * 백테스트 실행 핸들러
-   * BacktestConfigForm에서 전달받은 설정으로 실제 API 호출
-   */
+  const { data: stockStatus } = useStockStatus(currentSymbol);
+
+  const isRunning = backtestRun.isPending || backtestRunMulti.isPending;
+
   const handleRun = (config: {
-    strategyId: string;
+    strategyIds: number[];
     symbol: string;
     startDate: string;
     endDate: string;
   }) => {
-    backtestRun.mutate(
-      {
-        strategy_name: config.strategyId,
-        symbol: config.symbol,
-        start_date: config.startDate,
-        end_date: config.endDate,
-      },
-      {
-        onSuccess: (apiResult) => {
-          setResult(mapBacktestAPIToResult(apiResult));
+    setCurrentSymbol(config.symbol);
+    setSingleResult(null);
+    setMultiResult(null);
+
+    if (config.strategyIds.length === 1) {
+      // 단일 전략 - 기존 API 사용
+      const strategy = strategies?.find((s) => s.id === config.strategyIds[0]);
+      if (!strategy) return;
+
+      backtestRun.mutate(
+        {
+          strategy_name: strategy.name,
+          symbol: config.symbol,
+          start_date: config.startDate,
+          end_date: config.endDate,
+          strategy_id: strategy.is_preset ? undefined : strategy.id,
         },
-      }
-    );
+        {
+          onSuccess: (apiResult) => {
+            setSingleResult(mapBacktestAPIToResult(apiResult));
+          },
+        }
+      );
+    } else {
+      // 다중 전략 - run-multi API 사용
+      backtestRunMulti.mutate(
+        {
+          symbol: config.symbol,
+          strategy_ids: config.strategyIds,
+          start_date: config.startDate,
+          end_date: config.endDate,
+        },
+        {
+          onSuccess: (result) => {
+            setMultiResult(result);
+          },
+        }
+      );
+    }
   };
+
+  const isError = backtestRun.isError || backtestRunMulti.isError;
 
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-semibold">백테스팅</h2>
 
-      {/* 백테스트 설정 폼 */}
-      <BacktestConfigForm onRun={handleRun} isRunning={backtestRun.isPending} />
+      <BacktestConfigForm onRun={handleRun} isRunning={isRunning} />
 
-      {/* API 에러 메시지 */}
-      {backtestRun.isError && (
+      {isError && (
         <p className="text-destructive text-sm">
           백테스트 실행 중 오류가 발생했습니다.
         </p>
       )}
 
-      {/* 백테스트 결과 영역 */}
-      {result && (
+      {/* 다중 전략 결과 */}
+      {multiResult && currentSymbol && (
+        <>
+          <div className="rounded-lg bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+            선택한 전략들의 과거 데이터 기반 비교 시뮬레이션 결과입니다. 실제 투자 성과와 다를 수 있습니다.
+          </div>
+          <BacktestRankingTable
+            ranking={multiResult.ranking}
+            stockStatus={stockStatus ?? null}
+          />
+          <BacktestEquityChart multiResults={multiResult.results} />
+          <BacktestAIRecommendation
+            symbol={currentSymbol}
+            resultsSummary={multiResult.results.map((r): AIRecommendResultSummary => ({
+              strategy_name: r.strategy_name,
+              total_return: r.total_return,
+              mdd: r.mdd,
+              sharpe_ratio: r.sharpe_ratio,
+              win_rate: r.win_rate,
+              total_trades: r.total_trades,
+            }))}
+            stockStatus={stockStatus ?? null}
+          />
+        </>
+      )}
+
+      {/* 단일 전략 결과 */}
+      {singleResult && (
         <>
           <div className="rounded-lg bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
             선택한 전략의 과거 데이터 기반 시뮬레이션 결과입니다. 실제 투자 성과와 다를 수 있습니다.
           </div>
-          <BacktestResultCards result={result} />
-          <BacktestEquityChart equityCurve={result.equityCurve} />
-          <BacktestTradesTable trades={result.trades} />
+          <BacktestResultCards result={singleResult} />
+          <BacktestEquityChart equityCurve={singleResult.equityCurve} />
+          <BacktestTradesTable trades={singleResult.trades} />
         </>
       )}
 
-      {/* 초기 안내 메시지 */}
-      {!result && !backtestRun.isPending && (
+      {!singleResult && !multiResult && !isRunning && (
         <div className="text-center text-muted-foreground py-12">
           백테스트를 실행하면 결과가 여기에 표시됩니다.
         </div>
