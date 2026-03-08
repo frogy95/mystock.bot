@@ -4,6 +4,37 @@
 
 ---
 
+## Hotfix: 백테스트 날짜 필터링 순서 오류 수정 (2026-03-08)
+
+### 브랜치 및 PR
+- 브랜치: `hotfix/backtest-date-filter`
+- PR: https://github.com/frogy95/mystock.bot/pull/42
+
+### 문제 원인
+`run_backtest` 함수에서 날짜 필터링이 신호 생성(기술적 지표 계산) 전에 적용되어, GoldenCrossRSI 등 지표 계산에 필요한 과거 데이터가 잘려나감. 결과적으로 매매 신호가 전혀 발생하지 않아 매매 0회, 수익률 0% 버그 재현.
+
+### 수정 내용
+- 날짜 필터링을 신호 생성 후로 이동 (지표 계산 시 전체 과거 데이터 활용)
+- 데이터 부족 체크 기준 20일 → 60일 상향 (GoldenCrossRSI 최소 60일 필요)
+- 요청 기간 데이터 존재 여부 검증 로직 추가
+- 신호 생성 후 `period_mask`로 df/entries/exits 일괄 필터링
+
+### 코드 리뷰 결과
+- Critical/High 이슈 없음
+- 수정 로직이 문제를 올바르게 해결함
+- 부작용 없음: period_mask를 df/entries/exits에 일관되게 적용
+
+### 검증 결과
+- ✅ 자동 검증 완료 항목:
+  - pytest: 51 passed, 1 warning
+  - 코드 리뷰: Critical/High 이슈 없음
+
+- ⬜ 수동 검증 필요 항목:
+  - `docker compose up --build` (코드 반영)
+  - 백테스트 화면에서 실제 종목/기간으로 매매 신호 발생 여부 확인
+
+---
+
 ## Hotfix: 프리셋 전략 중복 표시 수정 (2026-03-08)
 
 ### 브랜치 및 PR
