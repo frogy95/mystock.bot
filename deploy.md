@@ -4,6 +4,38 @@
 
 ---
 
+## Hotfix: 백테스트 신호 인덱스 정합성 오류 및 종목 코드 파싱 수정 (2026-03-08)
+
+### 브랜치 및 PR
+- 브랜치: `hotfix/backtest-signal-index-alignment`
+- PR: https://github.com/frogy95/mystock.bot/pull/44
+
+### 문제 원인
+1. `_build_signals`에 df 슬라이스를 전달하던 구조에서 `entries/exits` 시리즈 인덱스와 `period_mask` 인덱스 불일치 잠재 버그. 루프가 전체 df를 순회하여 불필요한 연산 발생.
+2. 백테스트 폼에서 `"삼성전자 (005930)"` 형태로 입력 시 종목 코드 파싱 없이 API 전달되어 종목 조회 실패.
+
+### 수정 내용
+- `_build_signals`에 `signal_start_idx: int = 20` 파라미터 추가, df 전체를 전달하여 인덱스 정합성 유지
+- `run_backtest`에서 `start_signal_idx = max(20, df.index.searchsorted(start_ts) - 5)` 계산 후 전달 (성능 최적화)
+- `BacktestConfigForm.handleSubmit`에서 정규식으로 괄호 안 종목 코드 추출 후 API 전달
+
+### 코드 리뷰 결과
+- Critical/High 이슈 없음
+- 수정 로직이 문제를 올바르게 해결함
+- 부작용 없음: df 전체 전달로 인덱스 정합성 보장
+
+### 검증 결과
+- ✅ 자동 검증 완료 항목:
+  - pytest: 51 passed, 1 warning
+  - 코드 리뷰: Critical/High 이슈 없음
+
+- ⬜ 수동 검증 필요 항목:
+  - `docker compose up --build` (코드 반영)
+  - 백테스트 화면에서 종목명 자동완성 후 실행 시 정상 동작 확인
+  - 백테스트 결과에서 매매 신호 및 수익률 정상 출력 확인
+
+---
+
 ## Hotfix: 백테스트 날짜 필터링 순서 오류 수정 (2026-03-08)
 
 ### 브랜치 및 PR
