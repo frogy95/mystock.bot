@@ -27,7 +27,7 @@ def _to_response(record: BacktestResult) -> BacktestResultResponse:
     data = record.result_data or {}
     equity_raw = data.get("equity_curve", [])
     equity_curve = [
-        EquityPoint(date=ep["date"], value=ep["value"])
+        EquityPoint(date=ep["date"], value=ep["value"], benchmark=ep.get("benchmark", 0.0))
         for ep in equity_raw
         if isinstance(ep, dict) and "date" in ep and "value" in ep
     ]

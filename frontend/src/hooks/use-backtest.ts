@@ -5,8 +5,9 @@ import { apiClient } from "@/lib/api/client";
 
 /** 백엔드 Equity Curve 포인트 타입 */
 export interface EquityPoint {
-  date: string;   // "YYYY-MM-DD"
-  value: number;  // 포트폴리오 가치 (원)
+  date: string;        // "YYYY-MM-DD"
+  value: number;       // 포트폴리오 가치 (원)
+  benchmark: number;   // 벤치마크 가치 (원)
 }
 
 /** 백엔드 백테스팅 결과 응답 타입 */

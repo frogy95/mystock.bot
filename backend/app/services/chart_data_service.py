@@ -56,11 +56,21 @@ async def get_chart_data(
 
         # 2. 캐시 미스 → 외부 API 조회
         logger.info("차트 캐시 미스 [%s]: 외부 API 조회 시작 (DB %d건)", symbol, len(cached))
+        expected = (end_date - fetch_start).days * 5 // 7
         raw_data = await _fetch_from_kis(symbol, fetch_start, end_date)
 
-        if raw_data is None:
-            logger.warning("KIS 실패 [%s]: yfinance 폴백 시도", symbol)
-            raw_data = _fetch_chart_yfinance(symbol, fetch_start, end_date)
+        # KIS 데이터가 없거나 기대 건수의 70% 미만이면 yfinance로 보충
+        if raw_data is None or len(raw_data) < expected * 0.7:
+            if raw_data:
+                logger.warning(
+                    "KIS 데이터 부족 [%s]: %d건/%d건 — yfinance 보충 시도",
+                    symbol, len(raw_data), expected,
+                )
+            else:
+                logger.warning("KIS 실패 [%s]: yfinance 폴백 시도", symbol)
+            yf_data = _fetch_chart_yfinance(symbol, fetch_start, end_date)
+            if yf_data and len(yf_data) > len(raw_data or []):
+                raw_data = yf_data
 
         if not raw_data:
             # 외부 API 모두 실패 시 캐시 데이터라도 반환

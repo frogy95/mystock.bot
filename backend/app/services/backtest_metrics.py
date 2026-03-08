@@ -45,7 +45,7 @@ def _calculate_max_drawdown(equity: pd.Series) -> float:
     return float(mdd) if not math.isnan(mdd) else 0.0
 
 
-def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float) -> dict:
+def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float, initial_cash: float = 10_000_000) -> dict:
     """vectorbt 포트폴리오 객체에서 성과 지표를 계산한다."""
     try:
         total_return = float(portfolio.total_return())
@@ -98,6 +98,10 @@ def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float) -> dict
             equity_values = []
             dates = []
 
+        # 벤치마크 시계열: 초기 자본에서 연 benchmark_return% 일별 복리 성장
+        daily_bm_rate = (1 + benchmark_return) ** (1 / 252) - 1
+        bm_values = [initial_cash * (1 + daily_bm_rate) ** i for i in range(len(dates))]
+
         return {
             "total_return": round(total_return * 100, 2),
             "cagr": round(cagr * 100, 2),
@@ -106,7 +110,10 @@ def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float) -> dict
             "total_trades": total_trades,
             "win_rate": round(win_rate * 100, 2),
             "benchmark_return": round(benchmark_return * 100, 2),
-            "equity_curve": [{"date": d, "value": v} for d, v in zip(dates, equity_values)],
+            "equity_curve": [
+                {"date": d, "value": round(v, 2), "benchmark": round(b, 2)}
+                for d, v, b in zip(dates, equity_values, bm_values)
+            ],
         }
     except Exception as e:
         logger.error(f"VectorBT 지표 계산 오류: {e}")
@@ -153,6 +160,10 @@ def _calculate_metrics_from_basic(
         dates = [str(d.date()) if hasattr(d, 'date') else str(d) for d in equity.index]
         equity_values = equity.tolist()
 
+        # 벤치마크 시계열: 초기 자본에서 연 benchmark_return% 일별 복리 성장
+        daily_bm_rate = (1 + benchmark_return) ** (1 / 252) - 1
+        bm_values = [initial_cash * (1 + daily_bm_rate) ** i for i in range(len(dates))]
+
         return {
             "total_return": round(total_return * 100, 2),
             "cagr": round(cagr * 100, 2),
@@ -161,7 +172,10 @@ def _calculate_metrics_from_basic(
             "total_trades": total_trades,
             "win_rate": round(win_rate * 100, 2),
             "benchmark_return": round(benchmark_return * 100, 2),
-            "equity_curve": [{"date": d, "value": round(v, 2)} for d, v in zip(dates, equity_values)],
+            "equity_curve": [
+                {"date": d, "value": round(v, 2), "benchmark": round(b, 2)}
+                for d, v, b in zip(dates, equity_values, bm_values)
+            ],
         }
     except Exception as e:
         logger.error(f"기본 시뮬레이션 지표 계산 오류: {e}")
@@ -207,6 +221,6 @@ def calculate_metrics(result: dict) -> dict:
     use_vbt = result.get("use_vbt", False)
 
     if use_vbt and "vbt_portfolio" in portfolio_data:
-        return _calculate_metrics_from_vbt(portfolio_data["vbt_portfolio"], benchmark_return)
+        return _calculate_metrics_from_vbt(portfolio_data["vbt_portfolio"], benchmark_return, initial_cash)
     else:
         return _calculate_metrics_from_basic(portfolio_data, close, initial_cash, benchmark_return)

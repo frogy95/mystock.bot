@@ -34,8 +34,9 @@ class BacktestRunRequest(BaseModel):
 
 class EquityPoint(BaseModel):
     """Equity Curve 개별 포인트"""
-    date: str    # "YYYY-MM-DD"
-    value: float # 포트폴리오 가치 (원)
+    date: str       # "YYYY-MM-DD"
+    value: float    # 포트폴리오 가치 (원)
+    benchmark: float = 0.0  # 벤치마크 가치 (원)
 
 
 class BacktestResultResponse(BaseModel):

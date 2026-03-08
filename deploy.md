@@ -4,6 +4,24 @@
 
 ---
 
+## Sprint 22 버그 수정: 데이터 부족 + 벤치마크 미표시 (2026-03-08)
+
+### 자동 검증 완료
+- ✅ pytest -v: 51 passed
+
+### 수동 검증 필요
+- ⬜ `docker compose up --build` — 수정 코드 반영
+- ⬜ 기존 캐시 초기화 (부족한 100건 삭제):
+  ```sql
+  DELETE FROM chart_data_cache WHERE symbol = '229200';
+  ```
+  실행: `docker compose exec postgres psql -U mystock -d mystock -c "DELETE FROM chart_data_cache;"`
+- ⬜ 백테스트 실행 (229200, 2025-01-01 ~ 2026-03-08) → X축이 2025-01 근처부터 시작하는지 확인
+- ⬜ 벤치마크(회색) 라인이 우상향 곡선으로 표시되는지 확인
+- ⬜ 재실행 → 백엔드 로그에 "차트 캐시 히트" 확인
+
+---
+
 ## Sprint 22: 백테스트 차트 데이터 DB 캐싱 + yfinance 폴백 (2026-03-08)
 
 ### PR

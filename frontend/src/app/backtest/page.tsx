@@ -31,7 +31,7 @@ function mapBacktestAPIToResult(api: BacktestResultAPI): BacktestResult {
     equityCurve: api.equity_curve.map((point) => ({
       date: point.date,
       value: point.value,
-      benchmark: 0, // API에 벤치마크 곡선 없음
+      benchmark: point.benchmark,
     })),
   };
 }
