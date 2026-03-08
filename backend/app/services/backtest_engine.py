@@ -36,10 +36,16 @@ class BacktestConfig:
     commission: float = 0.00015          # 수수료 (기본 0.015%)
 
 
-def _build_signals(df: pd.DataFrame, strategy_name: str, params: dict) -> tuple[pd.Series, pd.Series]:
+def _build_signals(
+    df: pd.DataFrame,
+    strategy_name: str,
+    params: dict,
+    signal_start_idx: int = 20,
+) -> tuple[pd.Series, pd.Series]:
     """
     전략 엔진을 사용하여 매수/매도 신호 시리즈를 생성한다.
-    각 시점(20번째 행부터)에서 누적 데이터를 전략에 입력하여 신호를 평가한다.
+    각 시점(signal_start_idx번째 행부터)에서 누적 데이터를 전략에 입력하여 신호를 평가한다.
+    signal_start_idx로 루프 시작점을 제한하여 성능을 최적화하되 df 전체를 받아 인덱스 정합성을 유지한다.
     """
     engine = get_strategy(strategy_name)
     if engine is None:
@@ -54,7 +60,7 @@ def _build_signals(df: pd.DataFrame, strategy_name: str, params: dict) -> tuple[
     entries = pd.Series(False, index=df.index, dtype=bool)
     exits = pd.Series(False, index=df.index, dtype=bool)
 
-    for i in range(20, len(df)):
+    for i in range(signal_start_idx, len(df)):
         slice_df = df.iloc[: i + 1]
         try:
             # KIS API 형식의 딕셔너리 리스트로 변환
@@ -188,7 +194,9 @@ async def run_backtest(config: BacktestConfig) -> dict:
     _calculate_indicators(df)
 
     # 4. 전략 신호 생성
-    entries, exits = _build_signals(df, config.strategy_name, config.params)
+    # start_ts 근처부터 루프를 시작하여 성능을 최적화한다 (df 전체를 전달해 인덱스 정합성 유지)
+    start_signal_idx = max(20, df.index.searchsorted(start_ts) - 5)
+    entries, exits = _build_signals(df, config.strategy_name, config.params, signal_start_idx=start_signal_idx)
 
     # 요청 기간으로 결과 필터링 (신호 생성은 전체 데이터 기반)
     period_mask = (df.index >= start_ts) & (df.index <= end_ts)

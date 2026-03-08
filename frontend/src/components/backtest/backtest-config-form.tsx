@@ -57,7 +57,10 @@ export function BacktestConfigForm({ onRun, isRunning }: BacktestConfigFormProps
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isFormValid) return;
-    onRun({ strategyId, symbol, startDate, endDate });
+    // "종목명 (229200)" 형태로 입력된 경우 괄호 안 코드만 추출
+    const match = symbol.match(/\((\w+)\)\s*$/);
+    const resolvedSymbol = match ? match[1] : symbol.trim();
+    onRun({ strategyId, symbol: resolvedSymbol, startDate, endDate });
   }
 
   return (
