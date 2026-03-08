@@ -1,5 +1,5 @@
 > **개발 프로세스/검증 절차**: [`docs/dev-process.md`](dev-process.md) 참조
-> **롤백 시나리오 상세**: [`docs/dev-process.md` 섹션 6.4](dev-process.md#64-롤백-시나리오) 참조
+> **롤백 시나리오 상세(DB 백업 포함)**: [`docs/dev-process.md` 섹션 6.4](dev-process.md#64-롤백-시나리오) 참조
 
 ## Git 브랜치 전략 & 배포 흐름
 
@@ -132,6 +132,9 @@ docker compose up --build
 ---
 
 ## 롤백 절차
+
+> 아래는 CI/CD 관점의 롤백 요약입니다.
+> 시나리오별 상세 절차(DB 백업 포함)는 [docs/dev-process.md 섹션 6.4](dev-process.md#64-롤백-시나리오) 참조.
 
 ### 빠른 롤백 (Docker 이미지)
 

@@ -111,6 +111,7 @@ hotfix/*  →  PR to main  →  Lightsail 자동 배포  →  main을 develop에
 
 - Docker 컨테이너가 실행 중일 때만 자동 실행
 - 서버가 응답하는지 확인 후 진행 (`http://localhost:3000`, `http://localhost:8000`)
+- Docker가 미실행인 경우: 자동 검증을 건너뛰고, deploy.md에 "⬜ Docker 미실행으로 자동 검증 미수행" 기록 후 수동 검증 항목으로 안내
 
 ### Playwright 검증 범위
 
@@ -166,29 +167,48 @@ ssh -i ./mystock-bot-ssh-key.pem ubuntu@3.39.124.72 \
 #### A. 코드만 롤백 (이미지 태그 변경)
 
 ```bash
+# 이전 버전 태그 확인
+gh api /orgs/frogy95/packages/container/mystock-bot-backend/versions --jq '.[].metadata.container.tags[]' | head -10
+# 또는 git log로 이전 커밋 확인
+git log --oneline main -5
+
 # Lightsail SSH 접속 후
+ssh -i ./mystock-bot-ssh-key.pem ubuntu@3.39.124.72
 cd /opt/mystock-bot
-docker compose -f docker-compose.prod.yml down
-docker pull ghcr.io/frogy95/mystock-bot-backend:v{이전_버전}
-docker pull ghcr.io/frogy95/mystock-bot-frontend:v{이전_버전}
-docker pull ghcr.io/frogy95/mystock-bot-nginx:v{이전_버전}
-docker compose -f docker-compose.prod.yml up -d
+sudo docker compose -f docker-compose.prod.yml down
+sudo docker pull ghcr.io/frogy95/mystock-bot-backend:v{이전_버전}
+sudo docker pull ghcr.io/frogy95/mystock-bot-frontend:v{이전_버전}
+sudo docker pull ghcr.io/frogy95/mystock-bot-nginx:v{이전_버전}
+sudo docker compose -f docker-compose.prod.yml up -d
+# 복구 확인
+curl -s http://3.39.124.72/api/v1/health
 ```
 
 #### B. DB 포함 롤백 (주의: 데이터 손실 가능)
 
 ```bash
-# 반드시 DB 백업 후 실행
-alembic downgrade -1
+# 롤백 전 반드시 DB 백업
+ssh -i ./mystock-bot-ssh-key.pem ubuntu@3.39.124.72 \
+  "cd /opt/mystock-bot && sudo docker compose -f docker-compose.prod.yml exec postgres pg_dump -U mystock mystock > /tmp/backup_$(date +%Y%m%d).sql"
+
+# Alembic 다운그레이드
+ssh -i ./mystock-bot-ssh-key.pem ubuntu@3.39.124.72 \
+  "cd /opt/mystock-bot && sudo docker compose -f docker-compose.prod.yml exec backend alembic downgrade -1"
+
 # 그 후 이미지 롤백 (A 참조)
 ```
 
 #### C. 긴급 서비스 중단
 
 ```bash
-ssh -i ./mystock-bot-ssh-key.pem ubuntu@3.39.124.72
-cd /opt/mystock-bot
-sudo docker compose -f docker-compose.prod.yml down
+ssh -i ./mystock-bot-ssh-key.pem ubuntu@3.39.124.72 \
+  "cd /opt/mystock-bot && sudo docker compose -f docker-compose.prod.yml down"
+
+# 원인 조사 후 서비스 복구
+ssh -i ./mystock-bot-ssh-key.pem ubuntu@3.39.124.72 \
+  "cd /opt/mystock-bot && sudo docker compose -f docker-compose.prod.yml up -d"
+# 복구 확인
+curl -s http://3.39.124.72/api/v1/health
 ```
 
 ---
@@ -236,6 +256,7 @@ sprint-close agent의 4단계 및 hotfix-close agent의 3단계에서 이 체크
 
 - **목적**: 현재 미완료 수동 검증 항목만 유지
 - sprint-close/hotfix-close 완료 시 이전 완료 기록은 `docs/deploy-history/YYYY-MM-DD.md`로 이동
+- 체크리스트는 GFM `[x]`/`[ ]` 대신 이모지(`✅`/`⬜`)를 사용합니다.
 
 ### 8.2 docs/deploy-history/
 
@@ -273,3 +294,5 @@ sprint-close agent의 4단계 및 hotfix-close agent의 3단계에서 이 체크
 | 환경변수/의존성 추가 | `docs/setup-guide.md` | 해당 스프린트 작업자 |
 | 에이전트 워크플로우 변경 | `.claude/agents/*.md` 해당 파일 | 직접 수정 |
 | 새 버전 배포 | Notion 릴리즈 노트 (섹션 8.5 참조) | deploy-prod agent |
+| 스프린트 추가/완료 | `ROADMAP.md` 상태 업데이트 | sprint-close agent |
+| DB/API/기능 변경 시 Notion | 섹션 8.5 트리거 참조 | sprint-close agent |
