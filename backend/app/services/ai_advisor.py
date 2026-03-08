@@ -91,6 +91,7 @@ async def get_ai_recommendation(
 
 위 데이터를 분석하여 최적 전략을 추천해 주세요."""
 
+    text = ""
     try:
         response = await client.messages.create(
             model="claude-haiku-4-5-20251001",
@@ -99,6 +100,10 @@ async def get_ai_recommendation(
             messages=[{"role": "user", "content": user_message}],
         )
         text = response.content[0].text.strip()
+        # 마크다운 코드블록 제거 (```json ... ``` 또는 ``` ... ```)
+        if text.startswith("```"):
+            lines = text.split("\n")
+            text = "\n".join(lines[1:-1] if lines[-1] == "```" else lines[1:])
         return json.loads(text)
     except json.JSONDecodeError as e:
         logger.warning(f"AI 추천 JSON 파싱 실패: {e}, 응답: {text}")
