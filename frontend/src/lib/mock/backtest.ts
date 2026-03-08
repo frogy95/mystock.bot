@@ -31,7 +31,7 @@ function generateWeekdayDates(
  */
 function generateEquityCurve(
   dates: string[]
-): { date: string; value: number; benchmark: number }[] {
+): { date: string; value: number; benchmark: number; stockBuyhold: number }[] {
   // 전략 포트폴리오 가치 변동 시드값
   const strategyChanges = [
     0.003, 0.005, -0.002, 0.004, 0.001, -0.003, 0.006, 0.002, -0.001, 0.004,
@@ -70,6 +70,7 @@ function generateEquityCurve(
       date,
       value: Math.round(strategyValue * 100) / 100,
       benchmark: Math.round(benchmarkValue * 100) / 100,
+      stockBuyhold: Math.round(benchmarkValue * 100) / 100,
     };
   });
 }
@@ -97,6 +98,7 @@ export const mockBacktestResult: BacktestResult = {
   sharpeRatio: 1.42,
   benchmarkReturn: 7.85,
   equityCurve: generateEquityCurve(sampledDates),
+  trades: [],
 };
 
 /**
