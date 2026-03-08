@@ -187,7 +187,7 @@ export function BacktestConfigForm({ onRun, isRunning }: BacktestConfigFormProps
                 align="start"
                 onOpenAutoFocus={(e) => e.preventDefault()}
               >
-                <ScrollArea className="max-h-[200px]">
+                <ScrollArea className="max-h-[200px] overflow-hidden">
                   {stockSearchLoading ? (
                     <div className="p-3 text-sm text-muted-foreground text-center">검색 중...</div>
                   ) : stockResults && stockResults.length > 0 ? (
