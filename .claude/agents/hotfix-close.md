@@ -14,7 +14,7 @@ color: red
 2. PR 생성 (hotfix → **main**)
 3. 경량 코드 리뷰 (변경 파일만)
 4. 타겟 검증 (pytest + 해당 페이지/API만)
-5. deploy.md 핫픽스 기록
+5. deploy.md 업데이트 (아카이빙 포함)
 6. 최종 보고 (PR URL, 수동 필요 항목, develop 역머지 안내)
 
 > **sprint-close와의 차이**: ROADMAP.md 업데이트 없음, PR 대상이 main, 검증 범위가 변경 파일 관련으로만 한정, sprint 문서 작성 없음.
@@ -26,7 +26,7 @@ color: red
 - 현재 브랜치가 `hotfix/*` 형식인지 확인합니다.
 - `git diff main...HEAD --name-only`로 변경된 파일 목록을 확인합니다.
 - 변경 범위(파일 수, 코드 줄 수)를 점검하고 hotfix 기준(파일 3개 이하, 코드 50줄 이하)을 충족하는지 확인합니다.
-- `deploy.md`를 읽어 기존 검증 항목을 파악합니다.
+- `deploy.md`를 읽어 기존 미완료 항목을 파악합니다.
 
 ### 2단계: PR 생성
 
@@ -41,52 +41,35 @@ color: red
 
 ### 3단계: 경량 코드 리뷰
 
-- 변경된 파일만 대상으로 코드 리뷰를 수행합니다. (전체 코드베이스 리뷰 불필요)
+`docs/dev-process.md` 섹션 7의 체크리스트를 변경된 파일에만 적용합니다.
+
 - **Critical 이슈**: 즉시 사용자에게 보고하고 수정 여부를 확인합니다. (배포 차단)
 - **High 이슈**: 사용자에게 보고하고 배포 계속 여부를 확인합니다.
 - **Medium/Low 이슈**: deploy.md에 기록하고 배포는 진행합니다.
-- 리뷰 체크리스트 (변경 파일 한정):
-  - 버그 수정이 문제를 올바르게 해결하는가
-  - 새로운 버그를 유발하는 부작용이 없는가
-  - 보안 취약점이 도입되지 않는가
 
 ### 4단계: 타겟 검증
 
-CLAUDE.md의 핫픽스 검증 원칙에 따라 서버가 실행 중인 경우 다음을 자동 실행합니다:
+`docs/dev-process.md` 섹션 5의 "Hotfix" 컬럼 기준으로 자동 검증을 실행합니다:
 
-- `docker compose exec backend pytest -v` — 백엔드 통합 테스트 (Docker 실행 중인 경우)
-- 변경된 API 엔드포인트만 curl로 타겟 검증 (전체 API 검증 불필요)
+**자동 실행 항목** (서버 실행 중인 경우):
+- `docker compose exec backend pytest -v`
+- 변경된 API 엔드포인트만 curl로 타겟 검증
 - 변경된 페이지/컴포넌트만 Playwright로 타겟 검증
+  - 검증 실패 시 스크린샷과 에러 메시지를 `deploy.md`에 기록
 
-Playwright 타겟 검증 기준:
-- 수정한 페이지/기능이 정상 동작하는지
-- 수정 전 발생하던 버그가 해소되었는지
-- 검증 실패 시 스크린샷과 에러 메시지를 `deploy.md`에 기록
+**수동 필요 항목**: `docs/dev-process.md` 섹션 5 수동 컬럼 참조
 
-다음 항목은 **자동 실행하지 않습니다** (수동 필요):
-- `docker compose up --build` — Docker 재빌드 (타이밍을 사용자가 결정)
-- `alembic upgrade head` — DB 스키마 변경 (hotfix에서는 원칙적으로 불필요)
-- 실제 KIS API 실거래 확인 (실제 자금이 사용되므로 사용자가 직접 확인)
-- UI 디자인/시각적 품질 주관적 판단
+### 5단계: deploy.md 업데이트 (아카이빙)
 
-### 5단계: deploy.md 핫픽스 기록
-
-`deploy.md`에 핫픽스 섹션을 추가합니다:
+1. `deploy.md`의 기존 완료 기록을 `docs/deploy-history/YYYY-MM-DD.md`로 이동합니다.
+   - 해당 날짜 파일이 이미 존재하면 파일 상단에 추가합니다.
+2. `deploy.md`에 핫픽스 기록을 추가합니다:
 
 ```markdown
-## Hotfix: {핫픽스 설명} ({날짜})
+### Hotfix: {핫픽스 설명} ({날짜})
 
-### 브랜치 및 PR
-- 브랜치: `hotfix/{설명}`
-- PR: {PR URL}
+PR: {PR URL}
 
-### 문제 원인
-{원인 설명}
-
-### 수정 내용
-{수정 내용}
-
-### 검증 결과
 - ✅ 자동 검증 완료 항목:
   - pytest: {결과}
   - 타겟 API 검증: {결과}

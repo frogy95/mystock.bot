@@ -31,7 +31,7 @@ hotfix/*  →  PR to main  →  Lightsail 자동 배포  →  main을 develop에
 - `main`: 프로덕션 브랜치 (GitHub Actions → AWS Lightsail 자동 배포)
 - `hotfix/*`: 긴급 운영 패치 (main 기반 분기, main PR 후 develop 역머지)
 
-자세한 CI/CD 정책은 `docs/ci-policy.md` 참조.
+자세한 CI/CD 정책은 `docs/ci-policy.md` 참조. 개발 프로세스 전체는 `docs/dev-process.md` 참조.
 
 ## Bash 명령 실행 규칙
 
@@ -78,35 +78,8 @@ hotfix/*  →  PR to main  →  Lightsail 자동 배포  →  main을 develop에
   - 프로덕션 배포는 main merge 시 GitHub Actions가 자동 수행합니다.
   - 배포 후 실서버 검증이 필요하면 deploy-prod agent의 5단계(실서버 자동 검증)를 참조합니다.
 
-- 스프린트 검증 원칙 — **자동화 가능한 항목은 sprint-close 시점에 직접 실행**:
-  - ✅ **자동 실행**: `docker compose exec backend pytest -v` — 백엔드 통합 테스트
-  - ✅ **자동 실행**: API 동작 검증 (curl/httpx) — Docker 컨테이너가 실행 중인 경우 sprint-close agent가 직접 실행
-  - ✅ **자동 실행**: 데모 모드 API 검증 — 마찬가지로 서버 실행 중이면 자동 실행
-  - ✅ **자동 실행**: Playwright UI 검증 — 페이지 렌더링, 버튼 동작, 폼 제출 등 자동화 가능한 UI 시나리오는 서버 실행 중이면 sprint-close agent가 직접 실행
-  - ❌ **수동 필요**: `docker compose up --build` — 새 코드 반영을 위한 Docker 재빌드 (타이밍을 사용자가 결정)
-  - ❌ **수동 필요**: `alembic upgrade head` — prod DB 스키마 변경 (되돌릴 수 없으므로 사용자가 직접 실행)
-  - ❌ **수동 필요**: 실제 KIS API 실거래 확인 (실제 자금이 사용되므로 사용자가 직접 확인)
-  - ❌ **수동 필요**: UI 디자인/시각적 품질 주관적 판단 (색상, 레이아웃 미적 요소 등 Playwright로 측정 불가한 항목)
-  - sprint-close agent는 자동 실행 항목을 실행하고 결과를 deploy.md에 기록해야 합니다.
-  - deploy.md에는 "자동 검증 완료" 항목과 "수동 검증 필요" 항목을 명확히 구분하여 기재합니다.
-
-- 핫픽스 검증 원칙 — **sprint보다 경량화된 검증**:
-  - ✅ **자동 실행**: `docker compose exec backend pytest -v` — 백엔드 통합 테스트
-  - ✅ **자동 실행**: 해당 변경사항과 관련된 페이지/API만 Playwright/curl로 타겟 검증
-  - ❌ **수동 필요**: sprint 검증의 수동 항목과 동일
-  - hotfix-close agent는 자동 실행 항목을 실행하고 결과를 deploy.md에 기록합니다.
-
-- deploy-prod 실서버 검증 원칙 — **배포 후 SSH로 자동 실행**:
-  - SSH 키: `./mystock-bot-ssh-key.pem` (프로젝트 루트), 서버: `ubuntu@3.39.124.72`
-  - ✅ **자동 실행**: 헬스체크 (`curl http://3.39.124.72/api/v1/health`)
-  - ✅ **자동 실행**: Docker 컨테이너 상태 확인 (`docker compose ps`)
-  - ✅ **자동 실행**: 백엔드 로그 오류 확인 (`docker compose logs backend --tail 30`)
-  - ✅ **자동 실행**: Playwright 프론트엔드 접속 확인 (메인 페이지, 로그인 페이지)
-  - ❌ **수동 필요**: `alembic upgrade head` — prod DB 스키마 변경 (되돌릴 수 없음)
-  - ❌ **수동 필요**: 실제 KIS API 실거래 확인 (실제 자금)
-  - ❌ **수동 필요**: UI 디자인/시각적 품질 주관적 판단
-
-- 사용자가 직접 수행해야 하는 작업은 deploy.md 파일을 생성하거나 기존에 존재하는 deploy.md에 수행해야하는 작업을 자세히 정리해주세요.
+- 검증 원칙 상세: `docs/dev-process.md` 섹션 5 참조
+- 배포 후 수동 작업: `deploy.md` 참조 (완료 기록은 `docs/deploy-history/` 아카이브)
 - 체크리스트 작성 형식:
   - 완료 항목: `- ✅ 항목 내용`
   - 미완료 항목: `- ⬜ 항목 내용`
@@ -126,9 +99,4 @@ hotfix/*  →  PR to main  →  Lightsail 자동 배포  →  main을 develop에
   - 기술 용어집: `31c72cf1-0d6b-8177-8ce5-ed1c16eca7f0`
   - 릴리즈 노트: `31c72cf1-0d6b-8102-a700-e7977d61c3b0`
 - **업데이트 원칙**: 사용자가 지시할 때 프로젝트 진행 상황에 맞춰 Notion 문서를 업데이트합니다.
-- **업데이트 시 주의사항**:
-  - 릴리즈 노트: 새 버전 배포 시 최상단에 추가
-  - 데이터 모델: DB 스키마 변경 시 업데이트
-  - API 명세: 새 엔드포인트 추가/변경 시 업데이트
-  - 기능 명세: 새 기능 추가 시 업데이트
-  - Mermaid 다이어그램: 아키텍처 변경 시 시스템 아키텍처 페이지 업데이트
+- **업데이트 트리거**: `docs/dev-process.md` 섹션 8.5 참조
