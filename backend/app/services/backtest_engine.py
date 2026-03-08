@@ -163,15 +163,18 @@ async def run_backtest(config: BacktestConfig) -> dict:
     df = df.dropna(subset=["date"])
     df = df.set_index("date").sort_index()
 
-    # 날짜 필터링
     start_ts = pd.Timestamp(config.start_date)
     end_ts = pd.Timestamp(config.end_date)
-    df = df[(df.index >= start_ts) & (df.index <= end_ts)]
+    # 날짜 필터링은 신호 생성 후 적용 (지표 계산에 과거 데이터 필요)
 
-    if len(df) < 20:
+    if len(df) < 60:
+        raise ValueError(f"차트 데이터 부족: {len(df)}일 (최소 60일 필요)")
+
+    # 요청 기간에 데이터가 존재하는지 검증
+    period_count = len(df[(df.index >= start_ts) & (df.index <= end_ts)])
+    if period_count < 1:
         raise ValueError(
-            f"필터링 후 데이터 부족: {len(df)}일 (최소 20일 필요). "
-            f"날짜 범위를 확인해주세요: {config.start_date} ~ {config.end_date}"
+            f"요청 기간에 데이터 없음. 날짜 범위를 확인해주세요: {config.start_date} ~ {config.end_date}"
         )
 
     # 3. 지표 계산을 위해 컬럼명을 표준화(대문자)
@@ -186,6 +189,12 @@ async def run_backtest(config: BacktestConfig) -> dict:
 
     # 4. 전략 신호 생성
     entries, exits = _build_signals(df, config.strategy_name, config.params)
+
+    # 요청 기간으로 결과 필터링 (신호 생성은 전체 데이터 기반)
+    period_mask = (df.index >= start_ts) & (df.index <= end_ts)
+    df = df[period_mask]
+    entries = entries[period_mask]
+    exits = exits[period_mask]
 
     # 5. 종가 시리즈 (소문자 'Close' 또는 'close' 처리)
     close_col = "Close" if "Close" in df.columns else "close"
