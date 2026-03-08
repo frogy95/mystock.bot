@@ -6,10 +6,17 @@
 
 ## Sprint 22: 백테스트 차트 데이터 DB 캐싱 + yfinance 폴백 (2026-03-08)
 
+### PR
+- https://github.com/frogy95/mystock.bot/pull/45 (sprint22 → develop)
+
 ### 자동 검증 완료
 - ✅ `pytest -v` — 51개 테스트 모두 통과
-- ✅ `chart_cache.py` 모델 임포트 성공
-- ✅ `chart_data_service.py` 임포트 성공
+- ✅ `chart_cache.py` 모델 임포트 성공 (Docker 컨테이너 내부 확인)
+- ✅ `chart_data_service.py` 임포트 성공 (Docker 컨테이너 내부 확인)
+- ✅ 헬스체크 (`/api/v1/health`) — DB/Redis/Scheduler 모두 healthy
+- ✅ Playwright: 백테스트 페이지 렌더링 정상
+- ✅ Playwright: 전략 드롭다운 API 연동 — 3개 전략 정상 로드 (골든크로스+RSI, 가치+모멘텀, 볼린저밴드반전)
+- ✅ 코드 리뷰: Critical/High 이슈 없음 ([보고서](docs/sprint/sprint22/code-review-report.md))
 
 ### 수동 검증 필요
 - ⬜ Docker 재빌드: `docker compose up --build`
