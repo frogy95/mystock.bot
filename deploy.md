@@ -4,6 +4,31 @@
 
 ---
 
+## Hotfix: 백테스트 종목검색 드롭다운 오버플로우 버그 수정 (2026-03-08)
+
+### 브랜치 및 PR
+- 브랜치: `sprint25` (hotfix 작업 포함)
+- PR: https://github.com/frogy95/mystock.bot/pull/47 (sprint25 → main)
+
+### 문제 원인
+Radix UI `ScrollArea` 컴포넌트 Root에 `overflow-hidden` 클래스가 누락되어 내부 Viewport가 스크롤을 활성화하지 않는 상태로 동작. 이로 인해 종목 검색 드롭다운 목록이 아래 UI 콘텐츠(시작일, 종료일, 실행 버튼)와 겹쳐 렌더링되는 버그 발생.
+
+### 수정 내용
+- `frontend/src/components/backtest/backtest-config-form.tsx` L190
+- `<ScrollArea className="max-h-[200px]">` → `<ScrollArea className="max-h-[200px] overflow-hidden">`
+
+### 검증 결과
+- ✅ 자동 검증 완료 항목:
+  - pytest: 51 passed (회귀 없음)
+  - Playwright 타겟 검증: "삼성" 검색 시 드롭다운 정상 표시 — 아래 콘텐츠와 겹치지 않는 독립 레이어로 렌더링 확인
+  - Playwright 타겟 검증: 드롭다운에서 "삼성전자(005930)" 선택 → 입력창 반영 및 드롭다운 닫힘 정상 동작 확인
+  - 스크린샷: `docs/sprint/hotfix-20260308/playwright-dropdown-overflow.png`
+
+- ⬜ 수동 검증 필요 항목:
+  - `docker compose up --build` — 프론트엔드 코드 변경 반영 (이미지 재빌드)
+
+---
+
 ## Sprint 23~25 마무리 (2026-03-08) — Phase 15: 전략 테스팅 업그레이드
 
 ### PR
