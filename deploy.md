@@ -19,8 +19,8 @@
 - ✅ 코드 리뷰: Critical/High 이슈 없음
 
 ### 수동 검증 필요
-- ⬜ `docker compose up --build` — 추가 커밋 코드 반영
-- ⬜ `docker compose exec backend alembic upgrade head` — chart_data_cache 테이블 생성
+- ✅ `docker compose up --build` — 추가 커밋 코드 반영
+- ✅ `docker compose exec backend alembic upgrade head` — chart_data_cache 테이블 생성
 - ⬜ 백테스트 실행 후 차트에서 3개 라인(전략 수익/KOSPI 벤치마크/종목 바이앤홀드) 및 만원 단위 표시 확인
 - ⬜ 백테스트 거래 내역 테이블 렌더링 확인
 - ⬜ DB 캐시 히트/미스 동작 확인 (백엔드 로그)
