@@ -66,7 +66,7 @@ def _build_signals(
             # KIS API 형식의 딕셔너리 리스트로 변환
             chart_list = [
                 {
-                    "date": str(idx.date()) if hasattr(idx, 'date') else str(idx),
+                    "date": idx.strftime("%Y%m%d") if hasattr(idx, 'strftime') else str(idx).replace("-", ""),
                     "open": float(row.get(_get_col("open"), row.get("Open", 0))),
                     "high": float(row.get(_get_col("high"), row.get("High", 0))),
                     "low": float(row.get(_get_col("low"), row.get("Low", 0))),

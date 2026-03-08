@@ -136,8 +136,9 @@ class BollingerReversalStrategy(BaseStrategy):
 
             last = df_copy.iloc[-1]
             close = last.get("Close")
-            bb_lower = last.get("BBL_20_2.0")
-            bb_upper = last.get("BBU_20_2.0")
+            # pandas_ta bbands 컬럼명: BBL_20_2.0_2.0 (length_std_ddof)
+            bb_lower = last.get("BBL_20_2.0_2.0")
+            bb_upper = last.get("BBU_20_2.0_2.0")
             rsi = last.get("RSI_14")
 
             if any(pd.isna(v) for v in [close, bb_lower, bb_upper, rsi]):
