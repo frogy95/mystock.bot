@@ -4,6 +4,40 @@
 
 ---
 
+## Hotfix: 백테스트 날짜 형식 및 볼린저밴드 컬럼명 수정 (2026-03-08)
+
+### 브랜치 및 PR
+- 브랜치: `hotfix/backtest-signal-index-alignment`
+- PR: https://github.com/frogy95/mystock.bot/pull/44
+
+### 문제 원인
+1. `_build_signals` 내 `str(idx.date())`로 날짜 변환 시 `2025-10-02` 형태 생성 → `_ohlcv_to_df`가 `%Y%m%d` 형식을 기대하여 날짜 파싱 실패, 모든 신호 HOLD 반환.
+2. `BollingerReversalStrategy`에서 `BBL_20_2.0`, `BBU_20_2.0`으로 컬럼 조회 → pandas_ta bbands 실제 컬럼명은 ddof 접미사 포함 `BBL_20_2.0_2.0`, `BBU_20_2.0_2.0`으로 `None` 반환, 볼린저밴드 신호 미생성.
+
+### 수정 내용
+- `backtest_engine.py`: `str(idx.date())` → `idx.strftime("%Y%m%d")` 변경 (strftime 미지원 시 `-` 제거 fallback 추가)
+- `strategy_engine.py`: BB 컬럼명 `BBL/BBU_20_2.0` → `BBL/BBU_20_2.0_2.0` 수정 및 설명 주석 추가
+
+### 코드 리뷰 결과
+- Critical/High 이슈 없음
+- 날짜 형식 수정이 `_ohlcv_to_df` 기대 형식과 정확히 일치
+- BB 컬럼명 수정이 pandas_ta 실제 출력 컬럼명과 일치
+- 부작용 없음
+
+### 검증 결과
+- ✅ 자동 검증 완료 항목:
+  - pytest: 51 passed
+  - 코드 리뷰: Critical/High 이슈 없음
+  - 가치+모멘텀 전략 백테스트 실행 → total_trades=1, 신호 생성 정상
+  - 볼린저밴드반전 SELL 신호 여러 건 생성 확인
+
+- ⬜ 수동 검증 필요 항목:
+  - `docker compose up --build` (코드 반영)
+  - 백테스트 화면에서 볼린저밴드반전 전략으로 BUY/SELL 신호 발생 여부 확인
+  - 백테스트 날짜 범위 설정 후 신호가 HOLD 없이 정상 출력되는지 확인
+
+---
+
 ## Hotfix: 백테스트 신호 인덱스 정합성 오류 및 종목 코드 파싱 수정 (2026-03-08)
 
 ### 브랜치 및 PR
