@@ -48,6 +48,7 @@ export interface BacktestRunRequest {
   start_date: string;   // "YYYY-MM-DD"
   end_date: string;     // "YYYY-MM-DD"
   initial_cash?: number;
+  strategy_id?: number;  // 커스텀 전략 DB ID
 }
 
 /**

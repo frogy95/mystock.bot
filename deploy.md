@@ -4,6 +4,30 @@
 
 ---
 
+## Hotfix: BacktestRunRequest 타입 불일치 및 mock 누락 필드 보완 (2026-03-08)
+
+### 브랜치 및 PR
+- 브랜치: `sprint25` (hotfix 작업 포함)
+- PR: https://github.com/frogy95/mystock.bot/pull/48 (sprint25 → main)
+
+### 문제 원인
+`BacktestRunRequest` 인터페이스에 `strategy_id` 필드가 누락되어 백엔드 스키마와 타입 불일치 발생. 또한 `BacktestResult` 타입의 `trades` 필드와 `generateEquityCurve` 반환 타입의 `stockBuyhold` 필드가 누락되어 TypeScript 컴파일 오류 유발.
+
+### 수정 내용
+- `frontend/src/hooks/use-backtest.ts`: `BacktestRunRequest`에 `strategy_id?: number` 필드 추가
+- `frontend/src/lib/mock/backtest.ts`: `generateEquityCurve` 반환 타입에 `stockBuyhold: number` 추가, `mockBacktestResult`에 `trades: []` 추가
+
+### 검증 결과
+- ✅ 자동 검증 완료 항목:
+  - `npm run build`: TypeScript 컴파일 오류 0개, 13개 정적 페이지 정상 생성
+  - 코드 리뷰: Critical/High 이슈 없음 (최소 변경, 부작용 없음)
+
+- ⬜ 수동 검증 필요 항목:
+  - `docker compose up --build` — 프론트엔드 코드 변경 반영 (이미지 재빌드)
+  - develop 역머지: main merge 후 `git checkout develop && git pull origin main && git push origin develop`
+
+---
+
 ## Hotfix: 백테스트 종목검색 드롭다운 오버플로우 버그 수정 (2026-03-08)
 
 ### 브랜치 및 PR
