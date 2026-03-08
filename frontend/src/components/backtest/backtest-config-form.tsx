@@ -3,13 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -20,7 +14,7 @@ import { useStockSearch } from "@/hooks/use-watchlist";
 
 interface BacktestConfigFormProps {
   onRun: (config: {
-    strategyId: string;
+    strategyIds: number[];
     symbol: string;
     startDate: string;
     endDate: string;
@@ -29,7 +23,7 @@ interface BacktestConfigFormProps {
 }
 
 export function BacktestConfigForm({ onRun, isRunning }: BacktestConfigFormProps) {
-  const [strategyId, setStrategyId] = useState("");
+  const [selectedStrategyIds, setSelectedStrategyIds] = useState<number[]>([]);
   const [symbol, setSymbol] = useState("");
   const [stockQuery, setStockQuery] = useState("");
   const [debouncedStockQuery, setDebouncedStockQuery] = useState("");
@@ -39,7 +33,6 @@ export function BacktestConfigForm({ onRun, isRunning }: BacktestConfigFormProps
 
   const { data: strategies, isLoading: strategiesLoading } = useStrategies();
 
-  // 종목 검색 디바운스 처리
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedStockQuery(stockQuery), 300);
     return () => clearTimeout(timer);
@@ -47,20 +40,36 @@ export function BacktestConfigForm({ onRun, isRunning }: BacktestConfigFormProps
 
   const { data: stockResults, isLoading: stockSearchLoading } = useStockSearch(debouncedStockQuery);
 
-  // 모든 필드가 채워져야 버튼 활성화
+  const presetStrategies = strategies?.filter((s) => s.is_preset) ?? [];
+  const customStrategies = strategies?.filter((s) => !s.is_preset) ?? [];
+
   const isFormValid =
-    strategyId.trim() !== "" &&
+    selectedStrategyIds.length > 0 &&
     symbol.trim() !== "" &&
     startDate !== "" &&
     endDate !== "";
 
+  function toggleStrategy(id: number) {
+    setSelectedStrategyIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  }
+
+  function toggleAll() {
+    const allIds = strategies?.map((s) => s.id) ?? [];
+    if (selectedStrategyIds.length === allIds.length) {
+      setSelectedStrategyIds([]);
+    } else {
+      setSelectedStrategyIds(allIds);
+    }
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isFormValid) return;
-    // "종목명 (229200)" 형태로 입력된 경우 괄호 안 코드만 추출
     const match = symbol.match(/\((\w+)\)\s*$/);
     const resolvedSymbol = match ? match[1] : symbol.trim();
-    onRun({ strategyId, symbol: resolvedSymbol, startDate, endDate });
+    onRun({ strategyIds: selectedStrategyIds, symbol: resolvedSymbol, startDate, endDate });
   }
 
   return (
@@ -70,21 +79,83 @@ export function BacktestConfigForm({ onRun, isRunning }: BacktestConfigFormProps
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* 전략 선택 */}
-          <div className="space-y-1.5">
-            <Label htmlFor="strategy-select">전략 선택</Label>
-            <Select value={strategyId} onValueChange={setStrategyId}>
-              <SelectTrigger id="strategy-select">
-                <SelectValue placeholder={strategiesLoading ? "로딩 중..." : "전략을 선택하세요"} />
-              </SelectTrigger>
-              <SelectContent>
-                {strategies?.map((strategy) => (
-                  <SelectItem key={String(strategy.id)} value={strategy.name}>
-                    {strategy.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* 전략 선택 (체크박스 리스트) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>전략 선택</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-auto py-0 text-xs text-muted-foreground"
+                onClick={toggleAll}
+                disabled={!strategies || strategies.length === 0}
+              >
+                {selectedStrategyIds.length === (strategies?.length ?? 0) && strategies?.length
+                  ? "전체 해제"
+                  : "전체 선택"}
+              </Button>
+            </div>
+
+            {strategiesLoading ? (
+              <p className="text-sm text-muted-foreground">로딩 중...</p>
+            ) : (
+              <div className="rounded-md border p-3 space-y-3">
+                {/* 프리셋 전략 그룹 */}
+                {presetStrategies.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">프리셋 전략</p>
+                    <div className="space-y-2">
+                      {presetStrategies.map((s) => (
+                        <div key={s.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`strategy-${s.id}`}
+                            checked={selectedStrategyIds.includes(s.id)}
+                            onCheckedChange={() => toggleStrategy(s.id)}
+                          />
+                          <label
+                            htmlFor={`strategy-${s.id}`}
+                            className="text-sm cursor-pointer"
+                          >
+                            {s.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 커스텀 전략 그룹 */}
+                {customStrategies.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">커스텀 전략</p>
+                    <div className="space-y-2">
+                      {customStrategies.map((s) => (
+                        <div key={s.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`strategy-${s.id}`}
+                            checked={selectedStrategyIds.includes(s.id)}
+                            onCheckedChange={() => toggleStrategy(s.id)}
+                          />
+                          <label
+                            htmlFor={`strategy-${s.id}`}
+                            className="text-sm cursor-pointer"
+                          >
+                            {s.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {selectedStrategyIds.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {selectedStrategyIds.length}개 전략 선택됨
+              </p>
+            )}
           </div>
 
           {/* 종목 검색 */}
@@ -102,7 +173,6 @@ export function BacktestConfigForm({ onRun, isRunning }: BacktestConfigFormProps
                     value={stockQuery}
                     onChange={(e) => {
                       setStockQuery(e.target.value);
-                      // 직접 종목코드 입력 시 symbol도 같이 업데이트
                       setSymbol(e.target.value);
                       setStockSearchOpen(true);
                     }}
@@ -117,7 +187,7 @@ export function BacktestConfigForm({ onRun, isRunning }: BacktestConfigFormProps
                 align="start"
                 onOpenAutoFocus={(e) => e.preventDefault()}
               >
-                <ScrollArea className="max-h-[200px]">
+                <ScrollArea className="max-h-[200px] overflow-hidden">
                   {stockSearchLoading ? (
                     <div className="p-3 text-sm text-muted-foreground text-center">검색 중...</div>
                   ) : stockResults && stockResults.length > 0 ? (
@@ -179,7 +249,11 @@ export function BacktestConfigForm({ onRun, isRunning }: BacktestConfigFormProps
             className="w-full"
             disabled={!isFormValid || isRunning}
           >
-            {isRunning ? "백테스트 실행 중..." : "백테스트 실행"}
+            {isRunning
+              ? "백테스트 실행 중..."
+              : selectedStrategyIds.length > 1
+              ? `${selectedStrategyIds.length}개 전략 백테스트 실행`
+              : "백테스트 실행"}
           </Button>
         </form>
       </CardContent>

@@ -2,7 +2,7 @@
 전략 관련 Pydantic 스키마
 """
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -37,6 +37,9 @@ class StrategyResponse(BaseModel):
     user_id: int | None = None
     params: List[StrategyParamResponse] = []
     created_at: datetime
+    buy_conditions: Optional[Dict[str, Any]] = None
+    sell_conditions: Optional[Dict[str, Any]] = None
+    description: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -57,6 +60,23 @@ class StrategyRenameRequest(BaseModel):
     """전략 이름 변경 요청 스키마"""
 
     name: str
+
+
+class CustomStrategyCreateRequest(BaseModel):
+    """커스텀 전략 생성 요청 스키마"""
+
+    name: str
+    description: Optional[str] = None
+    buy_conditions: Dict[str, Any]
+    sell_conditions: Dict[str, Any]
+
+
+class CustomStrategyUpdateRequest(BaseModel):
+    """커스텀 전략 조건 수정 요청 스키마"""
+
+    buy_conditions: Dict[str, Any]
+    sell_conditions: Dict[str, Any]
+    description: Optional[str] = None
 
 
 class StrategySignalResponse(BaseModel):

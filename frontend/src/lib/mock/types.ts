@@ -164,7 +164,8 @@ export interface BacktestResult {
   tradeCount: number;       // 총 매매 횟수
   sharpeRatio: number;      // 샤프 지수
   benchmarkReturn: number;  // 벤치마크(KOSPI) 수익률 (%)
-  equityCurve: { date: string; value: number; benchmark: number }[];
+  equityCurve: { date: string; value: number; benchmark: number; stockBuyhold: number }[];
+  trades: BacktestTrade[];  // 시뮬레이션 거래 내역
 }
 
 /** 백테스팅 개별 거래 */

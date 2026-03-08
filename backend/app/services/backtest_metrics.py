@@ -45,7 +45,83 @@ def _calculate_max_drawdown(equity: pd.Series) -> float:
     return float(mdd) if not math.isnan(mdd) else 0.0
 
 
-def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float) -> dict:
+def _extract_vbt_trades(trades_df: Any) -> list:
+    """VBT records_readable DataFrame에서 BUY/SELL 거래 내역을 추출한다."""
+    if trades_df is None:
+        return []
+    result = []
+    try:
+        for _, row in trades_df.iterrows():
+            qty = max(1, int(round(float(row["Size"]))))
+            entry_price = float(row["Avg Entry Price"])
+            exit_price = float(row["Avg Exit Price"])
+            entry_date = str(row["Entry Timestamp"].date()) if hasattr(row["Entry Timestamp"], "date") else str(row["Entry Timestamp"])[:10]
+            exit_date = str(row["Exit Timestamp"].date()) if hasattr(row["Exit Timestamp"], "date") else str(row["Exit Timestamp"])[:10]
+            result.append({
+                "type": "BUY",
+                "date": entry_date,
+                "price": entry_price,
+                "qty": qty,
+                "amount": round(entry_price * qty, 2),
+                "pnl": None,
+            })
+            result.append({
+                "type": "SELL",
+                "date": exit_date,
+                "price": exit_price,
+                "qty": qty,
+                "amount": round(exit_price * qty, 2),
+                "pnl": round(float(row["PnL"]), 2),
+            })
+    except Exception as e:
+        logger.warning(f"VBT 거래 내역 추출 실패: {e}")
+    return result
+
+
+def _build_stock_buyhold_values(dates: list, initial_cash: float, close: Any) -> list:
+    """
+    종목 바이앤홀드 가치 시계열을 생성한다.
+    초기 자본으로 첫날 종가에 전량 매수했을 때의 포트폴리오 가치.
+    """
+    try:
+        bm_index = pd.to_datetime(dates)
+        close_aligned = close.reindex(bm_index, method="ffill").bfill()
+        if close_aligned.isna().any() or len(close_aligned) == 0:
+            raise ValueError("종가 날짜 정렬 실패")
+        start_price = float(close_aligned.iloc[0])
+        if start_price == 0:
+            raise ValueError("시작 종가가 0")
+        return [initial_cash * float(v) / start_price for v in close_aligned]
+    except Exception as e:
+        logger.warning(f"종목 바이앤홀드 시계열 생성 실패: {e}")
+        return [initial_cash] * len(dates)
+
+
+def _build_benchmark_values(dates: list, initial_cash: float, benchmark_return: float, benchmark_prices: Any = None) -> list:
+    """
+    벤치마크 가치 시계열을 생성한다.
+    benchmark_prices(KOSPI 일별 종가 Series)가 있으면 실제 수익률을 사용하고,
+    없으면 연 benchmark_return% 복리 성장 근사값을 사용한다.
+    """
+    if benchmark_prices is not None and len(benchmark_prices) >= 2:
+        try:
+            # dates와 동일한 날짜 인덱스에 맞게 리샘플링 (전진 채움)
+            bm_index = pd.to_datetime(dates)
+            bm_aligned = benchmark_prices.reindex(bm_index, method="ffill")
+            # 여전히 NaN인 첫 번째 날짜는 역방향 채움
+            bm_aligned = bm_aligned.bfill()
+            if bm_aligned.isna().any():
+                raise ValueError("KOSPI 날짜 정렬 실패")
+            start_val = float(bm_aligned.iloc[0])
+            return [initial_cash * float(v) / start_val for v in bm_aligned]
+        except Exception as e:
+            logger.warning(f"KOSPI 시계열 정렬 실패, 복리 근사 사용: {e}")
+    # 복리 근사
+    daily_bm_rate = (1 + benchmark_return) ** (1 / 252) - 1
+    return [initial_cash * (1 + daily_bm_rate) ** i for i in range(len(dates))]
+
+
+def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float, initial_cash: float = 10_000_000, benchmark_prices: Any = None, close: Any = None) -> dict:
     """vectorbt 포트폴리오 객체에서 성과 지표를 계산한다."""
     try:
         total_return = float(portfolio.total_return())
@@ -69,6 +145,7 @@ def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float) -> dict
             max_dd = 0.0
 
         # 거래 통계
+        trades = None
         try:
             trades = portfolio.trades.records_readable
             total_trades = len(trades)
@@ -98,6 +175,12 @@ def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float) -> dict
             equity_values = []
             dates = []
 
+        # 벤치마크 시계열: 실제 KOSPI 데이터 또는 복리 근사
+        bm_values = _build_benchmark_values(dates, initial_cash, benchmark_return, benchmark_prices)
+
+        # 종목 바이앤홀드 시계열
+        sh_values = _build_stock_buyhold_values(dates, initial_cash, close) if close is not None else [initial_cash] * len(dates)
+
         return {
             "total_return": round(total_return * 100, 2),
             "cagr": round(cagr * 100, 2),
@@ -106,7 +189,11 @@ def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float) -> dict
             "total_trades": total_trades,
             "win_rate": round(win_rate * 100, 2),
             "benchmark_return": round(benchmark_return * 100, 2),
-            "equity_curve": [{"date": d, "value": v} for d, v in zip(dates, equity_values)],
+            "equity_curve": [
+                {"date": d, "value": round(v, 2), "benchmark": round(b, 2), "stock_buyhold": round(sh, 2)}
+                for d, v, b, sh in zip(dates, equity_values, bm_values, sh_values)
+            ],
+            "trades": _extract_vbt_trades(trades),
         }
     except Exception as e:
         logger.error(f"VectorBT 지표 계산 오류: {e}")
@@ -118,6 +205,7 @@ def _calculate_metrics_from_basic(
     close: pd.Series,
     initial_cash: float,
     benchmark_return: float,
+    benchmark_prices: Any = None,
 ) -> dict:
     """기본 시뮬레이션 결과에서 성과 지표를 계산한다."""
     try:
@@ -153,6 +241,12 @@ def _calculate_metrics_from_basic(
         dates = [str(d.date()) if hasattr(d, 'date') else str(d) for d in equity.index]
         equity_values = equity.tolist()
 
+        # 벤치마크 시계열: 실제 KOSPI 데이터 또는 복리 근사
+        bm_values = _build_benchmark_values(dates, initial_cash, benchmark_return, benchmark_prices)
+
+        # 종목 바이앤홀드 시계열
+        sh_values = _build_stock_buyhold_values(dates, initial_cash, close)
+
         return {
             "total_return": round(total_return * 100, 2),
             "cagr": round(cagr * 100, 2),
@@ -161,7 +255,21 @@ def _calculate_metrics_from_basic(
             "total_trades": total_trades,
             "win_rate": round(win_rate * 100, 2),
             "benchmark_return": round(benchmark_return * 100, 2),
-            "equity_curve": [{"date": d, "value": round(v, 2)} for d, v in zip(dates, equity_values)],
+            "equity_curve": [
+                {"date": d, "value": round(v, 2), "benchmark": round(b, 2), "stock_buyhold": round(sh, 2)}
+                for d, v, b, sh in zip(dates, equity_values, bm_values, sh_values)
+            ],
+            "trades": [
+                {
+                    "type": t["type"],
+                    "date": t.get("date", ""),
+                    "price": t["price"],
+                    "qty": t["qty"],
+                    "amount": round(t["price"] * t["qty"], 2),
+                    "pnl": round(t["pnl"], 2) if t["pnl"] is not None else None,
+                }
+                for t in trades_list
+            ],
         }
     except Exception as e:
         logger.error(f"기본 시뮬레이션 지표 계산 오류: {e}")
@@ -203,10 +311,72 @@ def calculate_metrics(result: dict) -> dict:
     portfolio_data = result["portfolio_data"]
     close = result["close"]
     benchmark_return = result["benchmark_return"]
+    benchmark_prices = result.get("benchmark_prices")  # 실제 KOSPI 일별 종가 (선택)
     initial_cash = result.get("initial_cash", 10_000_000)
     use_vbt = result.get("use_vbt", False)
 
     if use_vbt and "vbt_portfolio" in portfolio_data:
-        return _calculate_metrics_from_vbt(portfolio_data["vbt_portfolio"], benchmark_return)
+        return _calculate_metrics_from_vbt(portfolio_data["vbt_portfolio"], benchmark_return, initial_cash, benchmark_prices, close)
     else:
-        return _calculate_metrics_from_basic(portfolio_data, close, initial_cash, benchmark_return)
+        return _calculate_metrics_from_basic(portfolio_data, close, initial_cash, benchmark_return, benchmark_prices)
+
+
+def calculate_ranking_score(results: list[dict]) -> list[dict]:
+    """
+    다중 백테스트 결과에 랭킹 스코어를 계산하여 반환한다.
+
+    가중 스코어 = 수익률(30%) + 샤프지수(25%) + 승률(20%) + MDD 역수(15%) + CAGR(10%)
+    각 지표를 min-max 정규화 후 가중합 (0~100 점수)
+    """
+    if not results:
+        return []
+
+    if len(results) == 1:
+        # 단일 전략은 기본 스코어 50 부여
+        item = results[0].copy()
+        item["score"] = 50.0
+        item["rank"] = 1
+        return [item]
+
+    def minmax(values: list[float], invert: bool = False) -> list[float]:
+        """min-max 정규화. invert=True면 낮을수록 좋은 지표(MDD)."""
+        min_v = min(values)
+        max_v = max(values)
+        if max_v == min_v:
+            return [0.5] * len(values)
+        normalized = [(v - min_v) / (max_v - min_v) for v in values]
+        if invert:
+            normalized = [1.0 - n for n in normalized]
+        return normalized
+
+    returns = [r.get("total_return", 0.0) for r in results]
+    sharpes = [r.get("sharpe_ratio", 0.0) for r in results]
+    win_rates = [r.get("win_rate", 0.0) for r in results]
+    mdds = [abs(r.get("mdd", 0.0)) for r in results]  # MDD는 음수이므로 절대값
+    cagrs = [r.get("cagr", 0.0) for r in results]
+
+    norm_returns = minmax(returns)
+    norm_sharpes = minmax(sharpes)
+    norm_win_rates = minmax(win_rates)
+    norm_mdds = minmax(mdds, invert=True)  # MDD는 낮을수록 좋음
+    norm_cagrs = minmax(cagrs)
+
+    scored = []
+    for i, r in enumerate(results):
+        score = (
+            norm_returns[i] * 30
+            + norm_sharpes[i] * 25
+            + norm_win_rates[i] * 20
+            + norm_mdds[i] * 15
+            + norm_cagrs[i] * 10
+        )
+        item = r.copy()
+        item["score"] = round(score, 2)
+        scored.append(item)
+
+    # 스코어 기준 내림차순 정렬 후 순위 부여
+    scored.sort(key=lambda x: x["score"], reverse=True)
+    for rank, item in enumerate(scored, start=1):
+        item["rank"] = rank
+
+    return scored

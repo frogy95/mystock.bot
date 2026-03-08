@@ -23,6 +23,8 @@ from app.models.strategy import Strategy, StrategyParam
 from app.models.user import User
 from app.models.watchlist import WatchlistItem
 from app.schemas.strategy import (
+    CustomStrategyCreateRequest,
+    CustomStrategyUpdateRequest,
     StrategyActivateRequest,
     StrategyParamBulkUpdate,
     StrategyRenameRequest,
@@ -30,7 +32,7 @@ from app.schemas.strategy import (
     StrategySignalResponse,
 )
 from app.services.kis_client import kis_client
-from app.services.strategy_engine import get_strategy
+from app.services.strategy_engine import get_dynamic_strategy, get_strategy
 
 router = APIRouter()
 
@@ -436,3 +438,60 @@ async def delete_strategy(
     )
     await db.delete(strategy)
     await db.commit()
+
+
+@router.post("/custom", response_model=StrategyResponse, summary="커스텀 전략 생성")
+async def create_custom_strategy(
+    body: CustomStrategyCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """커스텀 전략을 DB에 저장한다. buy_conditions/sell_conditions는 JSONB로 저장된다."""
+    if is_demo_user(current_user.username):
+        raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
+
+    strategy = Strategy(
+        name=body.name,
+        strategy_type="custom",
+        is_active=True,
+        is_preset=False,
+        user_id=current_user.id,
+        buy_conditions=body.buy_conditions,
+        sell_conditions=body.sell_conditions,
+        description=body.description,
+    )
+    db.add(strategy)
+    await db.commit()
+    await db.refresh(strategy)
+    strategy.params = []
+    return strategy
+
+
+@router.put("/{strategy_id}/conditions", response_model=StrategyResponse, summary="커스텀 전략 조건 수정")
+async def update_strategy_conditions(
+    strategy_id: int,
+    body: CustomStrategyUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """본인 소유 커스텀(비프리셋) 전략의 조건을 수정한다."""
+    if is_demo_user(current_user.username):
+        raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
+
+    result = await db.execute(
+        select(Strategy).where(
+            Strategy.id == strategy_id,
+            Strategy.user_id == current_user.id,
+            Strategy.is_preset.is_(False),
+        )
+    )
+    strategy = result.scalar_one_or_none()
+    if strategy is None:
+        raise HTTPException(status_code=404, detail="전략을 찾을 수 없습니다.")
+
+    strategy.buy_conditions = body.buy_conditions
+    strategy.sell_conditions = body.sell_conditions
+    if body.description is not None:
+        strategy.description = body.description
+    await db.commit()
+    return await _get_strategy_with_params(strategy_id, db)

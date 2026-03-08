@@ -83,6 +83,18 @@ interface CustomStrategyState {
   ) => void;
   /** AND ↔ OR 토글 */
   toggleLogicOperator: (strategyId: string, section: ConditionSection, index: number) => void;
+  /** 서버 동기화 완료 후 serverId와 isSynced 업데이트 */
+  setServerId: (localId: string, serverId: number) => void;
+  /** 서버 데이터로 전체 동기화 (로그인 시 호출) — 서버 전략으로 로컬 덮어씌우기 */
+  syncFromServer: (serverStrategies: Array<{
+    id: number;
+    name: string;
+    description?: string | null;
+    buy_conditions?: Record<string, unknown> | null;
+    sell_conditions?: Record<string, unknown> | null;
+    created_at: string;
+    is_active: boolean;
+  }>) => void;
 }
 
 /** 조건 그룹 섹션 키 반환 */
@@ -248,6 +260,39 @@ export const useCustomStrategyStore = create<CustomStrategyState>()(
             });
           }),
         })),
+
+      setServerId: (localId, serverId) =>
+        set((state) => ({
+          strategies: state.strategies.map((s) =>
+            s.id === localId ? { ...s, serverId, isSynced: true } : s
+          ),
+        })),
+
+      syncFromServer: (serverStrategies) =>
+        set((state) => {
+          // 서버 커스텀 전략을 로컬 형식으로 변환
+          const serverMapped: CustomStrategy[] = serverStrategies
+            .filter((s) => s.buy_conditions && s.sell_conditions)
+            .map((s) => ({
+              id: crypto.randomUUID(), // 로컬 UUID 새로 발급
+              name: s.name,
+              description: s.description ?? "",
+              buyConditions: (s.buy_conditions as unknown as ConditionGroup) ?? { conditions: [], logicOperators: [] },
+              sellConditions: (s.sell_conditions as unknown as ConditionGroup) ?? { conditions: [], logicOperators: [] },
+              isActive: s.is_active,
+              createdAt: s.created_at,
+              updatedAt: s.created_at,
+              serverId: s.id,
+              isSynced: true,
+            }));
+
+          // 서버에 없는 로컬 미동기화 전략도 유지 (오프라인 작성분)
+          const localOnlyStrategies = state.strategies.filter(
+            (local) => !local.isSynced
+          );
+
+          return { strategies: [...serverMapped, ...localOnlyStrategies] };
+        }),
     }),
     {
       name: "custom-strategies",

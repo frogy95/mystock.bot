@@ -19,7 +19,7 @@ from app.core.config import settings
 from app.models.base import Base
 
 # 모든 모델을 임포트하여 SQLAlchemy 메타데이터에 등록
-from app.models import user, watchlist, strategy, order, portfolio, backtest, settings as settings_model  # noqa: F401
+from app.models import user, watchlist, strategy, order, portfolio, backtest, settings as settings_model, chart_cache  # noqa: F401
 
 # Alembic Config 객체 - alembic.ini 파일의 값에 접근한다
 config = context.config

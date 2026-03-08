@@ -51,4 +51,8 @@ export interface CustomStrategy {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  /** 서버 DB ID (동기화 완료 후 설정) */
+  serverId?: number;
+  /** 서버와 동기화 여부 */
+  isSynced?: boolean;
 }

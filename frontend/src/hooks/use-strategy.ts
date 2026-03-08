@@ -21,6 +21,9 @@ export interface StrategyAPI {
   user_id: number | null;
   params: StrategyParamAPI[];
   created_at: string;
+  buy_conditions?: Record<string, unknown> | null;
+  sell_conditions?: Record<string, unknown> | null;
+  description?: string | null;
 }
 
 /** 전략 신호 응답 타입 */
@@ -120,6 +123,49 @@ export function useDeleteStrategy() {
   return useMutation<void, Error, { id: number }>({
     mutationFn: ({ id }) =>
       apiClient.delete<void>(`/api/v1/strategies/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["strategy"] });
+    },
+  });
+}
+
+/** 커스텀 전략 생성 요청 타입 */
+export interface CustomStrategyCreateRequest {
+  name: string;
+  description?: string;
+  buy_conditions: Record<string, unknown>;
+  sell_conditions: Record<string, unknown>;
+}
+
+/** 커스텀 전략 조건 수정 요청 타입 */
+export interface CustomStrategyUpdateConditionsRequest {
+  buy_conditions: Record<string, unknown>;
+  sell_conditions: Record<string, unknown>;
+  description?: string;
+}
+
+/** 커스텀 전략 생성 훅 */
+export function useCreateCustomStrategy() {
+  const queryClient = useQueryClient();
+  return useMutation<StrategyAPI, Error, CustomStrategyCreateRequest>({
+    mutationFn: (data) =>
+      apiClient.post<StrategyAPI>("/api/v1/strategies/custom", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["strategy"] });
+    },
+  });
+}
+
+/** 커스텀 전략 조건 수정 훅 */
+export function useUpdateCustomStrategy() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    StrategyAPI,
+    Error,
+    { id: number } & CustomStrategyUpdateConditionsRequest
+  >({
+    mutationFn: ({ id, ...data }) =>
+      apiClient.put<StrategyAPI>(`/api/v1/strategies/${id}/conditions`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["strategy"] });
     },
