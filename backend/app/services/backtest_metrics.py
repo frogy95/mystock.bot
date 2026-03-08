@@ -45,6 +45,39 @@ def _calculate_max_drawdown(equity: pd.Series) -> float:
     return float(mdd) if not math.isnan(mdd) else 0.0
 
 
+def _extract_vbt_trades(trades_df: Any) -> list:
+    """VBT records_readable DataFrame에서 BUY/SELL 거래 내역을 추출한다."""
+    if trades_df is None:
+        return []
+    result = []
+    try:
+        for _, row in trades_df.iterrows():
+            qty = max(1, int(round(float(row["Size"]))))
+            entry_price = float(row["Avg Entry Price"])
+            exit_price = float(row["Avg Exit Price"])
+            entry_date = str(row["Entry Timestamp"].date()) if hasattr(row["Entry Timestamp"], "date") else str(row["Entry Timestamp"])[:10]
+            exit_date = str(row["Exit Timestamp"].date()) if hasattr(row["Exit Timestamp"], "date") else str(row["Exit Timestamp"])[:10]
+            result.append({
+                "type": "BUY",
+                "date": entry_date,
+                "price": entry_price,
+                "qty": qty,
+                "amount": round(entry_price * qty, 2),
+                "pnl": None,
+            })
+            result.append({
+                "type": "SELL",
+                "date": exit_date,
+                "price": exit_price,
+                "qty": qty,
+                "amount": round(exit_price * qty, 2),
+                "pnl": round(float(row["PnL"]), 2),
+            })
+    except Exception as e:
+        logger.warning(f"VBT 거래 내역 추출 실패: {e}")
+    return result
+
+
 def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float, initial_cash: float = 10_000_000) -> dict:
     """vectorbt 포트폴리오 객체에서 성과 지표를 계산한다."""
     try:
@@ -69,6 +102,7 @@ def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float, initial
             max_dd = 0.0
 
         # 거래 통계
+        trades = None
         try:
             trades = portfolio.trades.records_readable
             total_trades = len(trades)
@@ -114,7 +148,7 @@ def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float, initial
                 {"date": d, "value": round(v, 2), "benchmark": round(b, 2)}
                 for d, v, b in zip(dates, equity_values, bm_values)
             ],
-            "trades": [],  # VBT 경로에서는 개별 거래 내역 미지원
+            "trades": _extract_vbt_trades(trades),
         }
     except Exception as e:
         logger.error(f"VectorBT 지표 계산 오류: {e}")
