@@ -4,6 +4,43 @@
 
 ---
 
+## Hotfix: 백테스트 전략 confidence 공식 수정 (2026-03-08)
+
+### 브랜치 및 PR
+- 브랜치: `hotfix/backtest-signal-index-alignment`
+- PR: (생성 중)
+
+### 문제 원인
+`confidence >= 0.5` 필터가 BUY 신호 대부분을 제거하여 백테스트 거래가 미발생하는 문제. 기존 공식이 BUY confidence를 0.1~0.45 범위로 계산하여 필터 기준인 0.5 미달.
+
+### 수정 내용
+3개 전략의 BUY/SELL confidence 공식을 기본 0.5 보장 방식으로 재설계:
+- GoldenCrossRSI BUY: `0.5 + rsi_score*0.25 + vol_score*0.25` (범위: 0.5~1.0)
+- GoldenCrossRSI SELL: 고정 0.6 → SMA 이격도 기반 동적 계산 (범위: 0.5~0.9)
+- BollingerReversal BUY: `0.5 + rsi_score*0.4` (범위: 0.5~0.9)
+- BollingerReversal SELL: 고정 0.7 → BB 초과 비율 기반 동적 계산 (범위: 0.5~0.9)
+- ValueMomentum BUY: `0.5 + momentum_score*0.3 + rsi_score*0.2` (범위: 0.5~1.0)
+- ValueMomentum SELL: 고정 0.6 → 모멘텀 하락 강도 기반 동적 계산 (범위: 0.5~0.9)
+
+### 코드 리뷰 결과
+- Critical/High 이슈 없음
+- 조건 충족 시 BUY/SELL 모두 최소 0.5 보장으로 필터 통과 확실
+- backtest_engine.py, scheduler.py의 `confidence >= 0.5` 필터는 변경 없음
+- 부작용 없음, 보안 이슈 없음
+
+### 검증 결과
+- ✅ 자동 검증 완료 항목:
+  - pytest: 51 passed
+  - 코드 리뷰: Critical/High 이슈 없음
+  - confidence 공식 직접 검증: 모든 시나리오에서 >= 0.5 확인
+
+- ⬜ 수동 검증 필요 항목:
+  - `docker compose up --build` (코드 반영)
+  - 백테스트 화면에서 3개 전략 모두 BUY/SELL 신호 발생 여부 확인
+  - 백테스트 total_trades > 0 정상 출력 확인
+
+---
+
 ## Hotfix: 백테스트 날짜 형식 및 볼린저밴드 컬럼명 수정 (2026-03-08)
 
 ### 브랜치 및 PR
