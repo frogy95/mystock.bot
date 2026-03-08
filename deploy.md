@@ -4,6 +4,38 @@
 
 ---
 
+## Hotfix: 백테스트 _build_signals O(n²) 루프 성능 최적화 (2026-03-08)
+
+### 브랜치 및 PR
+- 브랜치: `hotfix/backtest-performance`
+- PR: https://github.com/frogy95/mystock.bot/pull/43
+
+### 문제 원인
+`_build_signals` 함수가 백테스트 요청 기간(예: 60일)에 관계없이 KIS API에서 조회한 전체 df(최대 ~580행)를 순회하며 매 행마다 누적 OHLCV 딕셔너리 리스트를 새로 생성함. 루프 반복 ~580회, dict 생성 ~180,000개로 타임아웃/크래시 발생.
+
+### 수정 내용
+- `_build_signals`에 `signal_start_idx` 파라미터 추가 — 루프 시작점 제어 (기본값 20, 하위 호환성 유지)
+- `run_backtest`에서 `start_signal_idx = max(20, df.index.searchsorted(start_ts) - 5)` 계산 후 전달
+- `end_ts`까지만 df 슬라이스(`df_for_signals`)로 후반 구간 제거
+- 루프 반복 ~580회 → ~50회, dict 생성 ~180,000 → ~15,000으로 감소
+
+### 코드 리뷰 결과
+- Critical/High 이슈 없음
+- 기본값(signal_start_idx=20) 유지로 하위 호환성 확보
+- period_mask 필터링 로직과 정합성 유지 확인
+
+### 검증 결과
+- ✅ 자동 검증 완료 항목:
+  - pytest: 51 passed, 1 warning (전체 통과)
+  - 코드 리뷰: Critical/High 이슈 없음
+  - 헬스체크 API: HTTP 200 정상
+
+- ⬜ 수동 검증 필요 항목:
+  - `docker compose up --build` (코드 반영)
+  - KIS API 설정 환경에서 백테스트 실행 후 응답 속도 및 정상 결과 확인 (데모 모드에서는 백테스트 API 미지원)
+
+---
+
 ## Hotfix: 백테스트 날짜 필터링 순서 오류 수정 (2026-03-08)
 
 ### 브랜치 및 PR
