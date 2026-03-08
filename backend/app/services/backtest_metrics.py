@@ -78,7 +78,31 @@ def _extract_vbt_trades(trades_df: Any) -> list:
     return result
 
 
-def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float, initial_cash: float = 10_000_000) -> dict:
+def _build_benchmark_values(dates: list, initial_cash: float, benchmark_return: float, benchmark_prices: Any = None) -> list:
+    """
+    벤치마크 가치 시계열을 생성한다.
+    benchmark_prices(KOSPI 일별 종가 Series)가 있으면 실제 수익률을 사용하고,
+    없으면 연 benchmark_return% 복리 성장 근사값을 사용한다.
+    """
+    if benchmark_prices is not None and len(benchmark_prices) >= 2:
+        try:
+            # dates와 동일한 날짜 인덱스에 맞게 리샘플링 (전진 채움)
+            bm_index = pd.to_datetime(dates)
+            bm_aligned = benchmark_prices.reindex(bm_index, method="ffill")
+            # 여전히 NaN인 첫 번째 날짜는 역방향 채움
+            bm_aligned = bm_aligned.bfill()
+            if bm_aligned.isna().any():
+                raise ValueError("KOSPI 날짜 정렬 실패")
+            start_val = float(bm_aligned.iloc[0])
+            return [initial_cash * float(v) / start_val for v in bm_aligned]
+        except Exception as e:
+            logger.warning(f"KOSPI 시계열 정렬 실패, 복리 근사 사용: {e}")
+    # 복리 근사
+    daily_bm_rate = (1 + benchmark_return) ** (1 / 252) - 1
+    return [initial_cash * (1 + daily_bm_rate) ** i for i in range(len(dates))]
+
+
+def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float, initial_cash: float = 10_000_000, benchmark_prices: Any = None) -> dict:
     """vectorbt 포트폴리오 객체에서 성과 지표를 계산한다."""
     try:
         total_return = float(portfolio.total_return())
@@ -132,9 +156,8 @@ def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float, initial
             equity_values = []
             dates = []
 
-        # 벤치마크 시계열: 초기 자본에서 연 benchmark_return% 일별 복리 성장
-        daily_bm_rate = (1 + benchmark_return) ** (1 / 252) - 1
-        bm_values = [initial_cash * (1 + daily_bm_rate) ** i for i in range(len(dates))]
+        # 벤치마크 시계열: 실제 KOSPI 데이터 또는 복리 근사
+        bm_values = _build_benchmark_values(dates, initial_cash, benchmark_return, benchmark_prices)
 
         return {
             "total_return": round(total_return * 100, 2),
@@ -160,6 +183,7 @@ def _calculate_metrics_from_basic(
     close: pd.Series,
     initial_cash: float,
     benchmark_return: float,
+    benchmark_prices: Any = None,
 ) -> dict:
     """기본 시뮬레이션 결과에서 성과 지표를 계산한다."""
     try:
@@ -195,9 +219,8 @@ def _calculate_metrics_from_basic(
         dates = [str(d.date()) if hasattr(d, 'date') else str(d) for d in equity.index]
         equity_values = equity.tolist()
 
-        # 벤치마크 시계열: 초기 자본에서 연 benchmark_return% 일별 복리 성장
-        daily_bm_rate = (1 + benchmark_return) ** (1 / 252) - 1
-        bm_values = [initial_cash * (1 + daily_bm_rate) ** i for i in range(len(dates))]
+        # 벤치마크 시계열: 실제 KOSPI 데이터 또는 복리 근사
+        bm_values = _build_benchmark_values(dates, initial_cash, benchmark_return, benchmark_prices)
 
         return {
             "total_return": round(total_return * 100, 2),
@@ -263,10 +286,11 @@ def calculate_metrics(result: dict) -> dict:
     portfolio_data = result["portfolio_data"]
     close = result["close"]
     benchmark_return = result["benchmark_return"]
+    benchmark_prices = result.get("benchmark_prices")  # 실제 KOSPI 일별 종가 (선택)
     initial_cash = result.get("initial_cash", 10_000_000)
     use_vbt = result.get("use_vbt", False)
 
     if use_vbt and "vbt_portfolio" in portfolio_data:
-        return _calculate_metrics_from_vbt(portfolio_data["vbt_portfolio"], benchmark_return, initial_cash)
+        return _calculate_metrics_from_vbt(portfolio_data["vbt_portfolio"], benchmark_return, initial_cash, benchmark_prices)
     else:
-        return _calculate_metrics_from_basic(portfolio_data, close, initial_cash, benchmark_return)
+        return _calculate_metrics_from_basic(portfolio_data, close, initial_cash, benchmark_return, benchmark_prices)

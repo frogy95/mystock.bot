@@ -142,6 +142,42 @@ def _simulate_portfolio_basic(
     return {"equity": equity_series, "trades": trades}
 
 
+async def _fetch_kospi_data(start_date: date, end_date: date) -> dict:
+    """
+    yfinance로 KOSPI(^KS11) 일별 종가를 조회한다.
+    실패 시 기본값(연 8% 복리 성장)으로 대체한다.
+    반환: {"annual_return": float, "prices": pd.Series | None}
+    """
+    try:
+        import yfinance as yf
+        import asyncio
+        from datetime import timedelta
+        end_plus = end_date + timedelta(days=5)
+        loop = asyncio.get_event_loop()
+        raw = await loop.run_in_executor(
+            None,
+            lambda: yf.download("^KS11", start=str(start_date), end=str(end_plus), progress=False, auto_adjust=True)
+        )
+        if raw is None or len(raw) < 2:
+            raise ValueError("KOSPI 데이터 부족")
+        # MultiIndex 컬럼 처리
+        if isinstance(raw.columns, pd.MultiIndex):
+            raw.columns = raw.columns.get_level_values(0)
+        prices: pd.Series = raw["Close"].dropna()
+        prices.index = pd.to_datetime(prices.index)
+        start_price = float(prices.iloc[0])
+        end_price = float(prices.iloc[-1])
+        total_return = (end_price - start_price) / start_price
+        days = (end_date - start_date).days
+        years = days / 365.25 if days > 0 else 1.0
+        annual_return = (1 + total_return) ** (1 / years) - 1
+        logger.info(f"KOSPI 벤치마크: 기간 수익률 {total_return:.2%}, 연환산 {annual_return:.2%}")
+        return {"annual_return": annual_return, "prices": prices}
+    except Exception as e:
+        logger.warning(f"KOSPI 벤치마크 조회 실패, 기본값 8% 사용: {e}")
+        return {"annual_return": 0.08, "prices": None}
+
+
 async def run_backtest(config: BacktestConfig) -> dict:
     """
     백테스팅을 실행하고 결과를 반환한다.
@@ -235,15 +271,16 @@ async def run_backtest(config: BacktestConfig) -> dict:
         )
         logger.info(f"기본 시뮬레이션 완료: {config.symbol}")
 
-    # KOSPI 벤치마크 (KIS API에서 지수 조회 불가 시 고정 수익률로 대체)
-    benchmark_return = 0.08  # KOSPI 연평균 8% 가정
+    # KOSPI 벤치마크: yfinance로 실제 ^KS11 일별 데이터 조회
+    kospi_data = await _fetch_kospi_data(config.start_date, config.end_date)
 
     return {
         "portfolio_data": portfolio_data,
         "close": close,
         "entries": entries,
         "exits": exits,
-        "benchmark_return": benchmark_return,
+        "benchmark_return": kospi_data["annual_return"],
+        "benchmark_prices": kospi_data["prices"],  # 실제 KOSPI 일별 종가 (None이면 복리 근사)
         "df": df,
         "initial_cash": config.initial_cash,
         "use_vbt": use_vbt,
