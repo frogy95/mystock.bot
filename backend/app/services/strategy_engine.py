@@ -89,7 +89,10 @@ class GoldenCrossRSIStrategy(BaseStrategy):
 
             # 매수 조건
             if sma20 > sma60 and rsi < rsi_threshold and vol_ratio > vol_ratio_threshold:
-                conf = min(1.0, (rsi_threshold - rsi) / rsi_threshold * 0.5 + (vol_ratio - 1.0) * 0.3)
+                # 기본 0.5 + RSI 강도(0~0.25) + 거래량 강도(0~0.25)
+                rsi_score = (rsi_threshold - rsi) / rsi_threshold  # 0~1
+                vol_score = min(1.0, (vol_ratio - 1.0) / 2.0)      # 0~1
+                conf = min(1.0, 0.5 + rsi_score * 0.25 + vol_score * 0.25)
                 return Signal(
                     signal_type="BUY",
                     confidence=round(conf, 2),
@@ -99,9 +102,12 @@ class GoldenCrossRSIStrategy(BaseStrategy):
 
             # 매도 조건
             if sma20 < sma60:
+                # SMA 이격도 기반 동적 confidence (기본 0.5 + 이격 강도)
+                sma_gap = (sma60 - sma20) / sma60  # 양수 = 데드크로스 강도
+                conf = min(1.0, 0.5 + min(1.0, sma_gap * 10) * 0.4)
                 return Signal(
                     signal_type="SELL",
-                    confidence=0.6,
+                    confidence=round(conf, 2),
                     reason=f"SMA데드크로스 (SMA20={sma20:.0f} < SMA60={sma60:.0f})",
                     target_price=float(last.get("Close", 0)),
                 )
@@ -136,8 +142,9 @@ class BollingerReversalStrategy(BaseStrategy):
 
             last = df_copy.iloc[-1]
             close = last.get("Close")
-            bb_lower = last.get("BBL_20_2.0")
-            bb_upper = last.get("BBU_20_2.0")
+            # pandas_ta bbands 컬럼명: BBL_20_2.0_2.0 (length_std_ddof)
+            bb_lower = last.get("BBL_20_2.0_2.0")
+            bb_upper = last.get("BBU_20_2.0_2.0")
             rsi = last.get("RSI_14")
 
             if any(pd.isna(v) for v in [close, bb_lower, bb_upper, rsi]):
@@ -145,7 +152,9 @@ class BollingerReversalStrategy(BaseStrategy):
 
             # 매수 조건
             if close < bb_lower and rsi < rsi_threshold:
-                conf = min(1.0, (rsi_threshold - rsi) / rsi_threshold * 0.6 + 0.3)
+                # 기본 0.5 + RSI 과매도 강도(0~0.4)
+                rsi_score = (rsi_threshold - rsi) / rsi_threshold  # 0~1
+                conf = min(1.0, 0.5 + rsi_score * 0.4)
                 return Signal(
                     signal_type="BUY",
                     confidence=round(conf, 2),
@@ -155,9 +164,12 @@ class BollingerReversalStrategy(BaseStrategy):
 
             # 매도 조건
             if close > bb_upper:
+                # BB 상단 초과 비율 기반 동적 confidence
+                bb_excess = (close - bb_upper) / bb_upper  # 상단 초과 비율
+                conf = min(1.0, 0.5 + min(1.0, bb_excess * 20) * 0.4)
                 return Signal(
                     signal_type="SELL",
-                    confidence=0.7,
+                    confidence=round(conf, 2),
                     reason=f"BB상단 돌파 (종가={close:.0f} > BB상단={bb_upper:.0f})",
                     target_price=float(close),
                 )
@@ -204,7 +216,10 @@ class ValueMomentumStrategy(BaseStrategy):
 
             # 매수 조건
             if momentum_20d > momentum_threshold and rsi < rsi_max:
-                conf = min(1.0, momentum_20d / 20 * 0.5 + (rsi_max - rsi) / rsi_max * 0.3)
+                # 기본 0.5 + 모멘텀 강도(0~0.3) + RSI 여유(0~0.2)
+                momentum_score = min(1.0, momentum_20d / 20.0)  # 0~1
+                rsi_score = (rsi_max - rsi) / rsi_max           # 0~1
+                conf = min(1.0, 0.5 + momentum_score * 0.3 + rsi_score * 0.2)
                 return Signal(
                     signal_type="BUY",
                     confidence=round(conf, 2),
@@ -214,9 +229,12 @@ class ValueMomentumStrategy(BaseStrategy):
 
             # 매도 조건: 모멘텀 반전
             if momentum_20d < -momentum_threshold:
+                # 모멘텀 하락 강도 기반 동적 confidence
+                momentum_drop = min(1.0, abs(momentum_20d) / 20.0)
+                conf = min(1.0, 0.5 + momentum_drop * 0.4)
                 return Signal(
                     signal_type="SELL",
-                    confidence=0.6,
+                    confidence=round(conf, 2),
                     reason=f"20일모멘텀{momentum_20d:.1f}% 하락",
                     target_price=close,
                 )

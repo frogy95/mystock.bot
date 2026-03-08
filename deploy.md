@@ -4,6 +4,109 @@
 
 ---
 
+## Hotfix: 백테스트 전략 confidence 공식 수정 (2026-03-08)
+
+### 브랜치 및 PR
+- 브랜치: `hotfix/backtest-signal-index-alignment`
+- PR: https://github.com/frogy95/mystock.bot/pull/44
+
+### 문제 원인
+`confidence >= 0.5` 필터가 BUY 신호 대부분을 제거하여 백테스트 거래가 미발생하는 문제. 기존 공식이 BUY confidence를 0.1~0.45 범위로 계산하여 필터 기준인 0.5 미달.
+
+### 수정 내용
+3개 전략의 BUY/SELL confidence 공식을 기본 0.5 보장 방식으로 재설계:
+- GoldenCrossRSI BUY: `0.5 + rsi_score*0.25 + vol_score*0.25` (범위: 0.5~1.0)
+- GoldenCrossRSI SELL: 고정 0.6 → SMA 이격도 기반 동적 계산 (범위: 0.5~0.9)
+- BollingerReversal BUY: `0.5 + rsi_score*0.4` (범위: 0.5~0.9)
+- BollingerReversal SELL: 고정 0.7 → BB 초과 비율 기반 동적 계산 (범위: 0.5~0.9)
+- ValueMomentum BUY: `0.5 + momentum_score*0.3 + rsi_score*0.2` (범위: 0.5~1.0)
+- ValueMomentum SELL: 고정 0.6 → 모멘텀 하락 강도 기반 동적 계산 (범위: 0.5~0.9)
+
+### 코드 리뷰 결과
+- Critical/High 이슈 없음
+- 조건 충족 시 BUY/SELL 모두 최소 0.5 보장으로 필터 통과 확실
+- backtest_engine.py, scheduler.py의 `confidence >= 0.5` 필터는 변경 없음
+- 부작용 없음, 보안 이슈 없음
+
+### 검증 결과
+- ✅ 자동 검증 완료 항목:
+  - pytest: 51 passed
+  - 코드 리뷰: Critical/High 이슈 없음
+  - confidence 공식 직접 검증: 모든 시나리오에서 >= 0.5 확인
+
+- ⬜ 수동 검증 필요 항목:
+  - `docker compose up --build` (코드 반영)
+  - 백테스트 화면에서 3개 전략 모두 BUY/SELL 신호 발생 여부 확인
+  - 백테스트 total_trades > 0 정상 출력 확인
+
+---
+
+## Hotfix: 백테스트 날짜 형식 및 볼린저밴드 컬럼명 수정 (2026-03-08)
+
+### 브랜치 및 PR
+- 브랜치: `hotfix/backtest-signal-index-alignment`
+- PR: https://github.com/frogy95/mystock.bot/pull/44
+
+### 문제 원인
+1. `_build_signals` 내 `str(idx.date())`로 날짜 변환 시 `2025-10-02` 형태 생성 → `_ohlcv_to_df`가 `%Y%m%d` 형식을 기대하여 날짜 파싱 실패, 모든 신호 HOLD 반환.
+2. `BollingerReversalStrategy`에서 `BBL_20_2.0`, `BBU_20_2.0`으로 컬럼 조회 → pandas_ta bbands 실제 컬럼명은 ddof 접미사 포함 `BBL_20_2.0_2.0`, `BBU_20_2.0_2.0`으로 `None` 반환, 볼린저밴드 신호 미생성.
+
+### 수정 내용
+- `backtest_engine.py`: `str(idx.date())` → `idx.strftime("%Y%m%d")` 변경 (strftime 미지원 시 `-` 제거 fallback 추가)
+- `strategy_engine.py`: BB 컬럼명 `BBL/BBU_20_2.0` → `BBL/BBU_20_2.0_2.0` 수정 및 설명 주석 추가
+
+### 코드 리뷰 결과
+- Critical/High 이슈 없음
+- 날짜 형식 수정이 `_ohlcv_to_df` 기대 형식과 정확히 일치
+- BB 컬럼명 수정이 pandas_ta 실제 출력 컬럼명과 일치
+- 부작용 없음
+
+### 검증 결과
+- ✅ 자동 검증 완료 항목:
+  - pytest: 51 passed
+  - 코드 리뷰: Critical/High 이슈 없음
+  - 가치+모멘텀 전략 백테스트 실행 → total_trades=1, 신호 생성 정상
+  - 볼린저밴드반전 SELL 신호 여러 건 생성 확인
+
+- ⬜ 수동 검증 필요 항목:
+  - `docker compose up --build` (코드 반영)
+  - 백테스트 화면에서 볼린저밴드반전 전략으로 BUY/SELL 신호 발생 여부 확인
+  - 백테스트 날짜 범위 설정 후 신호가 HOLD 없이 정상 출력되는지 확인
+
+---
+
+## Hotfix: 백테스트 신호 인덱스 정합성 오류 및 종목 코드 파싱 수정 (2026-03-08)
+
+### 브랜치 및 PR
+- 브랜치: `hotfix/backtest-signal-index-alignment`
+- PR: https://github.com/frogy95/mystock.bot/pull/44
+
+### 문제 원인
+1. `_build_signals`에 df 슬라이스를 전달하던 구조에서 `entries/exits` 시리즈 인덱스와 `period_mask` 인덱스 불일치 잠재 버그. 루프가 전체 df를 순회하여 불필요한 연산 발생.
+2. 백테스트 폼에서 `"삼성전자 (005930)"` 형태로 입력 시 종목 코드 파싱 없이 API 전달되어 종목 조회 실패.
+
+### 수정 내용
+- `_build_signals`에 `signal_start_idx: int = 20` 파라미터 추가, df 전체를 전달하여 인덱스 정합성 유지
+- `run_backtest`에서 `start_signal_idx = max(20, df.index.searchsorted(start_ts) - 5)` 계산 후 전달 (성능 최적화)
+- `BacktestConfigForm.handleSubmit`에서 정규식으로 괄호 안 종목 코드 추출 후 API 전달
+
+### 코드 리뷰 결과
+- Critical/High 이슈 없음
+- 수정 로직이 문제를 올바르게 해결함
+- 부작용 없음: df 전체 전달로 인덱스 정합성 보장
+
+### 검증 결과
+- ✅ 자동 검증 완료 항목:
+  - pytest: 51 passed, 1 warning
+  - 코드 리뷰: Critical/High 이슈 없음
+
+- ⬜ 수동 검증 필요 항목:
+  - `docker compose up --build` (코드 반영)
+  - 백테스트 화면에서 종목명 자동완성 후 실행 시 정상 동작 확인
+  - 백테스트 결과에서 매매 신호 및 수익률 정상 출력 확인
+
+---
+
 ## Hotfix: 백테스트 날짜 필터링 순서 오류 수정 (2026-03-08)
 
 ### 브랜치 및 PR
