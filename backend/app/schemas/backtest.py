@@ -39,6 +39,16 @@ class EquityPoint(BaseModel):
     benchmark: float = 0.0  # 벤치마크 가치 (원)
 
 
+class BacktestTrade(BaseModel):
+    """시뮬레이션 개별 거래 내역"""
+    type: str           # "BUY" | "SELL"
+    date: str           # "YYYY-MM-DD"
+    price: float        # 거래 가격
+    qty: int            # 거래 수량
+    amount: float       # 거래 금액 (price * qty)
+    pnl: Optional[float] = None  # 손익 (SELL 시), BUY는 None
+
+
 class BacktestResultResponse(BaseModel):
     """백테스팅 결과 응답 스키마"""
     id: int
@@ -54,4 +64,5 @@ class BacktestResultResponse(BaseModel):
     win_rate: float           # 승률 (%)
     benchmark_return: float   # 벤치마크 수익률 (%)
     equity_curve: list[EquityPoint]  # 자산 가치 곡선
+    trades: list[BacktestTrade] = []  # 시뮬레이션 거래 내역
     created_at: str

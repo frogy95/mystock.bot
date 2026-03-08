@@ -3,6 +3,16 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
 
+/** 백엔드 시뮬레이션 거래 내역 타입 */
+export interface BacktestTradeAPI {
+  type: string;       // "BUY" | "SELL"
+  date: string;       // "YYYY-MM-DD"
+  price: number;
+  qty: number;
+  amount: number;
+  pnl: number | null; // SELL 시 손익, BUY는 null
+}
+
 /** 백엔드 Equity Curve 포인트 타입 */
 export interface EquityPoint {
   date: string;        // "YYYY-MM-DD"
@@ -25,6 +35,7 @@ export interface BacktestResultAPI {
   win_rate: number;           // 승률 (%)
   benchmark_return: number;   // 벤치마크 수익률 (%)
   equity_curve: EquityPoint[]; // 자산 가치 곡선
+  trades: BacktestTradeAPI[];  // 시뮬레이션 거래 내역
   created_at: string;
 }
 

@@ -14,7 +14,7 @@ from app.services.demo_data import get_demo_backtest_results, get_demo_backtest_
 from app.core.database import get_db
 from app.models.backtest import BacktestResult
 from app.models.user import User
-from app.schemas.backtest import BacktestRunRequest, BacktestResultResponse, EquityPoint
+from app.schemas.backtest import BacktestRunRequest, BacktestResultResponse, EquityPoint, BacktestTrade
 from app.services.backtest_engine import BacktestConfig, run_backtest
 from app.services.backtest_metrics import calculate_metrics
 
@@ -31,6 +31,19 @@ def _to_response(record: BacktestResult) -> BacktestResultResponse:
         for ep in equity_raw
         if isinstance(ep, dict) and "date" in ep and "value" in ep
     ]
+    trades_raw = data.get("trades", [])
+    trades = [
+        BacktestTrade(
+            type=t["type"],
+            date=t.get("date", ""),
+            price=float(t["price"]),
+            qty=int(t["qty"]),
+            amount=float(t["amount"]),
+            pnl=float(t["pnl"]) if t.get("pnl") is not None else None,
+        )
+        for t in trades_raw
+        if isinstance(t, dict)
+    ]
     return BacktestResultResponse(
         id=record.id,
         symbol=record.symbol or "",
@@ -45,6 +58,7 @@ def _to_response(record: BacktestResult) -> BacktestResultResponse:
         win_rate=float(data.get("win_rate", 0.0)),
         benchmark_return=float(data.get("benchmark_return", 0.0)),
         equity_curve=equity_curve,
+        trades=trades,
         created_at=str(record.created_at),
     )
 

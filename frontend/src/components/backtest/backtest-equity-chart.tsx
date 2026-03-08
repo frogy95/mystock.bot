@@ -39,12 +39,13 @@ export function BacktestEquityChart({ equityCurve }: BacktestEquityChartProps) {
               interval="preserveStartEnd"
             />
 
-            {/* Y축: 포트폴리오 지수값 */}
+            {/* Y축: 포트폴리오 가치 */}
             <YAxis
               tick={{ fontSize: 11 }}
               tickLine={false}
               tickFormatter={(v: number) => `${v.toFixed(0)}`}
               domain={["auto", "auto"]}
+              label={{ value: "포트폴리오 가치(원)", angle: -90, position: "insideLeft", style: { fontSize: 11 } }}
             />
 
             <Tooltip

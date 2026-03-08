@@ -114,6 +114,7 @@ def _calculate_metrics_from_vbt(portfolio: Any, benchmark_return: float, initial
                 {"date": d, "value": round(v, 2), "benchmark": round(b, 2)}
                 for d, v, b in zip(dates, equity_values, bm_values)
             ],
+            "trades": [],  # VBT 경로에서는 개별 거래 내역 미지원
         }
     except Exception as e:
         logger.error(f"VectorBT 지표 계산 오류: {e}")
@@ -175,6 +176,17 @@ def _calculate_metrics_from_basic(
             "equity_curve": [
                 {"date": d, "value": round(v, 2), "benchmark": round(b, 2)}
                 for d, v, b in zip(dates, equity_values, bm_values)
+            ],
+            "trades": [
+                {
+                    "type": t["type"],
+                    "date": t.get("date", ""),
+                    "price": t["price"],
+                    "qty": t["qty"],
+                    "amount": round(t["price"] * t["qty"], 2),
+                    "pnl": round(t["pnl"], 2) if t["pnl"] is not None else None,
+                }
+                for t in trades_list
             ],
         }
     except Exception as e:

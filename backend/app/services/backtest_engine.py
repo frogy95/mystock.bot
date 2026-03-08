@@ -114,14 +114,14 @@ def _simulate_portfolio_basic(
                     cash -= cost
                     shares = buy_qty
                     buy_price = price
-                    trades.append({"type": "BUY", "price": price, "qty": buy_qty, "pnl": None})
+                    trades.append({"type": "BUY", "date": str(dt.date()), "price": price, "qty": buy_qty, "pnl": None})
 
         # 매도 신호
         elif exits.iloc[i] and shares > 0:
             revenue = shares * price * (1 - commission)
             pnl = revenue - (shares * buy_price)
             cash += revenue
-            trades.append({"type": "SELL", "price": price, "qty": shares, "pnl": pnl})
+            trades.append({"type": "SELL", "date": str(dt.date()), "price": price, "qty": shares, "pnl": pnl})
             shares = 0
             buy_price = 0.0
 
@@ -132,9 +132,10 @@ def _simulate_portfolio_basic(
     # 미청산 포지션 강제 청산 (마지막 종가 기준)
     if shares > 0:
         last_price = close.iloc[-1]
+        last_date = str(close.index[-1].date()) if hasattr(close.index[-1], 'date') else str(close.index[-1])
         revenue = shares * last_price * (1 - commission)
         pnl = revenue - (shares * buy_price)
-        trades.append({"type": "SELL", "price": last_price, "qty": shares, "pnl": pnl})
+        trades.append({"type": "SELL", "date": last_date, "price": last_price, "qty": shares, "pnl": pnl})
         equity_values[-1] = cash + revenue
 
     equity_series = pd.Series(equity_values, index=close.index)

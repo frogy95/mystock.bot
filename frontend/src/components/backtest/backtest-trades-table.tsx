@@ -20,10 +20,13 @@ export function BacktestTradesTable({ trades }: BacktestTradesTableProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>거래 내역</CardTitle>
+        <CardTitle>시뮬레이션 거래 내역</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        {/* 모바일에서 가로 스크롤 허용 */}
+        {trades.length === 0 ? (
+          <p className="px-6 py-8 text-center text-sm text-muted-foreground">거래 내역이 없습니다.</p>
+        ) : (
+        /* 모바일에서 가로 스크롤 허용 */
         <div className="overflow-x-auto">
         <Table>
           <TableHeader>
@@ -98,6 +101,7 @@ export function BacktestTradesTable({ trades }: BacktestTradesTableProps) {
           </TableBody>
         </Table>
         </div>
+        )}
       </CardContent>
     </Card>
   );
