@@ -4,6 +4,24 @@
 
 ---
 
+## Sprint 22: 백테스트 차트 데이터 DB 캐싱 + yfinance 폴백 (2026-03-08)
+
+### 자동 검증 완료
+- ✅ `pytest -v` — 51개 테스트 모두 통과
+- ✅ `chart_cache.py` 모델 임포트 성공
+- ✅ `chart_data_service.py` 임포트 성공
+
+### 수동 검증 필요
+- ⬜ Docker 재빌드: `docker compose up --build`
+- ⬜ DB 마이그레이션: `docker compose exec backend alembic upgrade head` (chart_data_cache 테이블 생성)
+- ⬜ 백테스트 실행 (첫 실행 — yfinance 또는 KIS 호출 후 DB 저장 확인):
+  - 종목: 229200, 전략: 골든크로스+RSI, 기간: 2025.10 ~ 2026.03
+- ⬜ 백테스트 재실행 — DB 캐시 히트 확인 (백엔드 로그에 "차트 캐시 히트" 출력 확인)
+- ⬜ 평일 KIS API 정상 시 KIS 데이터 우선 사용 확인 (로그: "차트 조회 완료")
+- ⬜ 주말/KIS 점검 시 yfinance 폴백 동작 확인 (로그: "yfinance 조회 완료")
+
+---
+
 ## Hotfix: 백테스트 전략 confidence 공식 수정 (2026-03-08)
 
 ### 브랜치 및 PR

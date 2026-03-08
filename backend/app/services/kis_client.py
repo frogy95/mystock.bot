@@ -300,8 +300,8 @@ class KISClient:
                 if item.get("stck_clpr")
             ]
         except Exception as exc:
-            logger.error("차트 조회 실패 [%s]: %s", symbol, exc)
-            raise
+            logger.warning("차트 조회 실패 [%s]: %s (폴백 데이터 소스 사용 가능)", symbol, exc)
+            return None
 
     async def get_balance(self) -> dict[str, Any] | None:
         """계좌 잔고를 조회한다.

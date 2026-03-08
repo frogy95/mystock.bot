@@ -154,15 +154,10 @@ async def run_backtest(config: BacktestConfig) -> dict:
         df: OHLCV + 지표 DataFrame
         use_vbt: vectorbt 사용 여부
     """
-    # 1. KIS 과거 데이터 조회
-    if not kis_client.is_available():
-        raise ValueError("KIS API가 설정되지 않았습니다. 백테스팅에 실제 차트 데이터가 필요합니다.")
-
-    # 백테스트 기간 거래일 수 + SMA(60) 워밍업 여유분(80일)을 포함하여 요청
-    trading_days_approx = (config.end_date - config.start_date).days * 5 // 7 + 10
+    # 1. 차트 데이터 조회 (DB 캐시 → KIS API → yfinance 폴백)
+    from app.services.chart_data_service import get_chart_data
     warmup_days = 80  # SMA(60) 계산을 위한 워밍업 + 여유분
-    required_count = trading_days_approx + warmup_days
-    chart_data = await kis_client.get_chart(config.symbol, period="day", count=required_count)
+    chart_data = await get_chart_data(config.symbol, config.start_date, config.end_date, warmup_days=warmup_days)
     if not chart_data or len(chart_data) < 30:
         raise ValueError(f"차트 데이터 부족: {config.symbol} (최소 30일 데이터 필요)")
 
