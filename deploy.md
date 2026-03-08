@@ -8,7 +8,7 @@
 
 ### 브랜치 및 PR
 - 브랜치: `hotfix/backtest-signal-index-alignment`
-- PR: (생성 중)
+- PR: https://github.com/frogy95/mystock.bot/pull/44
 
 ### 문제 원인
 `confidence >= 0.5` 필터가 BUY 신호 대부분을 제거하여 백테스트 거래가 미발생하는 문제. 기존 공식이 BUY confidence를 0.1~0.45 범위로 계산하여 필터 기준인 0.5 미달.
