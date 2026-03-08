@@ -94,3 +94,86 @@ export function useBacktestRun() {
     },
   });
 }
+
+// ── Sprint 24: 다중 백테스트 훅 ──────────────────────────────────────
+
+/** 랭킹 항목 타입 */
+export interface BacktestRankingEntry {
+  strategy_id: number;
+  strategy_name: string;
+  rank: number;
+  score: number;
+  total_return: number;
+  cagr: number;
+  mdd: number;
+  sharpe_ratio: number;
+  win_rate: number;
+  total_trades: number;
+}
+
+/** 다중 백테스트 개별 결과 */
+export interface BacktestMultiResultItem {
+  strategy_id: number;
+  strategy_name: string;
+  total_return: number;
+  cagr: number;
+  mdd: number;
+  sharpe_ratio: number;
+  win_rate: number;
+  total_trades: number;
+  benchmark_return: number;
+  equity_curve: EquityPoint[];
+}
+
+/** 다중 백테스트 응답 타입 */
+export interface BacktestMultiResponse {
+  symbol: string;
+  results: BacktestMultiResultItem[];
+  ranking: BacktestRankingEntry[];
+}
+
+/** 다중 백테스트 실행 요청 타입 */
+export interface BacktestMultiRunRequest {
+  symbol: string;
+  strategy_ids: number[];
+  start_date: string;
+  end_date: string;
+  initial_cash?: number;
+}
+
+/** 관심종목 상태 항목 */
+export interface WatchlistStatusItem {
+  item_id: number;
+  group_name: string;
+  current_strategy: string | null;
+}
+
+/** 종목 보유/관심 상태 응답 */
+export interface StockStatusAPI {
+  is_holding: boolean;
+  holding_id: number | null;
+  current_sell_strategy: string | null;
+  is_watchlist: boolean;
+  watchlist_items: WatchlistStatusItem[];
+}
+
+/** 다중 백테스트 실행 훅 */
+export function useBacktestRunMulti() {
+  return useMutation<BacktestMultiResponse, Error, BacktestMultiRunRequest>({
+    mutationFn: (request) =>
+      apiClient.post<BacktestMultiResponse>("/api/v1/backtest/run-multi", request),
+    onError: (error) => {
+      console.error("[useBacktestRunMulti] 다중 백테스트 실패:", error);
+    },
+  });
+}
+
+/** 종목 보유/관심 상태 조회 훅 */
+export function useStockStatus(symbol: string | null) {
+  return useQuery<StockStatusAPI>({
+    queryKey: ["backtest", "stock-status", symbol],
+    queryFn: () => apiClient.get<StockStatusAPI>(`/api/v1/backtest/stock-status/${symbol}`),
+    enabled: !!symbol,
+    staleTime: 30_000,
+  });
+}
