@@ -221,6 +221,7 @@ class KISClient:
     async def get_chart(self, symbol: str, period: str = "day", count: int = 30) -> list[dict[str, Any]] | None:
         """주식 차트 데이터(OHLCV)를 조회한다 (항상 실전 서버 + 실전 키 사용).
         period: "day" → "D", "week" → "W", "month" → "M"
+        count > 100인 경우 KIS 연속조회(페이징)로 필요한 만큼 수집한다.
         """
         if not self.is_quote_available():
             return None
@@ -230,37 +231,62 @@ class KISClient:
         _PERIOD_MAP = {"day": "D", "week": "W", "month": "M"}
         period_code = _PERIOD_MAP.get(period, "D")
         limiter = get_rate_limiter(is_virtual=False)  # 시세 = 항상 실전 Rate Limiter
-        await limiter.acquire()
 
-        async def _fetch() -> list[dict[str, Any]]:
+        _MAX_PAGES = 10  # 무한루프 방지 (최대 ~1000개 ≈ 4년치)
+        all_items: list[dict[str, Any]] = []
+        ctx_fk = ""
+        ctx_nk = ""
+
+        try:
             cfg = get_kis_settings()
             today = datetime.date.today().strftime("%Y%m%d")
             token = await self._get_access_token("real")
             client = self._get_http_client(_KIS_REAL_BASE)
-            resp = await client.get(
-                f"{_KIS_REAL_BASE}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice",
-                headers={
-                    "tr_id": "FHKST03010100",
-                    "appkey": cfg.real_app_key,
-                    "appsecret": cfg.real_app_secret,
-                    "Authorization": f"Bearer {token}",
-                },
-                params={
-                    "FID_COND_MRKT_DIV_CODE": "J",
-                    "FID_INPUT_ISCD": symbol,
-                    "FID_INPUT_DATE_1": "19000101",
-                    "FID_INPUT_DATE_2": today,
-                    "FID_PERIOD_DIV_CODE": period_code,
-                    "FID_ORG_ADJ_PRC": "0",
-                },
-                timeout=10,
-            )
-            resp.raise_for_status()
-            data = resp.json()
 
-            if data.get("rt_cd") != "0":
-                raise ValueError(f"KIS API 오류: {data.get('msg1')}")
-            items = data.get("output2", [])
+            for page in range(_MAX_PAGES):
+                await limiter.acquire()
+                # 첫 페이지는 tr_cont 없이, 이후 페이지는 "N"으로 연속조회 요청
+                tr_cont = "" if page == 0 else "N"
+                resp = await client.get(
+                    f"{_KIS_REAL_BASE}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice",
+                    headers={
+                        "tr_id": "FHKST03010100",
+                        "appkey": cfg.real_app_key,
+                        "appsecret": cfg.real_app_secret,
+                        "Authorization": f"Bearer {token}",
+                        "tr_cont": tr_cont,
+                    },
+                    params={
+                        "FID_COND_MRKT_DIV_CODE": "J",
+                        "FID_INPUT_ISCD": symbol,
+                        "FID_INPUT_DATE_1": "19000101",
+                        "FID_INPUT_DATE_2": today,
+                        "FID_PERIOD_DIV_CODE": period_code,
+                        "FID_ORG_ADJ_PRC": "0",
+                        "CTX_AREA_FK100": ctx_fk,
+                        "CTX_AREA_NK100": ctx_nk,
+                    },
+                    timeout=10,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+                if data.get("rt_cd") != "0":
+                    raise ValueError(f"KIS API 오류: {data.get('msg1')}")
+
+                page_items = data.get("output2", [])
+                all_items.extend(page_items)
+
+                # 요청 수량 충족 또는 다음 페이지 없으면 종료
+                if len(all_items) >= count:
+                    break
+                if resp.headers.get("tr_cont") not in ("F", "M"):
+                    break
+                # 다음 연속조회를 위한 컨텍스트 키 추출
+                ctx_fk = data.get("ctx_area_fk100", "").strip()
+                ctx_nk = data.get("ctx_area_nk100", "").strip()
+
+            logger.info("차트 조회 완료 [%s]: %d건 (요청 %d건, %d페이지)", symbol, len(all_items), count, page + 1)
             return [
                 {
                     "date": item["stck_bsop_date"],
@@ -270,12 +296,9 @@ class KISClient:
                     "close": float(item["stck_clpr"]),
                     "volume": int(item["acml_vol"]),
                 }
-                for item in items[:count]
+                for item in all_items[:count]
                 if item.get("stck_clpr")
             ]
-
-        try:
-            return await retry_with_backoff(_fetch)
         except Exception as exc:
             logger.error("차트 조회 실패 [%s]: %s", symbol, exc)
             raise

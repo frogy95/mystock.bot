@@ -158,7 +158,11 @@ async def run_backtest(config: BacktestConfig) -> dict:
     if not kis_client.is_available():
         raise ValueError("KIS API가 설정되지 않았습니다. 백테스팅에 실제 차트 데이터가 필요합니다.")
 
-    chart_data = await kis_client.get_chart(config.symbol, period="day", count=600)
+    # 백테스트 기간 거래일 수 + SMA(60) 워밍업 여유분(80일)을 포함하여 요청
+    trading_days_approx = (config.end_date - config.start_date).days * 5 // 7 + 10
+    warmup_days = 80  # SMA(60) 계산을 위한 워밍업 + 여유분
+    required_count = trading_days_approx + warmup_days
+    chart_data = await kis_client.get_chart(config.symbol, period="day", count=required_count)
     if not chart_data or len(chart_data) < 30:
         raise ValueError(f"차트 데이터 부족: {config.symbol} (최소 30일 데이터 필요)")
 
@@ -195,7 +199,8 @@ async def run_backtest(config: BacktestConfig) -> dict:
 
     # 4. 전략 신호 생성
     # start_ts 근처부터 루프를 시작하여 성능을 최적화한다 (df 전체를 전달해 인덱스 정합성 유지)
-    start_signal_idx = max(20, df.index.searchsorted(start_ts) - 5)
+    # SMA(60) 계산을 위한 최소 워밍업 보장 (60행 이상에서 신호 생성 시작)
+    start_signal_idx = max(60, df.index.searchsorted(start_ts) - 5)
     entries, exits = _build_signals(df, config.strategy_name, config.params, signal_start_idx=start_signal_idx)
 
     # 요청 기간으로 결과 필터링 (신호 생성은 전체 데이터 기반)
