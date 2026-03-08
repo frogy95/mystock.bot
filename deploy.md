@@ -4,6 +4,49 @@
 
 ---
 
+## Hotfix: 프리셋 전략 중복 표시 수정 (2026-03-08)
+
+### 브랜치 및 PR
+- 브랜치: `hotfix/preset-strategy-duplicate`
+- PR: (hotfix-close 후 생성 예정)
+
+### 문제 원인
+`seed.py`와 `ensure_preset_strategies()` (main.py)가 거의 동시에 실행되어 각 프리셋 전략이 2개씩 DB에 중복 생성됨.
+
+### 자동 검증 완료
+- ⬜ 백엔드 테스트 (`pytest -v`) — hotfix-close 시점에 실행 예정
+
+### 수동 검증 필요 — 실서버 DB 중복 데이터 정리
+
+실서버 DB에 이미 중복된 프리셋 전략이 존재합니다. 아래 SQL을 직접 실행하여 정리하세요.
+
+```bash
+# 실서버 SSH 접속
+ssh ubuntu@3.39.124.72 -i ./mystock-bot-ssh-key.pem
+
+# DB 접속
+cd /opt/mystock-bot
+docker compose -f docker-compose.prod.yml exec postgres psql -U mystock mystock
+
+# 중복 레코드 삭제 (id가 큰 중복 레코드 제거)
+DELETE FROM strategy_params WHERE strategy_id IN (2, 4, 6);
+DELETE FROM strategies WHERE id IN (2, 4, 6);
+
+# 결과 확인 (3개만 남아야 함)
+SELECT id, name, is_preset FROM strategies WHERE is_preset = true;
+```
+
+정리 후 API로 확인:
+```bash
+# 데모 토큰 발급
+TOKEN=$(curl -s -X POST http://3.39.124.72/api/v1/auth/demo | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# 프리셋 전략 목록 확인 (3개만 반환되어야 함)
+curl -s -H "Authorization: Bearer $TOKEN" http://3.39.124.72/api/v1/strategies | python3 -c "import sys,json; data=json.load(sys.stdin); presets=[s for s in data if s.get('is_preset')]; print(f'프리셋 전략 수: {len(presets)}'); [print(f'  - {s[\"name\"]}') for s in presets]"
+```
+
+---
+
 ## 프로덕션 배포 - v0.21.0 (2026-03-07)
 
 ### 포함 스프린트

@@ -79,7 +79,7 @@ async def ensure_preset_strategies() -> None:
                     Strategy.is_preset.is_(True),
                 )
             )
-            if result.scalar_one_or_none() is not None:
+            if result.scalars().first() is not None:
                 continue
             strategy = Strategy(
                 name=preset["name"],
