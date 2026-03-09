@@ -5,8 +5,10 @@ GET  /backtest/results      - 최근 결과 목록 조회 (최대 20건)
 GET  /backtest/results/{id} - 특정 결과 상세 조회
 """
 import asyncio
+import json
 import logging
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -310,6 +312,99 @@ async def run_backtest_multi(
         symbol=request.symbol,
         results=result_items,
         ranking=ranking_items,
+    )
+
+
+@router.post("/run-multi-stream", summary="다중 전략 백테스트 SSE 스트리밍")
+async def run_backtest_multi_stream(
+    request: BacktestMultiRunRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    여러 전략을 순차 실행하며 SSE로 진행상황과 결과를 스트리밍한다.
+    nginx 타임아웃을 피하기 위해 heartbeat를 10초마다 전송한다.
+    기존 run-multi 엔드포인트는 하위 호환성을 위해 유지한다.
+    """
+    if is_demo_user(current_user.username):
+        raise HTTPException(status_code=403, detail="데모 모드에서는 사용할 수 없습니다.")
+
+    # 전략 목록 조회
+    strategy_result = await db.execute(
+        select(Strategy).where(
+            Strategy.id.in_(request.strategy_ids),
+            or_(Strategy.user_id.is_(None), Strategy.user_id == current_user.id),
+        )
+    )
+    strategies = list(strategy_result.scalars().all())
+
+    if not strategies:
+        raise HTTPException(status_code=404, detail="선택한 전략을 찾을 수 없습니다.")
+
+    def sse_event(event: str, data: dict) -> str:
+        return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+    async def generate():
+        valid_results = []
+        total = len(strategies)
+
+        for idx, strategy in enumerate(strategies):
+            # heartbeat: 장기 실행 중 nginx 타임아웃 방지
+            yield sse_event("heartbeat", {"ts": idx})
+
+            try:
+                buy_cond = strategy.buy_conditions if strategy.buy_conditions else None
+                sell_cond = strategy.sell_conditions if strategy.sell_conditions else None
+                config = BacktestConfig(
+                    symbol=request.symbol,
+                    strategy_name=strategy.name,
+                    params={},
+                    start_date=request.start_date,
+                    end_date=request.end_date,
+                    initial_cash=request.initial_cash,
+                    buy_conditions=buy_cond,
+                    sell_conditions=sell_cond,
+                )
+                result = await run_backtest(config)
+                metrics = calculate_metrics(result)
+                item = {"strategy_id": strategy.id, "strategy_name": strategy.name, **metrics}
+                valid_results.append(item)
+
+                yield sse_event("progress", {
+                    "completed": idx + 1,
+                    "total": total,
+                    "strategy_name": strategy.name,
+                    "status": "success",
+                })
+                yield sse_event("result", item)
+            except Exception as e:
+                logger.warning(f"SSE 백테스트 전략 오류 [{strategy.name}]: {e}")
+                yield sse_event("progress", {
+                    "completed": idx + 1,
+                    "total": total,
+                    "strategy_name": strategy.name,
+                    "status": "error",
+                    "error": str(e),
+                })
+
+        if not valid_results:
+            yield sse_event("error", {"detail": "모든 전략 백테스트가 실패했습니다."})
+            return
+
+        ranked = calculate_ranking_score(valid_results)
+        yield sse_event("done", {
+            "symbol": request.symbol,
+            "ranking": ranked,
+            "total_completed": len(valid_results),
+        })
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

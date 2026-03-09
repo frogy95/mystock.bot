@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api/client";
 
@@ -177,6 +178,130 @@ export function useStockStatus(symbol: string | null) {
     enabled: !!symbol,
     staleTime: 30_000,
   });
+}
+
+// ── Sprint 27: SSE 스트리밍 백테스트 훅 ──────────────────────────────
+
+/** SSE 진행상황 이벤트 */
+export interface BacktestProgressEvent {
+  completed: number;
+  total: number;
+  strategy_name: string;
+  status: "success" | "error";
+  error?: string;
+}
+
+/** SSE done 이벤트 */
+export interface BacktestDoneEvent {
+  symbol: string;
+  ranking: BacktestRankingEntry[];
+  total_completed: number;
+}
+
+/**
+ * SSE 기반 다중 전략 백테스트 실행 훅
+ * POST /api/v1/backtest/run-multi-stream
+ * fetch + ReadableStream으로 SSE 수신 (POST 지원, Authorization 헤더 포함)
+ */
+export function useBacktestRunMultiSSE() {
+  const [progress, setProgress] = useState<BacktestProgressEvent | null>(null);
+  const [results, setResults] = useState<BacktestMultiResultItem[]>([]);
+  const [ranking, setRanking] = useState<BacktestRankingEntry[]>([]);
+  const [isRunning, setIsRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const run = useCallback(async (request: BacktestMultiRunRequest) => {
+    // 진행 중이면 기존 요청 취소
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+    const abort = new AbortController();
+    abortRef.current = abort;
+
+    setIsRunning(true);
+    setProgress(null);
+    setResults([]);
+    setRanking([]);
+    setError(null);
+
+    const { useAuthStore } = await import("@/stores/auth-store");
+    const token = useAuthStore.getState().token;
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+    try {
+      const res = await fetch(`${apiBase}/api/v1/backtest/run-multi-stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(request),
+        signal: abort.signal,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(err.detail ?? `HTTP ${res.status}`);
+      }
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("스트림을 읽을 수 없습니다.");
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        let currentEvent = "";
+        let currentData = "";
+
+        for (const line of lines) {
+          if (line.startsWith("event: ")) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith("data: ")) {
+            currentData = line.slice(6).trim();
+          } else if (line === "" && currentEvent && currentData) {
+            try {
+              const parsed = JSON.parse(currentData);
+              if (currentEvent === "progress") {
+                setProgress(parsed as BacktestProgressEvent);
+              } else if (currentEvent === "result") {
+                setResults((prev) => [...prev, parsed as BacktestMultiResultItem]);
+              } else if (currentEvent === "done") {
+                const doneData = parsed as BacktestDoneEvent;
+                setRanking(doneData.ranking);
+              } else if (currentEvent === "error") {
+                setError(parsed.detail ?? "오류가 발생했습니다.");
+              }
+            } catch {
+              // JSON 파싱 오류 무시
+            }
+            currentEvent = "";
+            currentData = "";
+          }
+        }
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") return;
+      setError(err instanceof Error ? err.message : "백테스트 실행 중 오류가 발생했습니다.");
+    } finally {
+      setIsRunning(false);
+    }
+  }, []);
+
+  const cancel = useCallback(() => {
+    abortRef.current?.abort();
+    setIsRunning(false);
+  }, []);
+
+  return { run, cancel, progress, results, ranking, isRunning, error };
 }
 
 // ── Sprint 25: AI 추천 훅 ─────────────────────────────────────────────

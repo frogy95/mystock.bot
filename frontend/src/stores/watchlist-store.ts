@@ -13,6 +13,7 @@ interface WatchlistState {
   assignStrategy: (groupId: string, itemId: string, strategy: string | null) => void;
   addGroup: (name: string) => void;
   removeGroup: (groupId: string) => void;
+  updateItemQuote: (symbol: string, quote: { currentPrice: number; changeRate: number; changePrice: number; volume: number }) => void;
 }
 
 export const useWatchlistStore = create<WatchlistState>((set) => ({
@@ -81,5 +82,15 @@ export const useWatchlistStore = create<WatchlistState>((set) => ({
         state.activeGroupId === groupId
           ? (state.groups.find((g) => g.id !== groupId)?.id ?? "")
           : state.activeGroupId,
+    })),
+
+  updateItemQuote: (symbol, quote) =>
+    set((state) => ({
+      groups: state.groups.map((group) => ({
+        ...group,
+        items: group.items.map((item) =>
+          item.symbol === symbol ? { ...item, ...quote } : item
+        ),
+      })),
     })),
 }));
