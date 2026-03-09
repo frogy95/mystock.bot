@@ -15,27 +15,29 @@ import { Button } from "@/components/ui/button";
 import { PriceChangeBadge } from "@/components/common/price-change-badge";
 import { TableRowSkeleton } from "@/components/common/loading-skeleton";
 import { useHoldings, useKisStatus } from "@/hooks/use-dashboard";
-import { useSyncHoldings } from "@/hooks/use-holdings-mutations";
+import { useSyncHoldings, useSilentSyncHoldings } from "@/hooks/use-holdings-mutations";
 import { formatKRW } from "@/lib/format";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Loader2 } from "lucide-react";
 
 export function HoldingsTable() {
   const { data: holdings, isLoading, isError } = useHoldings();
   const { data: kisStatus } = useKisStatus();
   const { mutate: syncHoldings, isPending: isSyncing } = useSyncHoldings();
+  const { mutate: silentSync } = useSilentSyncHoldings();
   const autoSyncTriggered = useRef(false);
 
-  // 보유종목이 비어있고 KIS 연결 상태이면 최초 1회 자동 동기화
+  // 토큰이 유효할 때만 최초 1회 자동 동기화 (silent - 에러 토스트 없음)
   useEffect(() => {
     if (
       !autoSyncTriggered.current &&
       !isLoading &&
-      kisStatus?.available
+      kisStatus?.available &&
+      kisStatus?.token_valid
     ) {
       autoSyncTriggered.current = true;
-      syncHoldings();
+      silentSync();
     }
-  }, [isLoading, holdings, kisStatus, syncHoldings]);
+  }, [isLoading, holdings, kisStatus, silentSync]);
 
   return (
     <Card>
@@ -53,6 +55,23 @@ export function HoldingsTable() {
           </Button>
         )}
       </CardHeader>
+      {/* 토큰 미준비 상태: 대기 안내 인라인 메시지 */}
+      {kisStatus?.available && !kisStatus?.token_valid && (
+        <div className="px-6 pb-2 flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          KIS 토큰 발급 대기 중...
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-xs px-2"
+            onClick={() => {
+              autoSyncTriggered.current = false;
+            }}
+          >
+            재확인
+          </Button>
+        </div>
+      )}
       <CardContent>
         <Table>
           <TableHeader>
@@ -115,9 +134,11 @@ export function HoldingsTable() {
             ) : (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground h-24">
-                  {kisStatus?.available
-                    ? "보유종목이 없습니다."
-                    : "KIS API가 연결되지 않았습니다. 설정에서 API 키를 입력해주세요."}
+                  {!kisStatus?.available
+                    ? "KIS API가 연결되지 않았습니다. 설정에서 API 키를 입력해주세요."
+                    : !kisStatus?.token_valid
+                    ? "KIS 토큰 발급 대기 중입니다."
+                    : "보유종목이 없습니다."}
                 </TableCell>
               </TableRow>
             )}

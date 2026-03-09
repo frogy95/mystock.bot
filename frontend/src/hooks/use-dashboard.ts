@@ -173,9 +173,9 @@ export function useStrategyPerformances() {
 
 /** KIS API 연결 상태 조회 */
 export function useKisStatus() {
-  return useQuery<{ available: boolean; message: string }>({
+  return useQuery<{ available: boolean; token_valid: boolean; message: string }>({
     queryKey: ["settings", "kis-status"],
-    queryFn: () => apiClient.get<{ available: boolean; message: string }>("/api/v1/settings/kis-status"),
+    queryFn: () => apiClient.get<{ available: boolean; token_valid: boolean; message: string }>("/api/v1/settings/kis-status"),
     staleTime: 30_000,
   });
 }

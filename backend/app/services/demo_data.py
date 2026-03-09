@@ -407,6 +407,7 @@ def get_demo_kis_status() -> dict:
     """KIS API 연결 상태 더미 데이터"""
     return {
         "available": False,
+        "token_valid": False,
         "message": "데모 모드 — KIS API 미연결",
     }
 
