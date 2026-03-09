@@ -6,7 +6,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user, is_demo_user
@@ -98,6 +98,14 @@ async def update_settings(
     if updated_keys & _KIS_KEYS:
         from app.services.kis_settings_cache import invalidate_kis_settings
         await invalidate_kis_settings()
+
+    # KIS 모드 변경 시 기존 보유종목 정리 (환경 전환 시 재동기화 유도)
+    if "kis_mode" in updated_keys:
+        from app.models.holding import Holding
+        await db.execute(
+            delete(Holding).where(Holding.user_id == current_user.id)
+        )
+        await db.commit()
 
     result = await db.execute(
         select(SystemSetting).where(SystemSetting.user_id == current_user.id)
