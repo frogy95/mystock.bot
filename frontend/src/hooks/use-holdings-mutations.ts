@@ -10,13 +10,26 @@ interface SyncResponse {
   holdings: HoldingAPI[];
 }
 
-/** KIS 잔고 동기화 훅 */
+/** KIS 잔고 동기화 훅 (수동 - 실패 시 에러 토스트 표시) */
 export function useSyncHoldings() {
   const queryClient = useQueryClient();
   return useMutation<SyncResponse, Error, void>({
     mutationFn: () => apiClient.post<SyncResponse>("/api/v1/holdings/sync", {}),
     onSuccess: () => {
       // 동기화 후 보유종목 및 대시보드 캐시 무효화
+      queryClient.invalidateQueries({ queryKey: ["portfolio"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+/** KIS 잔고 자동 동기화 훅 (silent - 실패 시 에러 토스트 생략) */
+export function useSilentSyncHoldings() {
+  const queryClient = useQueryClient();
+  return useMutation<SyncResponse, Error, void>({
+    mutationFn: () => apiClient.post<SyncResponse>("/api/v1/holdings/sync", {}),
+    meta: { silent: true },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portfolio"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },

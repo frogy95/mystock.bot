@@ -6,20 +6,21 @@
 
 ---
 
-## Hotfix: 설정 저장 후 대시보드 500 에러 수정 (2026-03-09)
+## Hotfix: KIS 토큰 상태 기반 대시보드 동기화 UX 개선 (2026-03-09)
 
-PR: https://github.com/frogy95/mystock.bot/pull/51
+PR: https://github.com/frogy95/mystock.bot/pull/52
 
 - ✅ 자동 검증 완료 항목:
   - 코드 리뷰: Critical/High 이슈 없음
-  - 변경 범위: 2개 파일, +3줄 (hotfix 기준 충족)
-  - 프로덕션 DB alembic current: `f6a7b8c9d0e1 (head)` 확인 완료 (SSH 수동 적용)
+  - 변경 범위: 6개 파일, +72줄
+  - pytest: 51 passed
+  - 타겟 API 검증 (`GET /settings/kis-status`): `token_valid` 필드 정상 반환 확인
+  - Playwright 대시보드 타겟 검증: 보유종목 정상 표시, 에러 없음
 
 - ⬜ 수동 검증 필요 항목:
-  - pytest: Docker 미실행으로 자동 검증 미수행 → `docker compose exec backend pytest -v`
-  - `docker compose up --build` — 백엔드/GitHub Actions 코드 변경 반영
-  - 설정 저장 후 대시보드 진입 시 500 에러가 재현되지 않는지 확인
-  - KIS 토큰 미발급 상태에서 `/holdings/sync` → 503 응답 확인 (500 미발생)
+  - `docker compose up --build` — 변경 파일 반영 (이미지 재빌드)
+  - KIS 토큰 미발급 상태에서 대시보드 진입 시 "KIS 토큰 발급 대기 중..." 인라인 메시지 확인
+  - 토큰 유효 상태에서 자동 동기화 silent 동작 (에러 토스트 미노출) 확인
   - develop 역머지: main merge 후 `git checkout develop && git pull origin main && git push origin develop`
 
 ---
