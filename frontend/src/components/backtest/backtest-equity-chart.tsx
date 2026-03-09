@@ -42,9 +42,12 @@ export function BacktestEquityChart({ equityCurve, multiResults }: BacktestEquit
       result.equity_curve.forEach((point) => {
         const existing = dateMap.get(point.date) ?? {};
         existing[`strategy_${result.strategy_id}`] = point.value;
-        // 벤치마크는 첫 번째 결과에서 가져옴
+        // 벤치마크·종목 바이앤홀드는 첫 번째 결과에서 가져옴
         if (!existing["benchmark"]) {
           existing["benchmark"] = point.benchmark;
+        }
+        if (!existing["stock_buyhold"]) {
+          existing["stock_buyhold"] = point.stock_buyhold;
         }
         dateMap.set(point.date, existing);
       });
@@ -81,6 +84,7 @@ export function BacktestEquityChart({ equityCurve, multiResults }: BacktestEquit
                     ? `${(value / 10000).toFixed(1)}만원`
                     : String(value ?? "");
                   if (name === "benchmark") return [formatted, "KOSPI 벤치마크"];
+                  if (name === "stock_buyhold") return [formatted, "종목 바이앤홀드"];
                   // strategy_id → 전략명 매핑
                   const stratId = name?.replace("strategy_", "");
                   const strat = multiResults.find((r) => String(r.strategy_id) === stratId);
@@ -88,12 +92,37 @@ export function BacktestEquityChart({ equityCurve, multiResults }: BacktestEquit
                 }}
               />
               <Legend
-                formatter={(value: string) => {
-                  if (value === "benchmark") return "KOSPI 벤치마크";
-                  const stratId = value.replace("strategy_", "");
-                  const strat = multiResults.find((r) => String(r.strategy_id) === stratId);
-                  return strat?.strategy_name ?? value;
-                }}
+                content={({ payload }) => (
+                  <ul className="flex flex-wrap gap-x-4 gap-y-1 justify-center mt-2">
+                    {payload?.map((entry) => {
+                      const key = entry.value as string;
+                      const isDashed = key === "benchmark" || key === "stock_buyhold";
+                      const label =
+                        key === "benchmark"
+                          ? "KOSPI 벤치마크"
+                          : key === "stock_buyhold"
+                          ? "종목 바이앤홀드"
+                          : (() => {
+                              const stratId = key.replace("strategy_", "");
+                              const strat = multiResults.find((r) => String(r.strategy_id) === stratId);
+                              return strat?.strategy_name ?? key;
+                            })();
+                      return (
+                        <li key={key} className="flex items-center gap-1.5 text-xs text-gray-700">
+                          <svg width="20" height="10" aria-hidden="true">
+                            <line
+                              x1="0" y1="5" x2="20" y2="5"
+                              stroke={entry.color}
+                              strokeWidth="2"
+                              strokeDasharray={isDashed ? "4 2" : undefined}
+                            />
+                          </svg>
+                          <span>{label}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               />
 
               {/* 전략별 라인 */}
@@ -118,6 +147,17 @@ export function BacktestEquityChart({ equityCurve, multiResults }: BacktestEquit
                 strokeWidth={1.5}
                 strokeDasharray="4 2"
                 name="benchmark"
+              />
+
+              {/* 종목 바이앤홀드 라인 */}
+              <Line
+                type="monotone"
+                dataKey="stock_buyhold"
+                stroke="#22c55e"
+                dot={false}
+                strokeWidth={1.5}
+                strokeDasharray="4 2"
+                name="stock_buyhold"
               />
             </LineChart>
           </ResponsiveContainer>

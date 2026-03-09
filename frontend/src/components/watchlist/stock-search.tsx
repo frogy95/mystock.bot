@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useStockSearch } from "@/hooks/use-watchlist";
 import type { StockSearchItem } from "@/hooks/use-watchlist";
 import { useWatchlistStore } from "@/stores/watchlist-store";
+import { apiClient } from "@/lib/api/client";
 import { Plus } from "lucide-react";
 
 export function StockSearch() {
@@ -23,7 +24,7 @@ export function StockSearch() {
   }, [query]);
 
   const { data: results, isLoading } = useStockSearch(debouncedQuery);
-  const { activeGroupId, addItem } = useWatchlistStore();
+  const { activeGroupId, addItem, updateItemQuote } = useWatchlistStore();
 
   const handleSelect = (stock: StockSearchItem) => {
     // 검색 결과에는 시세 정보 없으므로 기본값으로 추가
@@ -39,6 +40,22 @@ export function StockSearch() {
       low: 0,
       open: 0,
     });
+    // 비동기로 현재가 조회하여 업데이트 (UI 블로킹 없음)
+    apiClient
+      .get<{ price: number; change: number; change_rate: number; volume: number }>(
+        `/api/v1/stocks/${stock.symbol}/quote`
+      )
+      .then((quote) => {
+        updateItemQuote(stock.symbol, {
+          currentPrice: quote.price,
+          changeRate: quote.change_rate,
+          changePrice: quote.change,
+          volume: quote.volume,
+        });
+      })
+      .catch(() => {
+        // KIS API 미설정 시 0원으로 유지
+      });
     setQuery("");
     setOpen(false);
   };

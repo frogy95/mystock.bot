@@ -7,9 +7,10 @@ import { BacktestEquityChart } from "@/components/backtest/backtest-equity-chart
 import { BacktestTradesTable } from "@/components/backtest/backtest-trades-table";
 import { BacktestRankingTable } from "@/components/backtest/backtest-ranking-table";
 import { BacktestAIRecommendation } from "@/components/backtest/backtest-ai-recommendation";
+import { BacktestProgress } from "@/components/backtest/backtest-progress";
 import {
   useBacktestRun,
-  useBacktestRunMulti,
+  useBacktestRunMultiSSE,
   useStockStatus,
 } from "@/hooks/use-backtest";
 import { useStrategies } from "@/hooks/use-strategy";
@@ -57,16 +58,21 @@ function mapBacktestAPIToResult(api: BacktestResultAPI): BacktestResult {
 
 export default function BacktestPage() {
   const backtestRun = useBacktestRun();
-  const backtestRunMulti = useBacktestRunMulti();
+  const backtestMultiSSE = useBacktestRunMultiSSE();
   const { data: strategies } = useStrategies();
 
   const [singleResult, setSingleResult] = useState<BacktestResult | null>(null);
   const [multiResult, setMultiResult] = useState<BacktestMultiResponse | null>(null);
   const [currentSymbol, setCurrentSymbol] = useState<string | null>(null);
+  const [multiStrategyCount, setMultiStrategyCount] = useState(0);
 
   const { data: stockStatus } = useStockStatus(currentSymbol);
 
-  const isRunning = backtestRun.isPending || backtestRunMulti.isPending;
+  const isRunning = backtestRun.isPending || backtestMultiSSE.isRunning;
+
+  // SSE ranking이 완료되면 multiResult 구성
+  const sseRanking = backtestMultiSSE.ranking;
+  const sseResults = backtestMultiSSE.results;
 
   const handleRun = (config: {
     strategyIds: number[];
@@ -98,24 +104,26 @@ export default function BacktestPage() {
         }
       );
     } else {
-      // 다중 전략 - run-multi API 사용
-      backtestRunMulti.mutate(
-        {
-          symbol: config.symbol,
-          strategy_ids: config.strategyIds,
-          start_date: config.startDate,
-          end_date: config.endDate,
-        },
-        {
-          onSuccess: (result) => {
-            setMultiResult(result);
-          },
-        }
-      );
+      // 다중 전략 - SSE 스트리밍 사용
+      setMultiStrategyCount(config.strategyIds.length);
+      backtestMultiSSE.run({
+        symbol: config.symbol,
+        strategy_ids: config.strategyIds,
+        start_date: config.startDate,
+        end_date: config.endDate,
+      });
     }
   };
 
-  const isError = backtestRun.isError || backtestRunMulti.isError;
+  // SSE 완료 시 multiResult 구성 (ranking이 채워지면 표시)
+  const completedMultiResult: BacktestMultiResponse | null =
+    sseRanking.length > 0
+      ? { symbol: currentSymbol ?? "", results: sseResults, ranking: sseRanking }
+      : null;
+
+  const displayMultiResult = multiResult ?? completedMultiResult;
+
+  const isError = backtestRun.isError || !!backtestMultiSSE.error;
 
   return (
     <div className="space-y-6">
@@ -125,24 +133,33 @@ export default function BacktestPage() {
 
       {isError && (
         <p className="text-destructive text-sm">
-          백테스트 실행 중 오류가 발생했습니다.
+          {backtestMultiSSE.error ?? "백테스트 실행 중 오류가 발생했습니다."}
         </p>
       )}
 
+      {/* 다중 전략 SSE 진행상황 */}
+      {backtestMultiSSE.isRunning && (
+        <BacktestProgress
+          progress={backtestMultiSSE.progress}
+          results={backtestMultiSSE.results}
+          total={multiStrategyCount}
+        />
+      )}
+
       {/* 다중 전략 결과 */}
-      {multiResult && currentSymbol && (
+      {displayMultiResult && currentSymbol && (
         <>
           <div className="rounded-lg bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
             선택한 전략들의 과거 데이터 기반 비교 시뮬레이션 결과입니다. 실제 투자 성과와 다를 수 있습니다.
           </div>
           <BacktestRankingTable
-            ranking={multiResult.ranking}
+            ranking={displayMultiResult.ranking}
             stockStatus={stockStatus ?? null}
           />
-          <BacktestEquityChart multiResults={multiResult.results} />
+          <BacktestEquityChart multiResults={displayMultiResult.results} />
           <BacktestAIRecommendation
             symbol={currentSymbol}
-            resultsSummary={multiResult.results.map((r): AIRecommendResultSummary => ({
+            resultsSummary={displayMultiResult.results.map((r): AIRecommendResultSummary => ({
               strategy_name: r.strategy_name,
               total_return: r.total_return,
               mdd: r.mdd,
@@ -167,7 +184,7 @@ export default function BacktestPage() {
         </>
       )}
 
-      {!singleResult && !multiResult && !isRunning && (
+      {!singleResult && !displayMultiResult && !isRunning && (
         <div className="text-center text-muted-foreground py-12">
           백테스트를 실행하면 결과가 여기에 표시됩니다.
         </div>

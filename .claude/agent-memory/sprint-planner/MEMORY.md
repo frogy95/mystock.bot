@@ -16,12 +16,14 @@
 
 ## 스프린트 현황
 
-**완료된 스프린트 (Sprint 0~25)**:
-- Sprint 0~25 완료. 상세 내용은 `docs/sprint/sprint{N}.md` 및 `docs/deploy-history/` 참조.
+**완료된 스프린트 (Sprint 0~27)**:
+- Sprint 0~27 완료. 상세 내용은 `docs/sprint/sprint{N}.md` 및 `docs/deploy-history/` 참조.
+- Sprint 26 (2026-03-09): 개발 프로세스 정책 재정비
+- Sprint 27 (2026-03-09): 관심종목 시세 표시 + 백테스팅 UX 개선 (SSE 스트리밍, O(n) 최적화, 종목탭)
 
 **현재 상태**:
-- 다음 사용 가능한 스프린트 번호: **Sprint 26**
-- 최신 pytest: 51 passed (Sprint 22 기준)
+- 다음 사용 가능한 스프린트 번호: **Sprint 28**
+- 최신 pytest: 51 passed (Sprint 27 기준)
 - 추가된 테이블: chart_data_cache (Sprint 22)
 
 ## 핵심 파일 경로

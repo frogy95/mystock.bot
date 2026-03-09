@@ -70,21 +70,25 @@ def _build_signals(
     entries = pd.Series(False, index=df.index, dtype=bool)
     exits = pd.Series(False, index=df.index, dtype=bool)
 
+    def _row_to_dict(idx, row):
+        return {
+            "date": idx.strftime("%Y%m%d") if hasattr(idx, 'strftime') else str(idx).replace("-", ""),
+            "open": float(row.get(_get_col("open"), row.get("Open", 0))),
+            "high": float(row.get(_get_col("high"), row.get("High", 0))),
+            "low": float(row.get(_get_col("low"), row.get("Low", 0))),
+            "close": float(row.get(_get_col("close"), row.get("Close", 0))),
+            "volume": int(row.get(_get_col("volume"), row.get("Volume", 0))),
+        }
+
+    # 루프 시작 전 초기 chart_list 구축 (O(n²) → O(n) 최적화)
+    chart_list = [_row_to_dict(idx, row) for idx, row in df.iloc[:signal_start_idx].iterrows()]
+
     for i in range(signal_start_idx, len(df)):
-        slice_df = df.iloc[: i + 1]
+        # 현재 행만 추가 (전체 슬라이스 재생성 불필요)
+        idx = df.index[i]
+        row = df.iloc[i]
+        chart_list.append(_row_to_dict(idx, row))
         try:
-            # KIS API 형식의 딕셔너리 리스트로 변환
-            chart_list = [
-                {
-                    "date": idx.strftime("%Y%m%d") if hasattr(idx, 'strftime') else str(idx).replace("-", ""),
-                    "open": float(row.get(_get_col("open"), row.get("Open", 0))),
-                    "high": float(row.get(_get_col("high"), row.get("High", 0))),
-                    "low": float(row.get(_get_col("low"), row.get("Low", 0))),
-                    "close": float(row.get(_get_col("close"), row.get("Close", 0))),
-                    "volume": int(row.get(_get_col("volume"), row.get("Volume", 0))),
-                }
-                for idx, row in slice_df.iterrows()
-            ]
             signal = engine.evaluate_from_ohlcv(chart_list, params)
             if signal.signal_type == "BUY" and signal.confidence >= 0.5:
                 entries.iloc[i] = True

@@ -11,6 +11,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search } from "lucide-react";
 import { useStrategies } from "@/hooks/use-strategy";
 import { useStockSearch } from "@/hooks/use-watchlist";
+import { useHoldings } from "@/hooks/use-dashboard";
+import { useWatchlistStore } from "@/stores/watchlist-store";
 
 interface BacktestConfigFormProps {
   onRun: (config: {
@@ -29,9 +31,12 @@ export function BacktestConfigForm({ onRun, isRunning }: BacktestConfigFormProps
   const [debouncedStockQuery, setDebouncedStockQuery] = useState("");
   const [stockSearchOpen, setStockSearchOpen] = useState(false);
   const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
+  const [stockSource, setStockSource] = useState<"search" | "holdings" | "watchlist">("search");
 
   const { data: strategies, isLoading: strategiesLoading } = useStrategies();
+  const { data: holdings } = useHoldings();
+  const watchlistGroups = useWatchlistStore((s) => s.groups);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedStockQuery(stockQuery), 300);
@@ -158,65 +163,150 @@ export function BacktestConfigForm({ onRun, isRunning }: BacktestConfigFormProps
             )}
           </div>
 
-          {/* 종목 검색 */}
+          {/* 종목 선택 */}
           <div className="space-y-1.5">
-            <Label htmlFor="symbol-input">종목</Label>
-            <Popover
-              open={stockSearchOpen && debouncedStockQuery.length > 0}
-              onOpenChange={setStockSearchOpen}
-            >
-              <PopoverTrigger asChild>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="symbol-input"
-                    value={stockQuery}
-                    onChange={(e) => {
-                      setStockQuery(e.target.value);
-                      setSymbol(e.target.value);
-                      setStockSearchOpen(true);
-                    }}
-                    onFocus={() => stockQuery.length > 0 && setStockSearchOpen(true)}
-                    placeholder="종목코드 또는 종목명으로 검색..."
-                    className="pl-9"
-                  />
-                </div>
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-[350px] p-0"
-                align="start"
-                onOpenAutoFocus={(e) => e.preventDefault()}
+            <Label>종목</Label>
+
+            {/* 소스 탭 */}
+            <div className="flex gap-1 rounded-md border bg-muted/50 p-1">
+              {(["search", "holdings", "watchlist"] as const).map((src) => (
+                <button
+                  key={src}
+                  type="button"
+                  onClick={() => setStockSource(src)}
+                  className={`flex-1 rounded px-2 py-1 text-xs transition-colors ${
+                    stockSource === src
+                      ? "bg-background font-medium text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {src === "search" ? "검색" : src === "holdings" ? "보유종목" : "관심종목"}
+                </button>
+              ))}
+            </div>
+
+            {/* 검색 탭 */}
+            {stockSource === "search" && (
+              <Popover
+                open={stockSearchOpen && debouncedStockQuery.length > 0}
+                onOpenChange={setStockSearchOpen}
               >
-                <ScrollArea className="max-h-[200px] overflow-hidden">
-                  {stockSearchLoading ? (
-                    <div className="p-3 text-sm text-muted-foreground text-center">검색 중...</div>
-                  ) : stockResults && stockResults.length > 0 ? (
-                    <div className="divide-y">
-                      {stockResults.map((stock) => (
+                <PopoverTrigger asChild>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="symbol-input"
+                      value={stockQuery}
+                      onChange={(e) => {
+                        setStockQuery(e.target.value);
+                        setSymbol(e.target.value);
+                        setStockSearchOpen(true);
+                      }}
+                      onFocus={() => stockQuery.length > 0 && setStockSearchOpen(true)}
+                      placeholder="종목코드 또는 종목명으로 검색..."
+                      className="pl-9"
+                    />
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-[350px] p-0"
+                  align="start"
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                >
+                  <ScrollArea className="max-h-[200px] overflow-hidden">
+                    {stockSearchLoading ? (
+                      <div className="p-3 text-sm text-muted-foreground text-center">검색 중...</div>
+                    ) : stockResults && stockResults.length > 0 ? (
+                      <div className="divide-y">
+                        {stockResults.map((stock) => (
+                          <div
+                            key={stock.symbol}
+                            className="p-3 hover:bg-accent cursor-pointer transition-colors"
+                            onClick={() => {
+                              setSymbol(stock.symbol);
+                              setStockQuery(`${stock.name} (${stock.symbol})`);
+                              setStockSearchOpen(false);
+                            }}
+                          >
+                            <p className="font-medium text-sm">{stock.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {stock.symbol} | {stock.market}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-3 text-sm text-muted-foreground text-center">
+                        검색 결과가 없습니다.
+                      </div>
+                    )}
+                  </ScrollArea>
+                </PopoverContent>
+              </Popover>
+            )}
+
+            {/* 보유종목 탭 */}
+            {stockSource === "holdings" && (
+              <div className="rounded-md border">
+                {!holdings || holdings.length === 0 ? (
+                  <div className="p-3 text-sm text-center text-muted-foreground">
+                    보유종목이 없습니다.
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {holdings.map((h) => (
+                      <div
+                        key={h.id}
+                        className={`p-3 cursor-pointer transition-colors hover:bg-accent ${
+                          symbol === h.stock_code ? "bg-accent/50" : ""
+                        }`}
+                        onClick={() => {
+                          setSymbol(h.stock_code);
+                          setStockQuery(`${h.stock_name} (${h.stock_code})`);
+                        }}
+                      >
+                        <p className="font-medium text-sm">{h.stock_name}</p>
+                        <p className="text-xs text-muted-foreground">{h.stock_code}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 관심종목 탭 */}
+            {stockSource === "watchlist" && (
+              <div className="rounded-md border">
+                {!watchlistGroups || watchlistGroups.every((g) => g.items.length === 0) ? (
+                  <div className="p-3 text-sm text-center text-muted-foreground">
+                    관심종목이 없습니다.
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {watchlistGroups.flatMap((g) =>
+                      g.items.map((item) => (
                         <div
-                          key={stock.symbol}
-                          className="p-3 hover:bg-accent cursor-pointer transition-colors"
+                          key={item.id}
+                          className={`p-3 cursor-pointer transition-colors hover:bg-accent ${
+                            symbol === item.symbol ? "bg-accent/50" : ""
+                          }`}
                           onClick={() => {
-                            setSymbol(stock.symbol);
-                            setStockQuery(`${stock.name} (${stock.symbol})`);
-                            setStockSearchOpen(false);
+                            setSymbol(item.symbol);
+                            setStockQuery(`${item.name} (${item.symbol})`);
                           }}
                         >
-                          <p className="font-medium text-sm">{stock.name}</p>
+                          <p className="font-medium text-sm">{item.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {stock.symbol} | {stock.market}
+                            {item.symbol} | {g.name}
                           </p>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-3 text-sm text-muted-foreground text-center">
-                      검색 결과가 없습니다.
-                    </div>
-                  )}
-                </ScrollArea>
-              </PopoverContent>
-            </Popover>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {symbol && symbol !== stockQuery && (
               <p className="text-xs text-muted-foreground">선택된 종목코드: {symbol}</p>
             )}
