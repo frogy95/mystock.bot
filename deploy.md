@@ -6,26 +6,38 @@
 
 ---
 
-## Hotfix: KIS 토큰 상태 기반 대시보드 동기화 UX 개선 (2026-03-09)
+## Sprint 27: 관심종목 시세 표시 + 백테스팅 UX 개선 (2026-03-09)
 
-PR: https://github.com/frogy95/mystock.bot/pull/52
+PR: https://github.com/frogy95/mystock.bot/pull/53 (sprint27 → develop)
 
 - ✅ 자동 검증 완료 항목:
   - 코드 리뷰: Critical/High 이슈 없음
-  - 변경 범위: 6개 파일, +72줄
+  - TypeScript tsc --noEmit: 오류 없음
+  - Python 구문 검사: 오류 없음
   - pytest: 51 passed
-  - 타겟 API 검증 (`GET /settings/kis-status`): `token_valid` 필드 정상 반환 확인
-  - Playwright 대시보드 타겟 검증: 보유종목 정상 표시, 에러 없음
+  - API 검증: `/api/v1/health` 정상, 백테스트 결과 20건, 관심종목 1그룹 반환
+  - 데모 모드 API 검증: 정상
+  - Playwright 검증: 로그인 → 관심종목(현재가 정상 표시) → 백테스팅(종료일 오늘, 탭 3개) 확인
+  - 콘솔 에러: 0건
 
 - ⬜ 수동 검증 필요 항목:
-  - `docker compose up --build` — 변경 파일 반영 (이미지 재빌드)
-  - KIS 토큰 미발급 상태에서 대시보드 진입 시 "KIS 토큰 발급 대기 중..." 인라인 메시지 확인
-  - 토큰 유효 상태에서 자동 동기화 silent 동작 (에러 토스트 미노출) 확인
-  - develop 역머지: main merge 후 `git checkout develop && git pull origin main && git push origin develop`
+  - `docker compose up --build` — nginx SSE location 및 전체 변경 반영 (이미지 재빌드)
+  - 관심종목 추가 후 현재가 정상 표시 확인 (0원 아님)
+  - 백테스팅 종목선택 탭 — 보유종목/관심종목 탭 클릭 후 종목 선택 확인
+  - 다중 전략 백테스트 실행 시 SSE 프로그레스 바 표시 확인
 
 ---
 
 ## 현재 미완료 수동 검증 항목
+
+### Hotfix: KIS 토큰 상태 기반 대시보드 동기화 UX 개선 (2026-03-09)
+
+PR: https://github.com/frogy95/mystock.bot/pull/52
+
+- ⬜ `docker compose up --build` — 변경 파일 반영 (이미지 재빌드)
+- ⬜ KIS 토큰 미발급 상태에서 대시보드 진입 시 "KIS 토큰 발급 대기 중..." 인라인 메시지 확인
+- ⬜ 토큰 유효 상태에서 자동 동기화 silent 동작 (에러 토스트 미노출) 확인
+- ⬜ develop 역머지: main merge 후 `git checkout develop && git pull origin main && git push origin develop`
 
 ### Sprint 23~25 — Phase 15: 전략 테스팅 업그레이드 (2026-03-08)
 
