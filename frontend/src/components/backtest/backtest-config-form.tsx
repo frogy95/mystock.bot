@@ -10,8 +10,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search } from "lucide-react";
 import { useStrategies } from "@/hooks/use-strategy";
-import { useStockSearch, useWatchlistGroups } from "@/hooks/use-watchlist";
+import { useStockSearch } from "@/hooks/use-watchlist";
 import { useHoldings } from "@/hooks/use-dashboard";
+import { useWatchlistStore } from "@/stores/watchlist-store";
 
 interface BacktestConfigFormProps {
   onRun: (config: {
@@ -35,7 +36,7 @@ export function BacktestConfigForm({ onRun, isRunning }: BacktestConfigFormProps
 
   const { data: strategies, isLoading: strategiesLoading } = useStrategies();
   const { data: holdings } = useHoldings();
-  const { data: watchlistGroups } = useWatchlistGroups();
+  const watchlistGroups = useWatchlistStore((s) => s.groups);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedStockQuery(stockQuery), 300);
@@ -246,7 +247,7 @@ export function BacktestConfigForm({ onRun, isRunning }: BacktestConfigFormProps
 
             {/* 보유종목 탭 */}
             {stockSource === "holdings" && (
-              <ScrollArea className="max-h-[200px] rounded-md border">
+              <div className="rounded-md border">
                 {!holdings || holdings.length === 0 ? (
                   <div className="p-3 text-sm text-center text-muted-foreground">
                     보유종목이 없습니다.
@@ -270,12 +271,12 @@ export function BacktestConfigForm({ onRun, isRunning }: BacktestConfigFormProps
                     ))}
                   </div>
                 )}
-              </ScrollArea>
+              </div>
             )}
 
             {/* 관심종목 탭 */}
             {stockSource === "watchlist" && (
-              <ScrollArea className="max-h-[200px] rounded-md border">
+              <div className="rounded-md border">
                 {!watchlistGroups || watchlistGroups.every((g) => g.items.length === 0) ? (
                   <div className="p-3 text-sm text-center text-muted-foreground">
                     관심종목이 없습니다.
@@ -287,23 +288,23 @@ export function BacktestConfigForm({ onRun, isRunning }: BacktestConfigFormProps
                         <div
                           key={item.id}
                           className={`p-3 cursor-pointer transition-colors hover:bg-accent ${
-                            symbol === item.stock_code ? "bg-accent/50" : ""
+                            symbol === item.symbol ? "bg-accent/50" : ""
                           }`}
                           onClick={() => {
-                            setSymbol(item.stock_code);
-                            setStockQuery(`${item.stock_name} (${item.stock_code})`);
+                            setSymbol(item.symbol);
+                            setStockQuery(`${item.name} (${item.symbol})`);
                           }}
                         >
-                          <p className="font-medium text-sm">{item.stock_name}</p>
+                          <p className="font-medium text-sm">{item.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            {item.stock_code} | {g.name}
+                            {item.symbol} | {g.name}
                           </p>
                         </div>
                       ))
                     )}
                   </div>
                 )}
-              </ScrollArea>
+              </div>
             )}
 
             {symbol && symbol !== stockQuery && (

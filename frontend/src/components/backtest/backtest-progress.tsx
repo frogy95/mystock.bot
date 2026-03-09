@@ -28,10 +28,10 @@ export function BacktestProgress({ progress, results, total }: BacktestProgressP
 
       <Progress value={percent} className="h-2" />
 
-      {progress?.strategy_name && (
+      {progress?.status === "running" && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          <span>{progress.strategy_name} 분석 중...</span>
+          <span>{progress.strategy_name}: {progress.step ?? "분석 중..."}</span>
         </div>
       )}
 

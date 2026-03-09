@@ -187,8 +187,9 @@ export interface BacktestProgressEvent {
   completed: number;
   total: number;
   strategy_name: string;
-  status: "success" | "error";
+  status: "success" | "error" | "running";
   error?: string;
+  step?: string;
 }
 
 /** SSE done 이벤트 */
@@ -250,6 +251,8 @@ export function useBacktestRunMultiSSE() {
 
       const decoder = new TextDecoder();
       let buffer = "";
+      let currentEvent = "";
+      let currentData = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -258,9 +261,6 @@ export function useBacktestRunMultiSSE() {
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
-
-        let currentEvent = "";
-        let currentData = "";
 
         for (const line of lines) {
           if (line.startsWith("event: ")) {

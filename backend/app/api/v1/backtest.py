@@ -352,6 +352,15 @@ async def run_backtest_multi_stream(
             # heartbeat: 장기 실행 중 nginx 타임아웃 방지
             yield sse_event("heartbeat", {"ts": idx})
 
+            # 전략 실행 시작 알림
+            yield sse_event("progress", {
+                "completed": idx,
+                "total": total,
+                "strategy_name": strategy.name,
+                "status": "running",
+                "step": "과거 시세 분석 중...",
+            })
+
             try:
                 buy_cond = strategy.buy_conditions if strategy.buy_conditions else None
                 sell_cond = strategy.sell_conditions if strategy.sell_conditions else None
