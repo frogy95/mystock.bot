@@ -30,7 +30,6 @@ export function HoldingsTable() {
     if (
       !autoSyncTriggered.current &&
       !isLoading &&
-      holdings?.length === 0 &&
       kisStatus?.available
     ) {
       autoSyncTriggered.current = true;

@@ -45,7 +45,7 @@ const PARAM_DESCRIPTION: Record<string, string> = {
 
 export function StrategyCardList({ onSelectStrategy }: StrategyCardListProps) {
   // TanStack Query로 전략 목록 데이터 로드
-  const { data: strategies, isLoading } = useStrategies();
+  const { data: strategies, isLoading, isError } = useStrategies();
 
   // 전략 활성화/비활성화 API 뮤테이션
   const toggleStrategyMutation = useToggleStrategy();
@@ -106,6 +106,15 @@ export function StrategyCardList({ onSelectStrategy }: StrategyCardListProps) {
   // Rules of Hooks: useEffect는 조건부 return 이전에 호출해야 함
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { setStrategies(mapped); }, [strategies]);
+
+  // 에러 발생 시 안내 메시지 표시
+  if (isError) {
+    return (
+      <p className="text-sm text-destructive text-center py-8">
+        전략 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
+      </p>
+    );
+  }
 
   // 로딩 중: 카드 모양 Skeleton 3개 표시
   if (isLoading) {
