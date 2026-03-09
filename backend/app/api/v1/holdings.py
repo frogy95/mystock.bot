@@ -61,6 +61,8 @@ async def sync_holdings(
         )
     except ValueError as e:
         raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"KIS 연동 오류: {e}")
 
 
 @router.put("/{holding_id}/stop-loss", response_model=HoldingResponse, summary="손절/익절 설정")
