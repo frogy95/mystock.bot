@@ -30,21 +30,26 @@ async def seed() -> None:
     async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     async with async_session() as session:
-        # 1. 기본 관리자 유저 생성 (Sprint 14: JWT 인증 필드 포함)
-        # 비밀번호는 환경변수 SEED_ADMIN_PASSWORD 또는 기본값 사용
+        # 1. 기본 관리자 유저 생성 (중복 방지: 이미 존재하면 건너뜀)
         admin_email = settings.ADMIN_EMAIL
         admin_password = os.environ.get("SEED_ADMIN_PASSWORD", "change-me-in-production")
-        admin = User(
-            username="admin",
-            email=admin_email,
-            password_hash=hash_password(admin_password),
-            role=ROLE_ADMIN,
-            is_approved=True,
-            is_active=True,
+        existing_admin = await session.execute(
+            select(User).where(User.username == "admin")
         )
-        session.add(admin)
-        await session.flush()
-        print(f"유저 생성: {admin.username} (id={admin.id})")
+        if existing_admin.scalars().first() is not None:
+            print("유저 이미 존재 (건너뜀): admin")
+        else:
+            admin = User(
+                username="admin",
+                email=admin_email,
+                password_hash=hash_password(admin_password),
+                role=ROLE_ADMIN,
+                is_approved=True,
+                is_active=True,
+            )
+            session.add(admin)
+            await session.flush()
+            print(f"유저 생성: {admin.username} (id={admin.id})")
 
         # 2~4. 프리셋 전략 생성 (중복 방지: 동일 이름의 프리셋이 이미 존재하면 건너뜀)
         preset_strategies = [
