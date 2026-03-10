@@ -6,25 +6,24 @@
 
 ---
 
-## Sprint 27: 관심종목 시세 표시 + 백테스팅 UX 개선 (2026-03-09)
+## Sprint 28: 전략 알고리즘 보강 — 기존 3종 개선 + 신규 3종 추가 (2026-03-10)
 
-PR: https://github.com/frogy95/mystock.bot/pull/53 (sprint27 → develop)
+PR: https://github.com/frogy95/mystock.bot/pull/54 (sprint28 → develop)
 
 - ✅ 자동 검증 완료 항목:
   - 코드 리뷰: Critical/High 이슈 없음
-  - TypeScript tsc --noEmit: 오류 없음
-  - Python 구문 검사: 오류 없음
-  - pytest: 51 passed
-  - API 검증: `/api/v1/health` 정상, 백테스트 결과 20건, 관심종목 1그룹 반환
-  - 데모 모드 API 검증: 정상
-  - Playwright 검증: 로그인 → 관심종목(현재가 정상 표시) → 백테스팅(종료일 오늘, 탭 3개) 확인
+  - pytest: 51 passed (회귀 없음)
+  - API 검증: `/api/v1/health` 정상 (database/redis/scheduler healthy)
+  - 데모 모드 API 검증: 전략 목록 6개 정상 반환
+  - Playwright 검증: 로그인 → 대시보드 → 전략("기본 전략" 섹션 헤더 정상) → 백테스팅 정상 로드
   - 콘솔 에러: 0건
 
 - ⬜ 수동 검증 필요 항목:
-  - `docker compose up --build` — nginx SSE location 및 전체 변경 반영 (이미지 재빌드)
-  - 관심종목 추가 후 현재가 정상 표시 확인 (0원 아님)
-  - 백테스팅 종목선택 탭 — 보유종목/관심종목 탭 클릭 후 종목 선택 확인
-  - 다중 전략 백테스트 실행 시 SSE 프로그레스 바 표시 확인
+  - `docker compose up --build` — 신규 전략 포함 이미지 재빌드
+  - `docker compose exec backend python3 scripts/seed.py` — 신규 프리셋 전략 3종 DB 주입
+  - 전략 목록에서 MACDTrend / 저베타모멘텀 / 모멘텀리스크스위치 카드 표시 확인
+  - "퀀트 전략" 섹션 헤더 및 카드 렌더링 확인 (seed 후)
+  - 신규 전략으로 백테스트 실행 → 결과 정상 반환 확인
 
 ---
 

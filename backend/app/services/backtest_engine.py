@@ -46,12 +46,14 @@ def _build_signals(
     signal_start_idx: int = 20,
     buy_conditions: dict = None,
     sell_conditions: dict = None,
+    market_returns: pd.Series = None,
 ) -> tuple[pd.Series, pd.Series]:
     """
     전략 엔진을 사용하여 매수/매도 신호 시리즈를 생성한다.
     각 시점(signal_start_idx번째 행부터)에서 누적 데이터를 전략에 입력하여 신호를 평가한다.
     signal_start_idx로 루프 시작점을 제한하여 성능을 최적화하되 df 전체를 받아 인덱스 정합성을 유지한다.
     커스텀 전략은 buy_conditions/sell_conditions를 전달하면 DynamicStrategy를 사용한다.
+    시장 의존 전략(LowBetaMomentum, MomentumRiskSwitch)은 market_returns를 주입한다.
     """
     # 커스텀 동적 전략 사용
     if buy_conditions is not None and sell_conditions is not None:
@@ -60,6 +62,10 @@ def _build_signals(
         engine = get_strategy(strategy_name)
     if engine is None:
         raise ValueError(f"전략 없음: {strategy_name}")
+
+    # 시장 데이터가 필요한 전략에 주입
+    if market_returns is not None:
+        engine.set_market_data(market_returns)
 
     # 원본 컬럼명 확인 (소문자 또는 pandas_ta 표준명 처리)
     col_map = {c.lower(): c for c in df.columns}
@@ -243,7 +249,21 @@ async def run_backtest(config: BacktestConfig) -> dict:
     # pandas_ta 지표 계산
     _calculate_indicators(df)
 
-    # 4. 전략 신호 생성
+    # 4. 시장 데이터 사전 로딩 (시장 의존 전략용: LowBetaMomentum, MomentumRiskSwitch)
+    _MARKET_DEPENDENT = {"LowBetaMomentum", "MomentumRiskSwitch", "저베타모멘텀", "모멘텀리스크스위치"}
+    market_returns_series = None
+    if config.strategy_name in _MARKET_DEPENDENT:
+        from datetime import timedelta
+        extended_start = config.start_date - timedelta(days=100)
+        kospi_data_early = await _fetch_kospi_data(extended_start, config.end_date)
+        early_prices = kospi_data_early.get("prices")
+        if early_prices is not None and len(early_prices) > 5:
+            market_returns_series = early_prices.pct_change().dropna()
+            logger.info(f"KOSPI 시장 수익률 로드 완료: {len(market_returns_series)}일")
+        else:
+            logger.warning("KOSPI 시장 데이터 로드 실패. 시장 의존 전략이 HOLD를 반환할 수 있습니다.")
+
+    # 5. 전략 신호 생성
     # start_ts 근처부터 루프를 시작하여 성능을 최적화한다 (df 전체를 전달해 인덱스 정합성 유지)
     # SMA(60) 계산을 위한 최소 워밍업 보장 (60행 이상에서 신호 생성 시작)
     start_signal_idx = max(60, df.index.searchsorted(start_ts) - 5)
@@ -254,6 +274,7 @@ async def run_backtest(config: BacktestConfig) -> dict:
         signal_start_idx=start_signal_idx,
         buy_conditions=config.buy_conditions,
         sell_conditions=config.sell_conditions,
+        market_returns=market_returns_series,
     )
 
     # 요청 기간으로 결과 필터링 (신호 생성은 전체 데이터 기반)
@@ -262,11 +283,11 @@ async def run_backtest(config: BacktestConfig) -> dict:
     entries = entries[period_mask]
     exits = exits[period_mask]
 
-    # 5. 종가 시리즈 (소문자 'Close' 또는 'close' 처리)
+    # 6. 종가 시리즈 (소문자 'Close' 또는 'close' 처리)
     close_col = "Close" if "Close" in df.columns else "close"
     close = df[close_col].astype(float)
 
-    # 6. 포트폴리오 시뮬레이션
+    # 7. 포트폴리오 시뮬레이션
     portfolio_data = None
     use_vbt = False
 
@@ -293,7 +314,11 @@ async def run_backtest(config: BacktestConfig) -> dict:
         logger.info(f"기본 시뮬레이션 완료: {config.symbol}")
 
     # KOSPI 벤치마크: yfinance로 실제 ^KS11 일별 데이터 조회
-    kospi_data = await _fetch_kospi_data(config.start_date, config.end_date)
+    # (시장 의존 전략인 경우 이미 로드된 데이터를 재활용)
+    if market_returns_series is not None and config.strategy_name in _MARKET_DEPENDENT:
+        kospi_data = kospi_data_early
+    else:
+        kospi_data = await _fetch_kospi_data(config.start_date, config.end_date)
 
     return {
         "portfolio_data": portfolio_data,

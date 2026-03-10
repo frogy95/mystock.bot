@@ -21,6 +21,11 @@ function mapStrategyTypeToCategory(type: string): "trend" | "reversal" | "value"
   return mapping[type] ?? "trend";
 }
 
+/** strategy_type이 퀀트 전략인지 여부 */
+function isQuantitativeType(type: string): boolean {
+  return type === "quantitative";
+}
+
 /** param_key → 한국어 레이블 매핑 */
 const PARAM_LABEL: Record<string, string> = {
   rsi_threshold: "RSI 임계값",
@@ -85,6 +90,7 @@ export function StrategyCardList({ onSelectStrategy }: StrategyCardListProps) {
     id: String(s.id),
     name: s.name,
     category: mapStrategyTypeToCategory(s.strategy_type),
+    strategyType: s.strategy_type,
     description: "",
     params: s.params.map((p) => ({
       key: p.param_key,
@@ -101,6 +107,10 @@ export function StrategyCardList({ onSelectStrategy }: StrategyCardListProps) {
     winRate: 0,
     tradeCount: 0,
   }));
+
+  // 기본 전략(technical) / 퀀트 전략(quantitative) 분류
+  const basicStrategies = mapped.filter((s) => !isQuantitativeType(s.strategyType));
+  const quantStrategies = mapped.filter((s) => isQuantitativeType(s.strategyType));
 
   // API 데이터가 바뀔 때마다 Zustand 스토어에 sync (상세 패널이 스토어 데이터를 사용)
   // Rules of Hooks: useEffect는 조건부 return 이전에 호출해야 함
@@ -153,31 +163,54 @@ export function StrategyCardList({ onSelectStrategy }: StrategyCardListProps) {
     );
   }
 
+  /** 전략 카드 + 복사 버튼 렌더링 */
+  function renderStrategyCard(strategy: (typeof mapped)[0]) {
+    return (
+      <div key={strategy.id} className="relative">
+        <StrategyCard
+          strategy={strategy}
+          isSelected={selectedStrategyId === strategy.id}
+          onSelect={handleSelect}
+          onToggleActive={handleToggleActive}
+        />
+        {/* 프리셋 전략에만 복사 버튼 표시 */}
+        {strategy.isPreset && (
+          <div className="mt-1 flex justify-end">
+            <button
+              type="button"
+              onClick={(e) => handleClone(strategy.id, e)}
+              disabled={cloneStrategyMutation.isPending}
+              className="text-xs text-primary underline-offset-2 hover:underline disabled:opacity-50"
+            >
+              {cloneStrategyMutation.isPending ? "복사 중..." : "내 전략으로 복사"}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {mapped.map((strategy) => (
-        <div key={strategy.id} className="relative">
-          <StrategyCard
-            strategy={strategy}
-            isSelected={selectedStrategyId === strategy.id}
-            onSelect={handleSelect}
-            onToggleActive={handleToggleActive}
-          />
-          {/* 프리셋 전략에만 복사 버튼 표시 */}
-          {strategy.isPreset && (
-            <div className="mt-1 flex justify-end">
-              <button
-                type="button"
-                onClick={(e) => handleClone(strategy.id, e)}
-                disabled={cloneStrategyMutation.isPending}
-                className="text-xs text-primary underline-offset-2 hover:underline disabled:opacity-50"
-              >
-                {cloneStrategyMutation.isPending ? "복사 중..." : "내 전략으로 복사"}
-              </button>
-            </div>
-          )}
-        </div>
-      ))}
+    <div className="space-y-6">
+      {/* 기본 전략 섹션 */}
+      {basicStrategies.length > 0 && (
+        <section>
+          <h3 className="text-sm font-semibold text-muted-foreground mb-3">기본 전략</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {basicStrategies.map(renderStrategyCard)}
+          </div>
+        </section>
+      )}
+
+      {/* 퀀트 전략 섹션 */}
+      {quantStrategies.length > 0 && (
+        <section>
+          <h3 className="text-sm font-semibold text-muted-foreground mb-3">퀀트 전략</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {quantStrategies.map(renderStrategyCard)}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
