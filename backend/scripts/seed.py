@@ -74,7 +74,34 @@ async def seed() -> None:
                 "params": [
                     ("bb_period", "20", "int"),             # 볼린저밴드 계산 기간
                     ("bb_std", "2.0", "float"),             # 볼린저밴드 표준편차 배수
-                    ("rsi_buy_threshold", "30", "int"),      # RSI 매수 기준값
+                    ("rsi_buy_threshold", "35", "int"),      # RSI 매수 기준값 (개선: 30→35)
+                ],
+            },
+            {
+                "name": "MACD추세추종",
+                "strategy_type": "technical",
+                "params": [
+                    ("rsi_max", "65", "float"),  # RSI 매수 허용 최대값
+                ],
+            },
+            {
+                "name": "저베타모멘텀",
+                "strategy_type": "quantitative",
+                "params": [
+                    ("beta_max", "0.8", "float"),    # 매수 허용 최대 베타
+                    ("beta_period", "60", "int"),     # 베타 계산 기간 (일)
+                    ("momentum_min", "0.0", "float"), # 최소 모멘텀 (%)
+                    ("rsi_max", "60.0", "float"),     # RSI 매수 허용 최대값
+                ],
+            },
+            {
+                "name": "모멘텀리스크스위치",
+                "strategy_type": "quantitative",
+                "params": [
+                    ("market_momentum_period", "60", "int"),   # KOSPI 모멘텀 계산 기간
+                    ("stock_momentum_min", "5.0", "float"),    # 종목 최소 모멘텀 (%)
+                    ("market_risk_off", "-3.0", "float"),      # 시장 리스크오프 임계값 (%)
+                    ("rsi_max", "60.0", "float"),              # RSI 매수 허용 최대값
                 ],
             },
         ]

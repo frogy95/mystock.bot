@@ -22,9 +22,14 @@
 - Sprint 27 (2026-03-09): 관심종목 시세 표시 + 백테스팅 UX 개선 (SSE 스트리밍, O(n) 최적화, 종목탭)
 
 **현재 상태**:
-- 다음 사용 가능한 스프린트 번호: **Sprint 28**
-- 최신 pytest: 51 passed (Sprint 27 기준)
+- 다음 사용 가능한 스프린트 번호: **Sprint 29**
+- 최신 pytest: 51 passed (Sprint 27~28 기준)
 - 추가된 테이블: chart_data_cache (Sprint 22)
+- Sprint 28 (2026-03-10): 전략 알고리즘 보강 — 기존 전략 3종 개선 + 신규 전략 3종 추가
+  - 신규 지표: MOMENTUM_20/60, SMA60_SLOPE, calculate_beta(Vasicek w=0.5), get_market_returns
+  - 신규 전략: MACDTrend(technical), LowBetaMomentum(quantitative), MomentumRiskSwitch(quantitative)
+  - 전략 레지스트리: 3 → 6개 확장
+  - 알고리즘 설계 문서: docs/algorithm.md (BAB, Dual Momentum 이론 → 구현)
 
 ## 핵심 파일 경로
 - ROADMAP: `/ROADMAP.md`

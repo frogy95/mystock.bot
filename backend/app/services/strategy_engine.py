@@ -32,6 +32,10 @@ class BaseStrategy(ABC):
     name: str = "Base"
     description: str = ""
 
+    def set_market_data(self, market_returns: pd.Series) -> None:
+        """시장 수익률 데이터를 주입한다. 시장 의존 전략에서 오버라이드한다."""
+        pass
+
     @abstractmethod
     def evaluate(self, df: pd.DataFrame, params: dict[str, Any]) -> Signal:
         """
@@ -76,6 +80,7 @@ class GoldenCrossRSIStrategy(BaseStrategy):
             df_copy.ta.sma(length=20, append=True)
             df_copy.ta.sma(length=60, append=True)
             df_copy.ta.rsi(length=14, append=True)
+            df_copy.ta.macd(fast=12, slow=26, signal=9, append=True)
             df_copy["VOL_RATIO_20"] = df_copy["Volume"] / df_copy["Volume"].rolling(20).mean()
 
             last = df_copy.iloc[-1]
@@ -83,27 +88,36 @@ class GoldenCrossRSIStrategy(BaseStrategy):
             sma60 = last.get("SMA_60")
             rsi = last.get("RSI_14")
             vol_ratio = last.get("VOL_RATIO_20")
+            macd_hist = last.get("MACDh_12_26_9")
 
             if any(pd.isna(v) for v in [sma20, sma60, rsi, vol_ratio]):
                 return Signal(signal_type="HOLD", confidence=0.0, reason="지표 계산 불가")
 
-            # 매수 조건
-            if sma20 > sma60 and rsi < rsi_threshold and vol_ratio > vol_ratio_threshold:
-                # 기본 0.5 + RSI 강도(0~0.25) + 거래량 강도(0~0.25)
+            # 매수 조건: SMA골든크로스 AND RSI과매도 AND 거래량폭발 AND MACD_hist 양전환
+            macd_ok = (not pd.isna(macd_hist)) and (float(macd_hist) > 0)
+            if sma20 > sma60 and rsi < rsi_threshold and vol_ratio > vol_ratio_threshold and macd_ok:
                 rsi_score = (rsi_threshold - rsi) / rsi_threshold  # 0~1
                 vol_score = min(1.0, (vol_ratio - 1.0) / 2.0)      # 0~1
                 conf = min(1.0, 0.5 + rsi_score * 0.25 + vol_score * 0.25)
                 return Signal(
                     signal_type="BUY",
                     confidence=round(conf, 2),
-                    reason=f"SMA골든크로스+RSI({rsi:.1f}<{rsi_threshold})+거래량폭발({vol_ratio:.1f}x)",
+                    reason=f"SMA골든크로스+RSI({rsi:.1f}<{rsi_threshold})+거래량폭발({vol_ratio:.1f}x)+MACD양전환",
                     target_price=float(last.get("Close", 0)),
                 )
 
-            # 매도 조건
+            # 매도 조건: SMA 데드크로스 OR RSI 과매수(75 초과)
+            if rsi > 75:
+                conf = min(1.0, 0.5 + (rsi - 75) / 25 * 0.4)
+                return Signal(
+                    signal_type="SELL",
+                    confidence=round(conf, 2),
+                    reason=f"RSI과매수({rsi:.1f}>75)",
+                    target_price=float(last.get("Close", 0)),
+                )
+
             if sma20 < sma60:
-                # SMA 이격도 기반 동적 confidence (기본 0.5 + 이격 강도)
-                sma_gap = (sma60 - sma20) / sma60  # 양수 = 데드크로스 강도
+                sma_gap = (sma60 - sma20) / sma60
                 conf = min(1.0, 0.5 + min(1.0, sma_gap * 10) * 0.4)
                 return Signal(
                     signal_type="SELL",
@@ -129,16 +143,17 @@ class BollingerReversalStrategy(BaseStrategy):
     description = "볼린저밴드 하단 이탈 + RSI 과매도 반전 전략"
 
     def evaluate(self, df: pd.DataFrame, params: dict[str, Any]) -> Signal:
-        if len(df) < 20:
-            return Signal(signal_type="HOLD", confidence=0.0, reason="데이터 부족 (20일 이상 필요)")
+        if len(df) < 60:
+            return Signal(signal_type="HOLD", confidence=0.0, reason="데이터 부족 (60일 이상 필요)")
 
-        rsi_threshold = float(params.get("rsi_threshold", 30))
+        rsi_threshold = float(params.get("rsi_threshold", 35))
 
         try:
             import pandas_ta as ta
             df_copy = df.copy()
             df_copy.ta.bbands(length=20, std=2, append=True)
             df_copy.ta.rsi(length=14, append=True)
+            df_copy.ta.sma(length=60, append=True)
 
             last = df_copy.iloc[-1]
             close = last.get("Close")
@@ -147,30 +162,37 @@ class BollingerReversalStrategy(BaseStrategy):
             bb_upper = last.get("BBU_20_2.0_2.0")
             rsi = last.get("RSI_14")
 
+            # SMA(60) 5일 기울기 (상승 추세에서만 눌림목 매수)
+            sma60_series = df_copy["SMA_60"].dropna()
+            sma60_slope = float(sma60_series.iloc[-1] - sma60_series.iloc[-6]) if len(sma60_series) >= 6 else None
+
             if any(pd.isna(v) for v in [close, bb_lower, bb_upper, rsi]):
                 return Signal(signal_type="HOLD", confidence=0.0, reason="지표 계산 불가")
 
-            # 매수 조건
-            if close < bb_lower and rsi < rsi_threshold:
-                # 기본 0.5 + RSI 과매도 강도(0~0.4)
+            # 매수 조건: BB하단 이탈 AND RSI 과매도 AND SMA(60) 상승 추세
+            if close < bb_lower and rsi < rsi_threshold and sma60_slope is not None and sma60_slope > 0:
                 rsi_score = (rsi_threshold - rsi) / rsi_threshold  # 0~1
                 conf = min(1.0, 0.5 + rsi_score * 0.4)
                 return Signal(
                     signal_type="BUY",
                     confidence=round(conf, 2),
-                    reason=f"BB하단이탈+RSI과매도({rsi:.1f})",
+                    reason=f"BB하단이탈+RSI과매도({rsi:.1f})+SMA60상승추세",
                     target_price=float(close),
                 )
 
-            # 매도 조건
-            if close > bb_upper:
-                # BB 상단 초과 비율 기반 동적 confidence
-                bb_excess = (close - bb_upper) / bb_upper  # 상단 초과 비율
-                conf = min(1.0, 0.5 + min(1.0, bb_excess * 20) * 0.4)
+            # 매도 조건: BB 상단 돌파 OR RSI 과매수
+            if close > bb_upper or rsi > 70:
+                if close > bb_upper:
+                    bb_excess = (close - bb_upper) / bb_upper
+                    conf = min(1.0, 0.5 + min(1.0, bb_excess * 20) * 0.4)
+                    reason = f"BB상단 돌파 (종가={close:.0f} > BB상단={bb_upper:.0f})"
+                else:
+                    conf = min(1.0, 0.5 + (rsi - 70) / 30 * 0.4)
+                    reason = f"RSI과매수({rsi:.1f}>70)"
                 return Signal(
                     signal_type="SELL",
                     confidence=round(conf, 2),
-                    reason=f"BB상단 돌파 (종가={close:.0f} > BB상단={bb_upper:.0f})",
+                    reason=reason,
                     target_price=float(close),
                 )
 
@@ -182,19 +204,19 @@ class BollingerReversalStrategy(BaseStrategy):
 
 class ValueMomentumStrategy(BaseStrategy):
     """
-    가치 + 모멘텀 전략 (기본 모멘텀 기반 구현)
-    PER/PBR/ROE 외부 데이터 미연동 시 모멘텀 신호만 사용한다.
-    - 매수 조건: 20일 수익률 > 5% AND RSI < 65
+    가치 + 모멘텀 전략 (Dual Momentum 축소 적용)
+    20일 + 60일 이중 모멘텀으로 추세 강도를 확인한다.
+    - 매수 조건: 60일 모멘텀 > 3% AND 20일 모멘텀 > 2% AND RSI < 65
+    - 매도 조건: 60일 모멘텀 < -3% OR (20일 모멘텀 < -5% AND RSI > 60)
     """
 
     name = "ValueMomentum"
-    description = "모멘텀 + RSI 기반 가치투자 전략 (PER/PBR 연동 시 고도화 가능)"
+    description = "이중 모멘텀(20일+60일) + RSI 기반 전략 (Dual Momentum 핵심 차용)"
 
     def evaluate(self, df: pd.DataFrame, params: dict[str, Any]) -> Signal:
-        if len(df) < 20:
-            return Signal(signal_type="HOLD", confidence=0.0, reason="데이터 부족")
+        if len(df) < 61:
+            return Signal(signal_type="HOLD", confidence=0.0, reason="데이터 부족 (61일 이상 필요)")
 
-        momentum_threshold = float(params.get("momentum_threshold", 5.0))
         rsi_max = float(params.get("rsi_max", 65.0))
 
         try:
@@ -203,44 +225,295 @@ class ValueMomentumStrategy(BaseStrategy):
             df_copy.ta.rsi(length=14, append=True)
 
             last = df_copy.iloc[-1]
-            prev_20 = df_copy.iloc[-21] if len(df_copy) >= 21 else df_copy.iloc[0]
-
             close = float(last.get("Close", 0))
-            close_20d = float(prev_20.get("Close", 0))
             rsi = last.get("RSI_14")
 
-            if close_20d == 0 or pd.isna(rsi):
+            close_20d = float(df_copy.iloc[-21].get("Close", 0)) if len(df_copy) >= 21 else 0.0
+            close_60d = float(df_copy.iloc[-61].get("Close", 0)) if len(df_copy) >= 61 else 0.0
+
+            if close_20d == 0 or close_60d == 0 or pd.isna(rsi):
                 return Signal(signal_type="HOLD", confidence=0.0, reason="지표 계산 불가")
 
             momentum_20d = (close - close_20d) / close_20d * 100
+            momentum_60d = (close - close_60d) / close_60d * 100
 
-            # 매수 조건
-            if momentum_20d > momentum_threshold and rsi < rsi_max:
-                # 기본 0.5 + 모멘텀 강도(0~0.3) + RSI 여유(0~0.2)
-                momentum_score = min(1.0, momentum_20d / 20.0)  # 0~1
-                rsi_score = (rsi_max - rsi) / rsi_max           # 0~1
+            # 매수 조건: 60일 > 3% AND 20일 > 2% AND RSI < 65
+            if momentum_60d > 3.0 and momentum_20d > 2.0 and rsi < rsi_max:
+                momentum_score = min(1.0, (momentum_60d + momentum_20d) / 30.0)
+                rsi_score = (rsi_max - rsi) / rsi_max
                 conf = min(1.0, 0.5 + momentum_score * 0.3 + rsi_score * 0.2)
                 return Signal(
                     signal_type="BUY",
                     confidence=round(conf, 2),
-                    reason=f"20일모멘텀+{momentum_20d:.1f}%+RSI({rsi:.1f})",
+                    reason=f"이중모멘텀(60d:{momentum_60d:.1f}%,20d:{momentum_20d:.1f}%)+RSI({rsi:.1f})",
                     target_price=close,
                 )
 
-            # 매도 조건: 모멘텀 반전
-            if momentum_20d < -momentum_threshold:
-                # 모멘텀 하락 강도 기반 동적 confidence
-                momentum_drop = min(1.0, abs(momentum_20d) / 20.0)
-                conf = min(1.0, 0.5 + momentum_drop * 0.4)
+            # 매도 조건: 60일 모멘텀 < -3% OR (20일 < -5% AND RSI > 60)
+            if momentum_60d < -3.0 or (momentum_20d < -5.0 and rsi > 60):
+                reasons = []
+                if momentum_60d < -3.0:
+                    reasons.append(f"60d모멘텀하락({momentum_60d:.1f}%)")
+                if momentum_20d < -5.0 and rsi > 60:
+                    reasons.append(f"20d급락({momentum_20d:.1f}%)+RSI({rsi:.1f})")
+                conf = min(1.0, 0.5 + min(1.0, abs(momentum_60d) / 15.0) * 0.4)
                 return Signal(
                     signal_type="SELL",
                     confidence=round(conf, 2),
-                    reason=f"20일모멘텀{momentum_20d:.1f}% 하락",
+                    reason="+".join(reasons),
                     target_price=close,
                 )
 
         except Exception as e:
             logger.warning(f"ValueMomentum 평가 오류: {e}")
+
+        return Signal(signal_type="HOLD", confidence=0.0, reason="조건 미충족")
+
+
+class MACDTrendStrategy(BaseStrategy):
+    """
+    MACD 추세추종 전략
+    - 매수 조건: MACD > Signal AND MACD_hist > 0 AND MACD_hist 증가 추세 AND RSI < 65
+    - 매도 조건: MACD < Signal AND MACD_hist < 0
+    """
+
+    name = "MACDTrend"
+    description = "MACD 추세추종 - MACD/Signal 교차 + 히스토그램 증가 추세"
+
+    def evaluate(self, df: pd.DataFrame, params: dict[str, Any]) -> Signal:
+        if len(df) < 35:
+            return Signal(signal_type="HOLD", confidence=0.0, reason="데이터 부족 (35일 이상 필요)")
+
+        rsi_max = float(params.get("rsi_max", 65.0))
+
+        try:
+            import pandas_ta as ta
+            df_copy = df.copy()
+            df_copy.ta.macd(fast=12, slow=26, signal=9, append=True)
+            df_copy.ta.rsi(length=14, append=True)
+
+            last = df_copy.iloc[-1]
+            prev = df_copy.iloc[-2]
+
+            macd = last.get("MACD_12_26_9")
+            signal_val = last.get("MACDs_12_26_9")
+            macd_hist = last.get("MACDh_12_26_9")
+            prev_macd_hist = prev.get("MACDh_12_26_9")
+            rsi = last.get("RSI_14")
+
+            if any(pd.isna(v) for v in [macd, signal_val, macd_hist, prev_macd_hist, rsi]):
+                return Signal(signal_type="HOLD", confidence=0.0, reason="지표 계산 불가")
+
+            # 매수 조건: MACD > Signal AND hist 양수 AND hist 증가 AND RSI < rsi_max
+            if macd > signal_val and macd_hist > 0 and macd_hist > prev_macd_hist and rsi < rsi_max:
+                hist_score = min(1.0, abs(macd_hist) / max(abs(float(macd)), 0.001))
+                rsi_score = (rsi_max - rsi) / rsi_max
+                conf = min(1.0, 0.5 + hist_score * 0.25 + rsi_score * 0.25)
+                return Signal(
+                    signal_type="BUY",
+                    confidence=round(conf, 2),
+                    reason=f"MACD추세상승(hist:{macd_hist:.4f}↑)+RSI({rsi:.1f})",
+                    target_price=float(last.get("Close", 0)),
+                )
+
+            # 매도 조건: MACD < Signal AND hist 음수
+            if macd < signal_val and macd_hist < 0:
+                conf = min(1.0, 0.5 + min(1.0, abs(macd_hist) / max(abs(float(macd)), 0.001)) * 0.4)
+                return Signal(
+                    signal_type="SELL",
+                    confidence=round(conf, 2),
+                    reason=f"MACD하락전환(MACD:{macd:.4f}<Signal:{signal_val:.4f})",
+                    target_price=float(last.get("Close", 0)),
+                )
+
+        except Exception as e:
+            logger.warning(f"MACDTrend 평가 오류: {e}")
+
+        return Signal(signal_type="HOLD", confidence=0.0, reason="조건 미충족")
+
+
+class LowBetaMomentumStrategy(BaseStrategy):
+    """
+    저베타 모멘텀 전략 (BAB 롱 레그 차용)
+    저베타 종목 중 모멘텀이 양호한 것만 매수한다.
+    - 매수 조건: beta < 0.8 AND 20일 모멘텀 > 0% AND RSI < 60
+    - 매도 조건: beta > 1.2 OR 20일 모멘텀 < -5% OR RSI > 75
+    """
+
+    name = "LowBetaMomentum"
+    description = "저베타 모멘텀 (BAB 롱 레그): 저베타 종목 중 모멘텀 양호한 것만 매수"
+
+    def __init__(self) -> None:
+        self._market_returns: Optional[pd.Series] = None
+
+    def set_market_data(self, market_returns: pd.Series) -> None:
+        self._market_returns = market_returns
+
+    def evaluate(self, df: pd.DataFrame, params: dict[str, Any]) -> Signal:
+        if len(df) < 60:
+            return Signal(signal_type="HOLD", confidence=0.0, reason="데이터 부족 (60일 이상 필요)")
+        if self._market_returns is None:
+            return Signal(signal_type="HOLD", confidence=0.0, reason="시장 데이터 없음 (KOSPI 필요)")
+
+        beta_max = float(params.get("beta_max", 0.8))
+        beta_period = int(params.get("beta_period", 60))
+        momentum_min = float(params.get("momentum_min", 0.0))
+        rsi_max = float(params.get("rsi_max", 60.0))
+
+        try:
+            import pandas_ta as ta
+            from app.services.indicators import calculate_beta
+
+            df_copy = df.copy()
+            df_copy.ta.rsi(length=14, append=True)
+
+            last = df_copy.iloc[-1]
+            close_now = float(last.get("Close", 0))
+            rsi = last.get("RSI_14")
+
+            # 베타 계산: 종목 일별 수익률 vs KOSPI
+            stock_returns = df_copy["Close"].pct_change().dropna()
+            aligned_market = self._market_returns.reindex(
+                stock_returns.index, method="nearest"
+            ).dropna()
+            aligned_stock = stock_returns.reindex(aligned_market.index).dropna()
+
+            if len(aligned_stock) < beta_period:
+                return Signal(signal_type="HOLD", confidence=0.0, reason="베타 계산 데이터 부족")
+
+            s_ret = aligned_stock.iloc[-beta_period:]
+            m_ret = aligned_market.iloc[-beta_period:]
+            beta = calculate_beta(s_ret, m_ret)
+
+            # 20일 모멘텀
+            close_20d = float(df_copy.iloc[-21].get("Close", 0)) if len(df_copy) >= 21 else 0.0
+            momentum_20d = (close_now - close_20d) / close_20d * 100 if close_20d != 0 else 0.0
+
+            if pd.isna(rsi):
+                return Signal(signal_type="HOLD", confidence=0.0, reason="지표 계산 불가")
+
+            # 매도 조건 (우선 체크)
+            if beta > 1.2 or momentum_20d < -5.0 or rsi > 75:
+                reasons = []
+                if beta > 1.2:
+                    reasons.append(f"베타상승({beta:.2f}>1.2)")
+                if momentum_20d < -5.0:
+                    reasons.append(f"모멘텀하락({momentum_20d:.1f}%)")
+                if rsi > 75:
+                    reasons.append(f"RSI과매수({rsi:.1f})")
+                return Signal(
+                    signal_type="SELL",
+                    confidence=0.6,
+                    reason="+".join(reasons),
+                    target_price=close_now,
+                )
+
+            # 매수 조건
+            if beta < beta_max and momentum_20d > momentum_min and rsi < rsi_max:
+                beta_score = (beta_max - beta) / beta_max
+                rsi_score = (rsi_max - rsi) / rsi_max
+                conf = min(1.0, 0.5 + beta_score * 0.3 + rsi_score * 0.2)
+                return Signal(
+                    signal_type="BUY",
+                    confidence=round(conf, 2),
+                    reason=f"저베타({beta:.2f}<{beta_max})+모멘텀({momentum_20d:.1f}%)+RSI({rsi:.1f})",
+                    target_price=close_now,
+                )
+
+        except Exception as e:
+            logger.warning(f"LowBetaMomentum 평가 오류: {e}")
+
+        return Signal(signal_type="HOLD", confidence=0.0, reason="조건 미충족")
+
+
+class MomentumRiskSwitchStrategy(BaseStrategy):
+    """
+    모멘텀 리스크 스위치 전략 (Dual Momentum 차용)
+    KOSPI 시장 추세를 보고 리스크온/오프를 전환한다.
+    - 매수 조건: KOSPI 60일 모멘텀 > 0% AND 종목 20일 모멘텀 > 5% AND RSI < 60 AND MACD_hist > 0
+    - 매도 조건: KOSPI 60일 모멘텀 < -3% OR 종목 모멘텀 < -7% OR RSI > 75
+    """
+
+    name = "MomentumRiskSwitch"
+    description = "모멘텀 리스크 스위치 (Dual Momentum): 시장 추세 기반 리스크온/오프 전환"
+
+    def __init__(self) -> None:
+        self._market_returns: Optional[pd.Series] = None
+
+    def set_market_data(self, market_returns: pd.Series) -> None:
+        self._market_returns = market_returns
+
+    def evaluate(self, df: pd.DataFrame, params: dict[str, Any]) -> Signal:
+        if len(df) < 60:
+            return Signal(signal_type="HOLD", confidence=0.0, reason="데이터 부족 (60일 이상 필요)")
+        if self._market_returns is None:
+            return Signal(signal_type="HOLD", confidence=0.0, reason="시장 데이터 없음 (KOSPI 필요)")
+
+        market_momentum_period = int(params.get("market_momentum_period", 60))
+        stock_momentum_min = float(params.get("stock_momentum_min", 5.0))
+        market_risk_off = float(params.get("market_risk_off", -3.0))
+        rsi_max = float(params.get("rsi_max", 60.0))
+
+        try:
+            import pandas_ta as ta
+            df_copy = df.copy()
+            df_copy.ta.macd(fast=12, slow=26, signal=9, append=True)
+            df_copy.ta.rsi(length=14, append=True)
+
+            last = df_copy.iloc[-1]
+            rsi = last.get("RSI_14")
+            macd_hist = last.get("MACDh_12_26_9")
+
+            # KOSPI 60일 누적 수익률
+            if len(self._market_returns) < market_momentum_period:
+                return Signal(signal_type="HOLD", confidence=0.0, reason="시장 데이터 부족")
+            market_recent = self._market_returns.iloc[-market_momentum_period:]
+            kospi_momentum_60d = float((1 + market_recent).prod() - 1) * 100
+
+            # 종목 20일 모멘텀
+            close_now = float(last.get("Close", 0))
+            close_20d = float(df_copy.iloc[-21].get("Close", 0)) if len(df_copy) >= 21 else 0.0
+            momentum_20d = (close_now - close_20d) / close_20d * 100 if close_20d != 0 else 0.0
+
+            if any(pd.isna(v) for v in [rsi, macd_hist]):
+                return Signal(signal_type="HOLD", confidence=0.0, reason="지표 계산 불가")
+
+            # 매도 조건 (리스크오프) — 우선 체크
+            if kospi_momentum_60d < market_risk_off or momentum_20d < -7.0 or rsi > 75:
+                reasons = []
+                if kospi_momentum_60d < market_risk_off:
+                    reasons.append(f"시장리스크오프(KOSPI:{kospi_momentum_60d:.1f}%)")
+                if momentum_20d < -7.0:
+                    reasons.append(f"종목급락({momentum_20d:.1f}%)")
+                if rsi > 75:
+                    reasons.append(f"RSI과매수({rsi:.1f})")
+                return Signal(
+                    signal_type="SELL",
+                    confidence=0.65,
+                    reason="+".join(reasons),
+                    target_price=close_now,
+                )
+
+            # 매수 조건 (리스크온)
+            if (
+                kospi_momentum_60d > 0
+                and momentum_20d > stock_momentum_min
+                and rsi < rsi_max
+                and macd_hist > 0
+            ):
+                kospi_score = min(1.0, kospi_momentum_60d / 10.0)
+                stock_score = min(1.0, (momentum_20d - stock_momentum_min) / 10.0)
+                rsi_score = (rsi_max - rsi) / rsi_max
+                conf = min(1.0, 0.5 + kospi_score * 0.2 + stock_score * 0.2 + rsi_score * 0.1)
+                return Signal(
+                    signal_type="BUY",
+                    confidence=round(conf, 2),
+                    reason=f"리스크온(KOSPI:{kospi_momentum_60d:.1f}%)+종목({momentum_20d:.1f}%)+RSI({rsi:.1f})",
+                    target_price=close_now,
+                )
+
+        except Exception as e:
+            logger.warning(f"MomentumRiskSwitch 평가 오류: {e}")
 
         return Signal(signal_type="HOLD", confidence=0.0, reason="조건 미충족")
 
@@ -414,6 +687,9 @@ STRATEGY_REGISTRY: dict[str, BaseStrategy] = {
     "GoldenCrossRSI": GoldenCrossRSIStrategy(),
     "BollingerReversal": BollingerReversalStrategy(),
     "ValueMomentum": ValueMomentumStrategy(),
+    "MACDTrend": MACDTrendStrategy(),
+    "LowBetaMomentum": LowBetaMomentumStrategy(),
+    "MomentumRiskSwitch": MomentumRiskSwitchStrategy(),
 }
 
 # DB 한글 전략명 → 레지스트리 영문 키 매핑
@@ -421,6 +697,9 @@ _NAME_TO_ENGINE: dict[str, str] = {
     "골든크로스+RSI": "GoldenCrossRSI",
     "가치+모멘텀": "ValueMomentum",
     "볼린저밴드반전": "BollingerReversal",
+    "MACD추세추종": "MACDTrend",
+    "저베타모멘텀": "LowBetaMomentum",
+    "모멘텀리스크스위치": "MomentumRiskSwitch",
 }
 
 
